@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre", "PhSpectre\PhSpectre.csproj", "{0946132D-25A6-41DE-B6D0-D167CCD7BFD1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.CLI", "PhSpectre.CLI\PhSpectre.CLI.csproj", "{8B3E3635-D9E2-47F9-94DB-2EB3F2642317}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpecre.Tests", "PhSpecre.Tests\PhSpecre.Tests.csproj", "{1479D5EB-FF4C-496C-AC80-D0C230B880B6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0946132D-25A6-41DE-B6D0-D167CCD7BFD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0946132D-25A6-41DE-B6D0-D167CCD7BFD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0946132D-25A6-41DE-B6D0-D167CCD7BFD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0946132D-25A6-41DE-B6D0-D167CCD7BFD1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B3E3635-D9E2-47F9-94DB-2EB3F2642317}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B3E3635-D9E2-47F9-94DB-2EB3F2642317}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B3E3635-D9E2-47F9-94DB-2EB3F2642317}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B3E3635-D9E2-47F9-94DB-2EB3F2642317}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1479D5EB-FF4C-496C-AC80-D0C230B880B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1479D5EB-FF4C-496C-AC80-D0C230B880B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1479D5EB-FF4C-496C-AC80-D0C230B880B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1479D5EB-FF4C-496C-AC80-D0C230B880B6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

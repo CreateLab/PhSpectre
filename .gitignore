@@ -1,0 +1,41 @@
+# Build output
+bin/
+obj/
+out/
+
+# .NET
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# JetBrains Rider
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# NuGet
+.nuget/
+packages/
+*.nupkg
+*.snupkg
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test results
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+
+# Sample images (not part of source)
+*.jpg
+*.jpeg
+*.png
