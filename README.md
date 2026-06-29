@@ -2,7 +2,7 @@
 
 Extracts a dominant color palette from a JPEG photo and renders it as a PNG — original image alongside color swatches and optional EXIF metadata.
 
-## Usage
+## CLI
 
 ```bash
 dotnet run --project PhSpectre.CLI -- <image.jpg> [options]
@@ -38,6 +38,47 @@ dotnet run --project PhSpectre.CLI -- photo.jpg --no-meta --no-hex
 
 Output is saved as `<original-name>_palette.png` next to the source file. Hex codes and percentages are printed to stdout.
 
+## API
+
+### Run locally
+
+```bash
+dotnet run --project PhSpectre.API
+# Swagger UI: http://localhost:5000/swagger
+```
+
+### Run with Docker
+
+```bash
+docker compose up --build
+# Swagger UI: http://localhost:8080/swagger
+```
+
+### POST /api/palette
+
+```
+POST /api/palette
+Content-Type: multipart/form-data
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `file` | JPEG file | yes | Source photo (`.jpg` / `.jpeg`) |
+| `colors` | int | no | Palette size 1–32. Omit for auto. |
+| `theme` | `dark` \| `light` | no | Panel background. Default: `dark`. |
+
+Returns the palette PNG as `application/octet-stream`.
+
+```bash
+curl -X POST http://localhost:8080/api/palette \
+  -F "file=@photo.jpg" \
+  -F "colors=6" \
+  -F "theme=light" \
+  --output palette.png
+```
+
+**Rate limit:** 10 requests per minute per IP. Exceeding returns `429 Too Many Requests`.
+
 ## Layout
 
 - **Portrait** (height > width): swatches panel on the right, metadata strip below the photo
@@ -52,4 +93,5 @@ Output is saved as `<original-name>_palette.png` next to the source file. Hex co
 ## Requirements
 
 - .NET 8
+- Docker (optional, for containerised API)
 - Supports JPEG input only (`.jpg` / `.jpeg`)

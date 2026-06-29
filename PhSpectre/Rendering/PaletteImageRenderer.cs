@@ -7,13 +7,13 @@ using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System.Globalization;
 
-namespace PhSpectre.CLI;
+namespace PhSpectre.Rendering;
 
 public enum MetaVerbosity { Off, Short, Default, Detail, Full }
 public enum MetaStyle    { FilmStrip, Overlay }
 public enum Theme        { Dark, Light }
 
-internal static class PaletteImageRenderer
+public static class PaletteImageRenderer
 {
     private record ThemeColors(Color Background, Color Text);
 
@@ -311,16 +311,6 @@ internal static class PaletteImageRenderer
     private static uint Gcd(uint a, uint b) => b == 0 ? a : Gcd(b, a % b);
 
     // ── Font helpers ────────────────────────────────────────────────────────
-
-    private static Font ResolveFont(float size)
-    {
-        foreach (string name in new[] { "Arial", "Segoe UI" })
-        {
-            try { return SystemFonts.CreateFont(name, size, FontStyle.Regular); }
-            catch (FontFamilyNotFoundException) { }
-        }
-        return SystemFonts.Families.First().CreateFont(size, FontStyle.Regular);
-    }
 
     private static Font ResolveMetaFont(float size)
     {

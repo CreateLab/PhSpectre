@@ -1,5 +1,5 @@
 using PhSpectre;
-using PhSpectre.CLI;
+using PhSpectre.Rendering;
 
 if (args.Length == 0)
 {
