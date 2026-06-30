@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [master]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -31,29 +34,19 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/windows
 
-      - name: Delete previous artifacts
+      - name: Move release tag
         if: github.event_name == 'push'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data } = await github.rest.actions.listArtifactsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'PhSpectre-windows',
-              per_page: 100
-            });
-            for (const artifact of data.artifacts) {
-              await github.rest.actions.deleteArtifact({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                artifact_id: artifact.id
-              });
-            }
+        run: |
+          git tag -f latest-windows
+          git push origin latest-windows --force
 
-      - name: Upload artifact
+      - name: Create or update release
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: softprops/action-gh-release@v2
         with:
-          name: PhSpectre-windows
-          path: publish/windows/PhSpectre.App.exe
-          retention-days: 90
+          tag_name: latest-windows
+          name: "Latest — Windows x64"
+          body: |
+            Automated build · commit ${{ github.sha }}
+          prerelease: true
+          files: publish/windows/PhSpectre.App.exe
