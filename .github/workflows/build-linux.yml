@@ -34,6 +34,9 @@ jobs:
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/linux
 
+      - name: Rename binary
+        run: mv publish/linux/PhSpectre.App publish/linux/PhSpectre-linux-x64
+
       - name: Move release tag
         if: github.event_name == 'push'
         run: |
@@ -49,4 +52,4 @@ jobs:
           body: |
             Automated build · commit ${{ github.sha }}
           prerelease: true
-          files: publish/linux/PhSpectre.App
+          files: publish/linux/PhSpectre-linux-x64
