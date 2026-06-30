@@ -2,16 +2,14 @@
 
 Extracts a dominant color palette from a JPEG photo and renders it as a PNG — original image alongside color swatches and optional EXIF metadata.
 
+**Download:** [Windows x64](https://github.com/CreateLab/PhSpectre/releases/tag/latest-windows) · [Linux x64](https://github.com/CreateLab/PhSpectre/releases/tag/latest-linux)
+
 [![Build — Windows](https://github.com/CreateLab/PhSpectre/actions/workflows/build-windows.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-windows.yml)
 [![Build — Linux](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml)
 
 ## Desktop App
 
 Cross-platform GUI built with Avalonia. Open a folder, browse photos, preview the generated palette side-by-side and save it as PNG.
-
-**Download latest build:**
-- [Windows x64 (.exe)](https://github.com/CreateLab/PhSpectre/releases/tag/latest-windows)
-- [Linux x64 (PhSpectre-linux-x64)](https://github.com/CreateLab/PhSpectre/releases/tag/latest-linux)
 
 Self-contained — no .NET runtime required on the target machine.
 
