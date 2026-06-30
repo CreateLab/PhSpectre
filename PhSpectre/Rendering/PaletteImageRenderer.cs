@@ -79,6 +79,8 @@ public static class PaletteImageRenderer
         int labelH       = showHex && hexBelow ? (int)swatchFs + textPad : 0;
         int swatchY      = swatchPanelY + (panelH - swatchH - labelH) / 2;
 
+        Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
+
         var canvas = new Image<Rgb24>(original.Width, canvasH);
         canvas.Mutate(ctx =>
         {
@@ -87,7 +89,7 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
-                w: original.Width);
+                w: original.Width, overlayTextColor: overlayTextColor);
 
             DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc);
         });
@@ -117,13 +119,16 @@ public static class PaletteImageRenderer
         int labelH  = showHex && hexBelow ? (int)swatchFs + textPad : 0;
         int swatchH = (original.Height - 2 * margin - (n - 1) * gap - n * labelH) / n;
 
-        // Meta strip
-        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width);
-
         int canvasW = original.Width + panelW;
+
+        // Use full canvas width for strip so metadata has more horizontal room
+        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, canvasW);
+
         int canvasH = style == MetaStyle.FilmStrip && stripH > 0
             ? original.Height + stripH
             : original.Height;
+
+        Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
 
         var canvas = new Image<Rgb24>(canvasW, canvasH);
         canvas.Mutate(ctx =>
@@ -133,7 +138,7 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
-                w: original.Width);
+                w: canvasW, overlayTextColor: overlayTextColor);
 
             for (int i = 0; i < n; i++)
             {
@@ -215,11 +220,12 @@ public static class PaletteImageRenderer
             var last = segs[^1];
             last.RemoveAt(last.Count - 1);
 
-            // Also drop trailing punctuation-only tokens (|, -, /, …) — ugly before ellipsis
+            // Drop trailing punctuation-only tokens (|, -, /, …) — ugly before ellipsis
             while (last.Count > 0 && last[^1].All(c => !char.IsLetterOrDigit(c)))
                 last.RemoveAt(last.Count - 1);
 
-            if (last.Count == 0)
+            // Drop whole segment: empty OR orphan single word (e.g. "ISO" without value — useless before "…")
+            if (last.Count <= 1)
                 segs.RemoveAt(segs.Count - 1);
 
             if (segs.Count == 0) break;
@@ -234,25 +240,44 @@ public static class PaletteImageRenderer
     private static void DrawStrip(
         IImageProcessingContext ctx,
         string[] lines, int stripH, float fontSize, Font? font,
-        MetaStyle style, Theme theme, int x, int y, int w)
+        MetaStyle style, Theme theme, int x, int y, int w,
+        Color? overlayTextColor = null)
     {
         if (lines.Length == 0 || font == null || stripH == 0) return;
 
-        var tc = GetThemeColors(theme);
-        Color bg        = style == MetaStyle.FilmStrip ? tc.Background : new Color(new Rgba32(0, 0, 0, 145));
-        Color textColor = style == MetaStyle.FilmStrip ? tc.Text : Color.White;
+        var tc      = GetThemeColors(theme);
+        int lineH   = (int)(fontSize * 1.5f);
+        int pad     = (int)(fontSize * 0.6f);
 
-        ctx.Fill(bg, new RectangleF(x, y, w, stripH));
-
-        int lineH    = (int)(fontSize * 1.5f);
-        int stripPad = (int)(fontSize * 0.6f);
-        for (int i = 0; i < lines.Length; i++)
+        if (style == MetaStyle.Overlay)
         {
-            ctx.DrawText(new RichTextOptions(font)
+            // Semi-transparent box in top-left — BlendPercentage is the correct way
+            // to achieve transparency on an Rgb24 canvas (ctx.Fill with Rgba32 loses alpha).
+            float maxTextW = lines.Max(l => TextMeasurer.MeasureSize(l, new TextOptions(font)).Width);
+            int boxW = (int)(maxTextW + pad * 2);
+            int boxH = lines.Length * lineH + pad * 2;
+            var overlayOpts = new DrawingOptions
             {
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Origin = new PointF(x + stripPad, y + stripPad + i * lineH)
-            }, lines[i], textColor);
+                GraphicsOptions = new GraphicsOptions { BlendPercentage = 0.55f, Antialias = false }
+            };
+            ctx.Fill(overlayOpts, Color.Black, new RectangleF(x, 0, boxW, boxH));
+            Color textClr = overlayTextColor ?? Color.White;
+            for (int i = 0; i < lines.Length; i++)
+                ctx.DrawText(new RichTextOptions(font)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Origin = new PointF(x + pad, pad + i * lineH)
+                }, lines[i], textClr);
+        }
+        else
+        {
+            ctx.Fill(tc.Background, new RectangleF(x, y, w, stripH));
+            for (int i = 0; i < lines.Length; i++)
+                ctx.DrawText(new RichTextOptions(font)
+                {
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    Origin = new PointF(x + pad, y + pad + i * lineH)
+                }, lines[i], tc.Text);
         }
     }
 
@@ -401,5 +426,37 @@ public static class PaletteImageRenderer
     {
         static double Ch(byte c) { double s = c / 255.0; return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4); }
         return 0.2126 * Ch(r) + 0.7152 * Ch(g) + 0.0722 * Ch(b) < 0.179 ? Color.White : Color.Black;
+    }
+
+    // Samples the top-left corner of the photo to decide overlay text color.
+    // Uses relative luminance threshold 0.35 on the blended result (overlay at 55%).
+    private static Color GetOverlayTextColor(Image<Rgb24> image)
+    {
+        int sampleW = Math.Max(1, image.Width  / 4);
+        int sampleH = Math.Max(1, image.Height / 6);
+        int step    = Math.Max(1, sampleW / 20);
+        double totalLum = 0;
+        int    count    = 0;
+
+        static double Lin(byte c) { double s = c / 255.0; return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4); }
+
+        image.ProcessPixelRows(accessor =>
+        {
+            for (int row = 0; row < sampleH; row += step)
+            {
+                var span = accessor.GetRowSpan(row);
+                for (int col = 0; col < sampleW; col += step)
+                {
+                    ref Rgb24 p = ref span[col];
+                    totalLum += 0.2126 * Lin(p.R) + 0.7152 * Lin(p.G) + 0.0722 * Lin(p.B);
+                    count++;
+                }
+            }
+        });
+
+        // With 55% black overlay the effective background = 0.45 × original_lum.
+        // White text is readable when effective background < ~0.18 → original_lum < 0.40.
+        double avgLum = count > 0 ? totalLum / count : 0;
+        return avgLum > 0.40 ? Color.Black : Color.White;
     }
 }

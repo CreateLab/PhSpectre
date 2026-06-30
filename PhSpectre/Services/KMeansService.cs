@@ -24,21 +24,21 @@ internal sealed class KMeansService
         return BuildPalette(hsl, centroids);
     }
 
-    // Weighted sampling WITH replacement at same size — biases toward saturated pixels
-    // without increasing the array size (no speed penalty on k-means).
+    // Weighted sampling WITH replacement at same size.
+    // Vivid:    saturated pixels get higher weight (s×5 bonus).
+    // Contrast: stratified by lightness — dark/mid/light each get 1/3 of the sample,
+    //           guaranteeing highlights (white) and shadows appear even when rare.
     private static float[][] BuildWeightedSample(float[][] hsl, SamplingMode mode)
     {
+        if (mode == SamplingMode.Contrast)
+            return BuildStratifiedByLightness(hsl);
+
         var weights = new double[hsl.Length];
         double total = 0;
         for (int i = 0; i < hsl.Length; i++)
         {
-            float s = hsl[i][1], l = hsl[i][2];
-            weights[i] = mode switch
-            {
-                SamplingMode.Vivid    => 1.0 + s * 5.0,
-                SamplingMode.Contrast => 1.0 + s * Math.Max(0.0, 1.0 - Math.Abs(l - 0.5) * 2.0) * 9.0,
-                _                     => 1.0
-            };
+            float s = hsl[i][1];
+            weights[i] = mode == SamplingMode.Vivid ? 1.0 + s * 5.0 : 1.0;
             total += weights[i];
         }
 
@@ -59,6 +59,39 @@ internal sealed class KMeansService
             if (idx < 0) idx = ~idx;
             sample[i] = hsl[Math.Clamp(idx, 0, hsl.Length - 1)];
         }
+        return sample;
+    }
+
+    // Splits pixels into 3 lightness bands [0, 0.33) / [0.33, 0.67) / [0.67, 1]
+    // and draws equal quotas from each. Guarantees highlights (e.g. white petals
+    // in a green photo) get 1/3 of k-means input regardless of pixel count.
+    private static float[][] BuildStratifiedByLightness(float[][] hsl)
+    {
+        var bands = new List<int>[3];
+        for (int b = 0; b < 3; b++) bands[b] = new List<int>();
+
+        for (int i = 0; i < hsl.Length; i++)
+        {
+            float l = hsl[i][2];
+            bands[l < 0.33f ? 0 : l < 0.67f ? 1 : 2].Add(i);
+        }
+
+        var rng    = new Random(42);
+        var sample = new float[hsl.Length][];
+        int si     = 0;
+
+        for (int b = 0; b < 3; b++)
+        {
+            if (bands[b].Count == 0) continue;
+            int quota = hsl.Length / 3;
+            for (int i = 0; i < quota && si < hsl.Length; i++)
+                sample[si++] = hsl[bands[b][rng.Next(bands[b].Count)]];
+        }
+
+        // Fill rounding remainder uniformly
+        while (si < hsl.Length)
+            sample[si++] = hsl[rng.Next(hsl.Length)];
+
         return sample;
     }
 
