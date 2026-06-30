@@ -8,9 +8,11 @@ internal sealed class ImageSamplerService
 {
     private const int SampleSize = 150;
 
-    public async Task<(byte R, byte G, byte B)[]> SampleAsync(Stream imageStream)
+    public async Task<(byte R, byte G, byte B)[]> SampleAsync(
+        Stream imageStream,
+        CancellationToken cancellationToken = default)
     {
-        using var image = await Image.LoadAsync<Rgb24>(imageStream);
+        using var image = await Image.LoadAsync<Rgb24>(imageStream, cancellationToken);
         image.Mutate(ctx => ctx.AutoOrient().Resize(SampleSize, SampleSize));
 
         var pixels = new (byte R, byte G, byte B)[SampleSize * SampleSize];

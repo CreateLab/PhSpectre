@@ -3,7 +3,8 @@ using PhSpectre.Rendering;
 
 if (args.Length == 0)
 {
-    Console.Error.WriteLine("Usage: phspectre <image.jpg> [--colors <n>] [--no-hex]");
+    Console.Error.WriteLine("Usage: phspectre <image.jpg> [--colors <n>] [--no-hex] [--hex-below]");
+    Console.Error.WriteLine("       [--mode vivid|standard|contrast]");
     Console.Error.WriteLine("       [--no-meta] [--meta-short] [--meta-detail] [--meta-full] [--meta-overlay]");
     Console.Error.WriteLine("       [--theme dark|light]");
     return 1;
@@ -11,7 +12,9 @@ if (args.Length == 0)
 
 string imagePath = args[0];
 int? colorCount = null;
-bool showHex = true;
+bool showHex      = true;
+bool hexBelow     = false;
+var samplingMode  = SamplingMode.Vivid;
 var metaVerbosity = MetaVerbosity.Default;
 var metaStyle     = MetaStyle.FilmStrip;
 var theme         = Theme.Dark;
@@ -29,6 +32,18 @@ for (int i = 1; i < args.Length; i++)
         i++;
     }
     else if (args[i] == "--no-hex")      { showHex = false; }
+    else if (args[i] == "--hex-below")   { hexBelow = true; }
+    else if (args[i] == "--mode" && i + 1 < args.Length)
+    {
+        samplingMode = args[i + 1].ToLowerInvariant() switch
+        {
+            "standard" => SamplingMode.Standard,
+            "contrast" => SamplingMode.Contrast,
+            "vivid"    => SamplingMode.Vivid,
+            _ => throw new Exception($"Unknown mode '{args[i + 1]}'. Use vivid, standard or contrast.")
+        };
+        i++;
+    }
     else if (args[i] == "--no-meta")     { metaVerbosity = MetaVerbosity.Off; }
     else if (args[i] == "--meta-short")  { metaVerbosity = MetaVerbosity.Short; }
     else if (args[i] == "--meta-detail") { metaVerbosity = MetaVerbosity.Detail; }
@@ -66,7 +81,7 @@ try
 {
     await using var stream = File.OpenRead(imagePath);
     var extractor = new PaletteExtractor();
-    palette = await extractor.ExtractAsync(stream, colorCount);
+    palette = await extractor.ExtractAsync(stream, colorCount, samplingMode);
 }
 catch (Exception ex)
 {
@@ -78,7 +93,7 @@ string outputPath = Path.Combine(
     Path.GetDirectoryName(Path.GetFullPath(imagePath))!,
     Path.GetFileNameWithoutExtension(imagePath) + "_palette.png");
 
-PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosity, metaStyle, theme);
+PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow);
 
 Console.WriteLine($"Saved: {outputPath}");
 foreach (var swatch in palette.Swatches)

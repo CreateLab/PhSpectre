@@ -9,6 +9,10 @@ public partial class SettingsView : Window
     {
         InitializeComponent();
 
+        SamplingModeBox.Items.Add("Vivid — saturated colors stand out");
+        SamplingModeBox.Items.Add("Standard — most frequent colors by area");
+        SamplingModeBox.Items.Add("Contrast — vivid mid-lightness colors");
+
         ColorCountBox.Items.Add("Auto");
         for (int i = 3; i <= 8; i++)
             ColorCountBox.Items.Add(i.ToString());

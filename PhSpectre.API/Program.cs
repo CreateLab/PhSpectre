@@ -35,7 +35,7 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseRateLimiter();
 
-app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [FromForm] string? theme) =>
+app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [FromForm] string? theme, [FromForm] string? mode) =>
 {
     if (file == null)
         return Results.Json(new { error = "file is required" }, statusCode: 400);
@@ -52,6 +52,15 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
         else return Results.Json(new { error = "theme must be 'dark' or 'light'" }, statusCode: 400);
     }
 
+    SamplingMode parsedMode = SamplingMode.Vivid;
+    if (!string.IsNullOrEmpty(mode))
+    {
+        if      (mode.Equals("vivid",    StringComparison.OrdinalIgnoreCase)) parsedMode = SamplingMode.Vivid;
+        else if (mode.Equals("standard", StringComparison.OrdinalIgnoreCase)) parsedMode = SamplingMode.Standard;
+        else if (mode.Equals("contrast", StringComparison.OrdinalIgnoreCase)) parsedMode = SamplingMode.Contrast;
+        else return Results.Json(new { error = "mode must be 'vivid', 'standard' or 'contrast'" }, statusCode: 400);
+    }
+
     if (colors is < 1 or > 32)
         return Results.Json(new { error = "colors must be between 1 and 32" }, statusCode: 400);
 
@@ -64,7 +73,7 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
 
         ColorPalette palette;
         await using (var fs = File.OpenRead(tmpIn))
-            palette = await new PaletteExtractor().ExtractAsync(fs, colors);
+            palette = await new PaletteExtractor().ExtractAsync(fs, colors, parsedMode);
 
         PaletteImageRenderer.Render(tmpIn, palette, tmpOut,
             showHex: true,

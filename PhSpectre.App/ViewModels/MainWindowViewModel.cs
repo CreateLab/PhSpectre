@@ -99,7 +99,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 var path = entry.FullPath;
                 var bmp = await Task.Run(() =>
                 {
-                    using var ms = ImageLoader.LoadThumbnail(path, 120, 80);
+                    using var ms = ImageLoader.LoadThumbnail(path, 120, 120);
                     return new Bitmap(ms);
                 }, token);
                 entry.ThumbnailBitmap = bmp;
@@ -165,18 +165,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
             PhSpectre.Models.ColorPalette palette;
             await using (var fs = File.OpenRead(filePath))
-                palette = await new PaletteExtractor().ExtractAsync(fs, Settings.Colors);
+                palette = await new PaletteExtractor().ExtractAsync(fs, Settings.Colors, Settings.SamplingMode, token);
 
             token.ThrowIfCancellationRequested();
 
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
-            var snap   = (filePath, Settings.ShowHex, Settings.MetaVerbosity, Settings.MetaStyle, Settings.Theme);
+            var snap   = (filePath, Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity, Settings.MetaStyle, Settings.Theme);
             await Task.Run(() => PaletteImageRenderer.Render(
                 snap.filePath, palette, tmpOut,
                 showHex:       snap.ShowHex,
                 metaVerbosity: snap.MetaVerbosity,
                 metaStyle:     snap.MetaStyle,
-                theme:         snap.Theme), token);
+                theme:         snap.Theme,
+                hexBelow:      snap.HexBelow), token);
 
             token.ThrowIfCancellationRequested();
 

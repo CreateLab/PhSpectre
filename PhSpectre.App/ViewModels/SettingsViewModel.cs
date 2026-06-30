@@ -6,15 +6,17 @@ namespace PhSpectre.App.ViewModels;
 public partial class SettingsViewModel : ViewModelBase
 {
     [ObservableProperty] private bool          _isDarkTheme   = true;
-    [ObservableProperty] private int           _colorCount    = 0;       // 0=auto, 3-8=explicit
+    [ObservableProperty] private int           _colorCount    = 0;
     [ObservableProperty] private bool          _showHex       = true;
+    [ObservableProperty] private bool          _hexBelow      = false;
     [ObservableProperty] private MetaVerbosity _metaVerbosity = MetaVerbosity.Default;
     [ObservableProperty] private MetaStyle     _metaStyle     = MetaStyle.FilmStrip;
+    [ObservableProperty] private SamplingMode  _samplingMode  = SamplingMode.Vivid;
 
     public Theme Theme  => IsDarkTheme ? Theme.Dark : Theme.Light;
     public int?  Colors => ColorCount == 0 ? null : ColorCount;
 
-    // ComboBox shims — index maps directly to enum int value or custom offset
+    // ComboBox index shims
     public int ColorCountIndex
     {
         get => ColorCount == 0 ? 0 : ColorCount - 2;
@@ -33,7 +35,14 @@ public partial class SettingsViewModel : ViewModelBase
         set => MetaStyle = (MetaStyle)value;
     }
 
-    partial void OnColorCountChanged(int value)    => OnPropertyChanged(nameof(ColorCountIndex));
-    partial void OnMetaVerbosityChanged(MetaVerbosity value) => OnPropertyChanged(nameof(MetaVerbosityIndex));
-    partial void OnMetaStyleChanged(MetaStyle value)         => OnPropertyChanged(nameof(MetaStyleIndex));
+    public int SamplingModeIndex
+    {
+        get => (int)SamplingMode;
+        set => SamplingMode = (SamplingMode)value;
+    }
+
+    partial void OnColorCountChanged(int value)               => OnPropertyChanged(nameof(ColorCountIndex));
+    partial void OnMetaVerbosityChanged(MetaVerbosity value)  => OnPropertyChanged(nameof(MetaVerbosityIndex));
+    partial void OnMetaStyleChanged(MetaStyle value)          => OnPropertyChanged(nameof(MetaStyleIndex));
+    partial void OnSamplingModeChanged(SamplingMode value)    => OnPropertyChanged(nameof(SamplingModeIndex));
 }

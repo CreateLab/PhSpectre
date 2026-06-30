@@ -8,15 +8,61 @@ internal sealed class KMeansService
     private const int ElbowKMin = 3;
     private const int ElbowKMax = 8;
 
-    public ColorPalette Cluster((byte R, byte G, byte B)[] pixels, int? colorCount)
+    public ColorPalette Cluster(
+        (byte R, byte G, byte B)[] pixels,
+        int? colorCount,
+        SamplingMode mode = SamplingMode.Vivid,
+        CancellationToken cancellationToken = default)
     {
         var hsl = Array.ConvertAll(pixels, p => RgbToHsl(p.R, p.G, p.B));
-        int k = colorCount ?? FindElbowK(hsl);
-        float[][] centroids = RunKMeans(hsl, k);
+        // Weighted sample (same size via weighted-with-replacement) for centroid discovery.
+        // Original hsl is used for final assignments and accurate percentages.
+        var sample = mode == SamplingMode.Standard ? hsl : BuildWeightedSample(hsl, mode);
+        int k = colorCount ?? FindElbowK(sample, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        float[][] centroids = RunKMeans(sample, k, cancellationToken);
         return BuildPalette(hsl, centroids);
     }
 
-    private float[][] RunKMeans(float[][] pixels, int k)
+    // Weighted sampling WITH replacement at same size — biases toward saturated pixels
+    // without increasing the array size (no speed penalty on k-means).
+    private static float[][] BuildWeightedSample(float[][] hsl, SamplingMode mode)
+    {
+        var weights = new double[hsl.Length];
+        double total = 0;
+        for (int i = 0; i < hsl.Length; i++)
+        {
+            float s = hsl[i][1], l = hsl[i][2];
+            weights[i] = mode switch
+            {
+                SamplingMode.Vivid    => 1.0 + s * 5.0,
+                SamplingMode.Contrast => 1.0 + s * Math.Max(0.0, 1.0 - Math.Abs(l - 0.5) * 2.0) * 9.0,
+                _                     => 1.0
+            };
+            total += weights[i];
+        }
+
+        var cdf = new double[hsl.Length];
+        double cumulative = 0;
+        for (int i = 0; i < hsl.Length; i++)
+        {
+            cumulative += weights[i] / total;
+            cdf[i] = cumulative;
+        }
+
+        var rng = new Random(42);
+        var sample = new float[hsl.Length][];
+        for (int i = 0; i < hsl.Length; i++)
+        {
+            double r = rng.NextDouble();
+            int idx = Array.BinarySearch(cdf, r);
+            if (idx < 0) idx = ~idx;
+            sample[i] = hsl[Math.Clamp(idx, 0, hsl.Length - 1)];
+        }
+        return sample;
+    }
+
+    private static float[][] RunKMeans(float[][] pixels, int k, CancellationToken cancellationToken = default)
     {
         var rng = new Random(42);
         float[][] centroids = InitializeCentroids(pixels, k, rng);
@@ -24,6 +70,7 @@ internal sealed class KMeansService
 
         for (int iter = 0; iter < MaxIterations; iter++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             bool changed = AssignPixels(pixels, centroids, assignments);
             if (!changed) break;
             RecomputeCentroids(pixels, assignments, centroids, k);
@@ -121,15 +168,16 @@ internal sealed class KMeansService
         }
     }
 
-    private int FindElbowK(float[][] pixels)
+    private int FindElbowK(float[][] pixels, CancellationToken cancellationToken = default)
     {
         int range = ElbowKMax - ElbowKMin + 1;
         var wcss = new double[range];
 
         for (int ki = 0; ki < range; ki++)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             int k = ElbowKMin + ki;
-            float[][] centroids = RunKMeans(pixels, k);
+            float[][] centroids = RunKMeans(pixels, k, cancellationToken);
             int[] assignments = new int[pixels.Length];
             AssignPixels(pixels, centroids, assignments);
             wcss[ki] = ComputeWcss(pixels, assignments, centroids);
@@ -171,17 +219,26 @@ internal sealed class KMeansService
         int[] assignments = new int[hslPixels.Length];
         AssignPixels(hslPixels, centroids, assignments);
 
-        var counts = new int[k];
-        for (int i = 0; i < assignments.Length; i++)
-            counts[assignments[i]]++;
+        var counts   = new int[k];
+        var bestDist = new double[k];
+        var medoids  = new float[k][];
+        Array.Fill(bestDist, double.MaxValue);
+        for (int j = 0; j < k; j++) medoids[j] = centroids[j];
+
+        for (int i = 0; i < hslPixels.Length; i++)
+        {
+            int j = assignments[i];
+            counts[j]++;
+            double d = SquaredDistHsl(hslPixels[i], centroids[j]);
+            if (d < bestDist[j]) { bestDist[j] = d; medoids[j] = hslPixels[i]; }
+        }
 
         var indices = Enumerable.Range(0, k).OrderByDescending(j => counts[j]).ToArray();
-
         var swatches = new ColorSwatch[k];
         for (int rank = 0; rank < k; rank++)
         {
             int j = indices[rank];
-            var (r, g, b) = HslToRgb(centroids[j][0], centroids[j][1], centroids[j][2]);
+            var (r, g, b) = HslToRgb(medoids[j][0], medoids[j][1], medoids[j][2]);
             string hex = $"#{r:X2}{g:X2}{b:X2}";
             float pct = (float)counts[j] / hslPixels.Length;
             swatches[rank] = new ColorSwatch(hex, (r, g, b), pct);

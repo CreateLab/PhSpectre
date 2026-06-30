@@ -3,38 +3,99 @@
         xmlns:vm="using:PhSpectre.App.ViewModels"
         x:Class="PhSpectre.App.Views.SettingsView"
         x:DataType="vm:SettingsViewModel"
-        Width="320" Height="400"
+        Width="450" Height="615"
         Title="Settings"
-        CanResize="False"
+        CanResize="True"
         WindowStartupLocation="CenterOwner">
 
-    <StackPanel Margin="20" Spacing="10">
+    <ScrollViewer Padding="24,18,24,18" VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="6">
 
-        <TextBlock Text="Palette theme" FontWeight="SemiBold"/>
-        <StackPanel Orientation="Horizontal" Spacing="20">
-            <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
-            <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
-                                          Converter={x:Static BoolConverters.Not}}"/>
+            <!-- ── Palette ───────────────────────────────────────────── -->
+            <TextBlock Text="PALETTE"
+                       FontSize="10" FontWeight="SemiBold"
+                       Opacity="0.4" LetterSpacing="1.5"
+                       Margin="2,0,0,4"/>
+
+            <Border BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                <StackPanel Spacing="10">
+
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Sampling" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="SamplingModeBox"
+                                  SelectedIndex="{Binding SamplingModeIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Colors" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="ColorCountBox"
+                                  SelectedIndex="{Binding ColorCountIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Theme" VerticalAlignment="Center" Opacity="0.75"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                            <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
+                            <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
+                                                          Converter={x:Static BoolConverters.Not}}"/>
+                        </StackPanel>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ── Swatches ──────────────────────────────────────────── -->
+            <TextBlock Text="SWATCHES"
+                       FontSize="10" FontWeight="SemiBold"
+                       Opacity="0.4" LetterSpacing="1.5"
+                       Margin="2,10,0,4"/>
+
+            <Border BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                <StackPanel Spacing="8">
+                    <CheckBox Content="Show hex labels on swatches"
+                              IsChecked="{Binding ShowHex}"/>
+                    <CheckBox Content="Labels below swatches (default: on top)"
+                              IsChecked="{Binding HexBelow}"
+                              IsEnabled="{Binding ShowHex}"
+                              Margin="0,0,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ── Metadata ──────────────────────────────────────────── -->
+            <TextBlock Text="METADATA"
+                       FontSize="10" FontWeight="SemiBold"
+                       Opacity="0.4" LetterSpacing="1.5"
+                       Margin="2,10,0,4"/>
+
+            <Border BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                <StackPanel Spacing="10">
+
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Verbosity" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="MetaVerbosityBox"
+                                  SelectedIndex="{Binding MetaVerbosityIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Style" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="MetaStyleBox"
+                                  SelectedIndex="{Binding MetaStyleIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                </StackPanel>
+            </Border>
+
+            <Button Content="OK"
+                    HorizontalAlignment="Right"
+                    Click="OnOkClick"
+                    Margin="0,14,0,0"
+                    Padding="24,6"/>
+
         </StackPanel>
-
-        <TextBlock Text="Number of colors" FontWeight="SemiBold"/>
-        <ComboBox x:Name="ColorCountBox" HorizontalAlignment="Stretch"
-                  SelectedIndex="{Binding ColorCountIndex}"/>
-
-        <TextBlock Text="Metadata" FontWeight="SemiBold"/>
-        <ComboBox x:Name="MetaVerbosityBox" HorizontalAlignment="Stretch"
-                  SelectedIndex="{Binding MetaVerbosityIndex}"/>
-
-        <TextBlock Text="Metadata style" FontWeight="SemiBold"/>
-        <ComboBox x:Name="MetaStyleBox" HorizontalAlignment="Stretch"
-                  SelectedIndex="{Binding MetaStyleIndex}"/>
-
-        <CheckBox Content="Show hex labels on swatches" IsChecked="{Binding ShowHex}"
-                  Margin="0,4,0,0"/>
-
-        <Button Content="OK" HorizontalAlignment="Right" Click="OnOkClick"
-                Margin="0,8,0,0"/>
-
-    </StackPanel>
+    </ScrollViewer>
 
 </Window>
