@@ -3,7 +3,7 @@
         xmlns:vm="using:PhSpectre.App.ViewModels"
         x:Class="PhSpectre.App.Views.SettingsView"
         x:DataType="vm:SettingsViewModel"
-        Width="450" Height="615"
+        Width="450" Height="730"
         Title="Settings"
         CanResize="True"
         WindowStartupLocation="CenterOwner">
@@ -86,6 +86,21 @@
                                   HorizontalAlignment="Stretch"/>
                     </Grid>
 
+                </StackPanel>
+            </Border>
+
+            <!-- ── Output ────────────────────────────────────────── -->
+            <TextBlock Text="OUTPUT"
+                       FontSize="10" FontWeight="SemiBold"
+                       Opacity="0.4" LetterSpacing="1.5"
+                       Margin="2,10,0,4"/>
+
+            <Border BorderBrush="#2A2A2A" BorderThickness="1" CornerRadius="6" Padding="12,10">
+                <StackPanel Spacing="8">
+                    <CheckBox Content="Show color palette (swatches)"
+                              IsChecked="{Binding ShowSwatches}"/>
+                    <CheckBox Content="Half size — compress 2× (~4× smaller file)"
+                              IsChecked="{Binding HalfSize}"/>
                 </StackPanel>
             </Border>
 

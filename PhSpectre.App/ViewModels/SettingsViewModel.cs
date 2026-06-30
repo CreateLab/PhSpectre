@@ -12,6 +12,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private MetaVerbosity _metaVerbosity = MetaVerbosity.Default;
     [ObservableProperty] private MetaStyle     _metaStyle     = MetaStyle.FilmStrip;
     [ObservableProperty] private SamplingMode  _samplingMode  = SamplingMode.Vivid;
+    [ObservableProperty] private bool          _showSwatches  = true;
+    [ObservableProperty] private bool          _halfSize      = false;
 
     public Theme Theme  => IsDarkTheme ? Theme.Dark : Theme.Light;
     public int?  Colors => ColorCount == 0 ? null : ColorCount;

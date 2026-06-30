@@ -26,6 +26,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string?    _errorMessage;
     [ObservableProperty] private bool       _isListView = false;
     [ObservableProperty] private string?    _fileInfoText;
+    [ObservableProperty] private string?    _outputSizeText;
 
     public bool IsGridView
     {
@@ -140,11 +141,12 @@ public partial class MainWindowViewModel : ViewModelBase
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        OriginalBitmap = null;
-        PaletteBitmap  = null;
-        ErrorMessage   = null;
-        FileInfoText   = null;
-        _lastTempPng   = null;
+        OriginalBitmap  = null;
+        PaletteBitmap   = null;
+        ErrorMessage    = null;
+        FileInfoText    = null;
+        OutputSizeText  = null;
+        _lastTempPng    = null;
         SavePngAsync2Command.NotifyCanExecuteChanged();
 
         if (entry == null) return;
@@ -170,19 +172,24 @@ public partial class MainWindowViewModel : ViewModelBase
             token.ThrowIfCancellationRequested();
 
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
-            var snap   = (filePath, Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity, Settings.MetaStyle, Settings.Theme);
+            var snap = (filePath, Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity,
+                        Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches, Settings.HalfSize);
             await Task.Run(() => PaletteImageRenderer.Render(
                 snap.filePath, palette, tmpOut,
                 showHex:       snap.ShowHex,
                 metaVerbosity: snap.MetaVerbosity,
                 metaStyle:     snap.MetaStyle,
                 theme:         snap.Theme,
-                hexBelow:      snap.HexBelow), token);
+                hexBelow:      snap.HexBelow,
+                showSwatches:  snap.ShowSwatches,
+                downscale:     snap.HalfSize ? 2 : 1), token);
 
             token.ThrowIfCancellationRequested();
 
-            _lastTempPng  = tmpOut;
-            PaletteBitmap = new Bitmap(tmpOut);
+            _lastTempPng   = tmpOut;
+            var sizeBytes  = new System.IO.FileInfo(tmpOut).Length;
+            OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB PNG";
+            PaletteBitmap  = new Bitmap(tmpOut);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)

@@ -36,7 +36,9 @@ public static class PaletteImageRenderer
         MetaVerbosity metaVerbosity = MetaVerbosity.Default,
         MetaStyle metaStyle = MetaStyle.FilmStrip,
         Theme theme = Theme.Dark,
-        bool hexBelow = false)
+        bool hexBelow = false,
+        bool showSwatches = true,
+        int downscale = 1)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
@@ -45,8 +47,11 @@ public static class PaletteImageRenderer
 
         bool landscape = original.Width >= original.Height;
         using var canvas = landscape
-            ? BuildLandscapeCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme)
-            : BuildPortraitCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme);
+            ? BuildLandscapeCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches)
+            : BuildPortraitCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches);
+
+        if (downscale > 1)
+            canvas.Mutate(ctx => ctx.Resize(canvas.Width / downscale, canvas.Height / downscale));
 
         canvas.SaveAsPng(outputPath);
     }
@@ -55,12 +60,13 @@ public static class PaletteImageRenderer
 
     private static Image<Rgb24> BuildLandscapeCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
-        ExifData? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme)
+        ExifData? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
+        bool showSwatches = true)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme);
 
-        // Swatch panel
+        // Swatch panel (computed always; only added to canvas when showSwatches=true)
         int panelH   = Math.Max(120, original.Height / 8);
         int margin   = Math.Max(10, original.Width / 80);
         int gap      = Math.Max(4, panelH / 20);
@@ -73,8 +79,8 @@ public static class PaletteImageRenderer
         // Meta strip
         (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width);
 
-        // Canvas layout — reserve label space below only when hexBelow
-        int canvasH      = original.Height + (style == MetaStyle.FilmStrip ? stripH : 0) + panelH;
+        // Canvas layout — swatch panel is optional
+        int canvasH      = original.Height + (style == MetaStyle.FilmStrip ? stripH : 0) + (showSwatches ? panelH : 0);
         int swatchPanelY = original.Height + (style == MetaStyle.FilmStrip ? stripH : 0);
         int labelH       = showHex && hexBelow ? (int)swatchFs + textPad : 0;
         int swatchY      = swatchPanelY + (panelH - swatchH - labelH) / 2;
@@ -91,7 +97,8 @@ public static class PaletteImageRenderer
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
                 w: original.Width, overlayTextColor: overlayTextColor);
 
-            DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc);
+            if (showSwatches)
+                DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc);
         });
         return canvas;
     }
@@ -100,12 +107,13 @@ public static class PaletteImageRenderer
 
     private static Image<Rgb24> BuildPortraitCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
-        ExifData? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme)
+        ExifData? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
+        bool showSwatches = true)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme);
 
-        // Swatch panel
+        // Swatch panel (computed always; column only added to canvas when showSwatches=true)
         int panelW   = Math.Max(100, original.Width / 5);
         int margin   = Math.Max(10, original.Height / 80);
         int gap      = Math.Max(4, panelW / 20);
@@ -119,10 +127,11 @@ public static class PaletteImageRenderer
         int labelH  = showHex && hexBelow ? (int)swatchFs + textPad : 0;
         int swatchH = (original.Height - 2 * margin - (n - 1) * gap - n * labelH) / n;
 
-        int canvasW = original.Width + panelW;
+        int canvasW = showSwatches ? original.Width + panelW : original.Width;
 
-        // Use full canvas width for strip so metadata has more horizontal room
-        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, canvasW);
+        // In overlay mode the box covers only the photo, so fit text to photo width
+        int stripWidth = style == MetaStyle.Overlay ? original.Width : canvasW;
+        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth);
 
         int canvasH = style == MetaStyle.FilmStrip && stripH > 0
             ? original.Height + stripH
@@ -140,6 +149,7 @@ public static class PaletteImageRenderer
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
                 w: canvasW, overlayTextColor: overlayTextColor);
 
+            if (showSwatches)
             for (int i = 0; i < n; i++)
             {
                 var (r, g, b) = palette.Swatches[i].Rgb;
@@ -254,7 +264,7 @@ public static class PaletteImageRenderer
             // Semi-transparent box in top-left — BlendPercentage is the correct way
             // to achieve transparency on an Rgb24 canvas (ctx.Fill with Rgba32 loses alpha).
             float maxTextW = lines.Max(l => TextMeasurer.MeasureSize(l, new TextOptions(font)).Width);
-            int boxW = (int)(maxTextW + pad * 2);
+            int boxW = Math.Min((int)(maxTextW + pad * 2), w);
             int boxH = lines.Length * lineH + pad * 2;
             var overlayOpts = new DrawingOptions
             {
