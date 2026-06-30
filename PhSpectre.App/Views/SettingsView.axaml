@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PhSpectre.App.ViewModels"
+        x:Class="PhSpectre.App.Views.SettingsView"
+        x:DataType="vm:SettingsViewModel"
+        Width="320" Height="400"
+        Title="Settings"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="20" Spacing="10">
+
+        <TextBlock Text="Palette theme" FontWeight="SemiBold"/>
+        <StackPanel Orientation="Horizontal" Spacing="20">
+            <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
+            <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
+                                          Converter={x:Static BoolConverters.Not}}"/>
+        </StackPanel>
+
+        <TextBlock Text="Number of colors" FontWeight="SemiBold"/>
+        <ComboBox x:Name="ColorCountBox" HorizontalAlignment="Stretch"
+                  SelectedIndex="{Binding ColorCountIndex}"/>
+
+        <TextBlock Text="Metadata" FontWeight="SemiBold"/>
+        <ComboBox x:Name="MetaVerbosityBox" HorizontalAlignment="Stretch"
+                  SelectedIndex="{Binding MetaVerbosityIndex}"/>
+
+        <TextBlock Text="Metadata style" FontWeight="SemiBold"/>
+        <ComboBox x:Name="MetaStyleBox" HorizontalAlignment="Stretch"
+                  SelectedIndex="{Binding MetaStyleIndex}"/>
+
+        <CheckBox Content="Show hex labels on swatches" IsChecked="{Binding ShowHex}"
+                  Margin="0,4,0,0"/>
+
+        <Button Content="OK" HorizontalAlignment="Right" Click="OnOkClick"
+                Margin="0,8,0,0"/>
+
+    </StackPanel>
+
+</Window>

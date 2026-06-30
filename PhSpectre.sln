@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpecre.Tests", "PhSpecre.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.API", "PhSpectre.API\PhSpectre.API.csproj", "{F25995DB-D0C9-47E8-B266-7EA984047375}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.App", "PhSpectre.App\PhSpectre.App.csproj", "{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{F25995DB-D0C9-47E8-B266-7EA984047375}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F25995DB-D0C9-47E8-B266-7EA984047375}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F25995DB-D0C9-47E8-B266-7EA984047375}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

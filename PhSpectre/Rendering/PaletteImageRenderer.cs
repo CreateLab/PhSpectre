@@ -159,11 +159,62 @@ public static class PaletteImageRenderer
         if (lines.Length == 0) return ([], 0, 0f, null);
 
         float fs     = Math.Clamp(photoWidth / 20f, 40f, 180f);
-        int lineH    = (int)(fs * 1.5f);
-        int stripPad = (int)(fs * 0.6f);
-        int stripH   = lines.Length * lineH + 2 * stripPad;
         Font font    = ResolveMetaFont(fs);
+
+        float stripPadF = fs * 0.6f;
+        float maxTextW  = photoWidth - 2 * stripPadF;
+        lines = lines.Select(l => FitLine(l, font, maxTextW)).ToArray();
+
+        int lineH    = (int)(fs * 1.5f);
+        int stripPad = (int)stripPadF;
+        int stripH   = lines.Length * lineH + 2 * stripPad;
         return (lines, stripH, fs, font);
+    }
+
+    private static string FitLine(string text, Font font, float maxWidth)
+    {
+        const string sep = "  ·  ";
+        var opts = new TextOptions(font);
+
+        // Deduplicate consecutive words (case-insensitive) within each · segment
+        var segs = text.Split(sep)
+            .Select(seg =>
+            {
+                var ws = seg.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var d  = new List<string>(ws.Length);
+                foreach (var w in ws)
+                    if (d.Count == 0 || !w.Equals(d[^1], StringComparison.OrdinalIgnoreCase))
+                        d.Add(w);
+                return d;
+            })
+            .Where(d => d.Count > 0)
+            .ToList();
+
+        string Build() => string.Join(sep, segs.Select(s => string.Join(" ", s)));
+        bool   Fits(string s) => TextMeasurer.MeasureSize(s, opts).Width <= maxWidth;
+
+        if (Fits(Build())) return Build();
+
+        // Trim one word at a time from the right tail; never skip a segment wholesale
+        while (segs.Count > 0)
+        {
+            var last = segs[^1];
+            last.RemoveAt(last.Count - 1);
+
+            // Also drop trailing punctuation-only tokens (|, -, /, …) — ugly before ellipsis
+            while (last.Count > 0 && last[^1].All(c => !char.IsLetterOrDigit(c)))
+                last.RemoveAt(last.Count - 1);
+
+            if (last.Count == 0)
+                segs.RemoveAt(segs.Count - 1);
+
+            if (segs.Count == 0) break;
+
+            string candidate = Build() + "…";
+            if (Fits(candidate)) return candidate;
+        }
+
+        return text.Split(' ')[0];
     }
 
     private static void DrawStrip(

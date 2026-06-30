@@ -1,0 +1,157 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PhSpectre.App.ViewModels"
+        xmlns:models="using:PhSpectre.App.Models"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="PhSpectre.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Width="1100" Height="700"
+        Title="PhSpectre"
+        Icon="/Assets/PhSpectre.ico">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*">
+
+        <!-- Toolbar -->
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="8,6">
+            <Button Grid.Column="0" Content="📁 Open Folder"
+                    Command="{Binding OpenFolderCommand}"/>
+            <TextBlock Grid.Column="1"
+                       Text="{Binding FileInfoText}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis"
+                       Margin="12,0"
+                       Opacity="0.65"
+                       FontSize="12"/>
+            <Button Grid.Column="2" Content="⚙ Settings"
+                    Click="OnSettingsClick"/>
+        </Grid>
+
+        <!-- Main content -->
+        <Grid Grid.Row="1" ColumnDefinitions="220,5,*">
+
+            <!-- Left panel: toggle + file lists + status -->
+            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
+
+                <!-- View toggle with bottom separator -->
+                <Border Grid.Row="0" BorderBrush="#333" BorderThickness="0,0,0,1" Padding="4,4,4,4">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <ToggleButton Content="≡"
+                                      IsChecked="{Binding IsListView}"
+                                      ToolTip.Tip="List view"
+                                      Padding="6,2"/>
+                        <ToggleButton Content="⊞"
+                                      IsChecked="{Binding IsGridView}"
+                                      ToolTip.Tip="Grid view"
+                                      Padding="6,2"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- File list — list view -->
+                <ListBox Grid.Row="1"
+                         IsVisible="{Binding IsListView}"
+                         ItemsSource="{Binding Files}"
+                         SelectedItem="{Binding SelectedFile}"
+                         Margin="4,0,4,0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:FileEntry">
+                            <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- File list — thumbnail view -->
+                <ListBox Grid.Row="1"
+                         IsVisible="{Binding IsGridView}"
+                         ItemsSource="{Binding Files}"
+                         SelectedItem="{Binding SelectedFile}"
+                         Margin="4,0,4,0"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ListBox.ItemsPanel>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate x:DataType="models:FileEntry">
+                            <Border Width="96" Height="80" Margin="2" Background="#1A1A1A" CornerRadius="3">
+                                <Panel>
+                                    <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill"/>
+                                    <TextBlock Text="…"
+                                               IsVisible="{Binding ThumbnailBitmap, Converter={x:Static ObjectConverters.IsNull}}"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="#888"/>
+                                </Panel>
+                            </Border>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Status bar -->
+                <Border Grid.Row="2" BorderBrush="#333" BorderThickness="0,1,0,0" Padding="6,4">
+                    <TextBlock Text="{Binding FilePositionText}"
+                               FontSize="11"
+                               Opacity="0.55"/>
+                </Border>
+
+            </Grid>
+
+            <!-- Resizable splitter with grip -->
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="5">
+                <GridSplitter.Template>
+                    <ControlTemplate>
+                        <Border Background="Transparent" Cursor="SizeWestEast">
+                            <Border Width="1" Background="#333" HorizontalAlignment="Center">
+                                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="4">
+                                    <Ellipse Width="3" Height="3" Fill="#555"/>
+                                    <Ellipse Width="3" Height="3" Fill="#555"/>
+                                    <Ellipse Width="3" Height="3" Fill="#555"/>
+                                </StackPanel>
+                            </Border>
+                        </Border>
+                    </ControlTemplate>
+                </GridSplitter.Template>
+            </GridSplitter>
+
+            <!-- Preview panel -->
+            <Grid Grid.Column="2" RowDefinitions="*,Auto" Margin="0,0,4,4">
+
+                <!-- Dual preview: 40% original / 60% result -->
+                <Grid Grid.Row="0" ColumnDefinitions="2*,3*">
+
+                    <Border Grid.Column="0" Margin="4" Background="#1A1A1A" CornerRadius="4">
+                        <Image Source="{Binding OriginalBitmap}" Stretch="Uniform"/>
+                    </Border>
+
+                    <Grid Grid.Column="1" Margin="4">
+                        <Border Background="#1A1A1A" CornerRadius="4">
+                            <Image Source="{Binding PaletteBitmap}" Stretch="Uniform"/>
+                        </Border>
+                        <TextBlock Text="Generating…"
+                                   IsVisible="{Binding IsGenerating}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="White"/>
+                        <TextBlock Text="{Binding ErrorMessage}"
+                                   IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="OrangeRed" Margin="8"/>
+                    </Grid>
+                </Grid>
+
+                <!-- Save button -->
+                <Button Grid.Row="1"
+                        Content="💾 Save PNG"
+                        Command="{Binding SavePngAsync2Command}"
+                        HorizontalAlignment="Right"
+                        Margin="4,6,0,0"/>
+            </Grid>
+        </Grid>
+    </Grid>
+
+</Window>
