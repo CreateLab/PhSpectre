@@ -42,3 +42,4 @@ coverage/
 *.jpg
 *.jpeg
 *.png
+!PhSpectre.Android/Icon.png
