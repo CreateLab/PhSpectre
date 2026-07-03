@@ -14,4 +14,10 @@
 
     <SolidColorBrush x:Key="ErrorBrush" Color="#FF6B4A"/>
 
+    <!-- Subtle non-accent hover tint for custom-templated controls (e.g. settings section
+         headers) — white-on-dark here, overridden to black-on-light in Colors.Light.axaml. -->
+    <SolidColorBrush x:Key="HoverOverlayBrush"    Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="PressedOverlayBrush"  Color="#22FFFFFF"/>
+    <SolidColorBrush x:Key="DisabledFillBrush"    Color="#28FFFFFF"/>
+
 </ResourceDictionary>

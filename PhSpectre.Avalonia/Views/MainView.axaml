@@ -144,8 +144,10 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                             Command="{Binding ToggleSettingsCommand}"/>
                 </Grid>
             </Border>
-            <ScrollViewer Grid.Row="1" Padding="16,16,16,24">
-                <views:SettingsPanel DataContext="{Binding Settings}"/>
+            <ScrollViewer Grid.Row="1" Padding="16,8,16,32"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+                <views:SettingsPanel DataContext="{Binding Settings}" HorizontalAlignment="Stretch"/>
             </ScrollViewer>
         </Grid>
 

@@ -1,0 +1,26 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        Desktop-only palette. Merged into Application.Resources *after* Colors.axaml at
+        runtime (see App.axaml.cs) — same keys, so every StaticResource lookup that already
+        points at the dark tokens picks these up instead, with no XAML changes needed
+        elsewhere. Android keeps the base dark palette from Colors.axaml untouched.
+    -->
+
+    <SolidColorBrush x:Key="BackgroundBrush"        Color="#FAFAFA"/>
+    <SolidColorBrush x:Key="SurfaceBrush"           Color="#FFFFFF"/>
+    <SolidColorBrush x:Key="CardBorderBrush"        Color="#DCDCDC"/>
+    <SolidColorBrush x:Key="CardBorderPrimaryBrush" Color="#333333"/>
+    <SolidColorBrush x:Key="TextPrimaryBrush"       Color="#1A1A1A"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush"     Color="#5F5F5F"/>
+    <SolidColorBrush x:Key="TextMutedBrush"         Color="#9A9A9A"/>
+    <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#F0F0F0"/>
+    <SolidColorBrush x:Key="ErrorBrush"             Color="#D14343"/>
+
+    <!-- Overlay darkens instead of lightens — there's no brighter-than-white to go to. -->
+    <SolidColorBrush x:Key="HoverOverlayBrush"    Color="#14000000"/>
+    <SolidColorBrush x:Key="PressedOverlayBrush"  Color="#22000000"/>
+    <SolidColorBrush x:Key="DisabledFillBrush"    Color="#28000000"/>
+
+</ResourceDictionary>

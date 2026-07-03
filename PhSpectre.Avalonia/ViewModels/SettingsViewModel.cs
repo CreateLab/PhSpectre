@@ -27,7 +27,8 @@ public partial class SettingsViewModel : ViewModelBase
     public Theme Theme    => IsDarkTheme ? Theme.Dark : Theme.Light;
     public int?  Colors   => ColorCount == 0 ? null : ColorCount;
 
-    public string FileExtension => OutputFormat == OutputFormat.Jpeg ? ".jpg" : ".png";
+    public string FileExtension    => OutputFormat == OutputFormat.Jpeg ? ".jpg" : ".png";
+    public string SaveButtonLabel  => OutputFormat == OutputFormat.Jpeg ? "Save JPEG" : "Save PNG";
 
     public int WorkingQualityIndex
     {
@@ -77,6 +78,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnMetaStyleChanged(MetaStyle value)          => OnPropertyChanged(nameof(MetaStyleIndex));
     partial void OnSamplingModeChanged(SamplingMode value)    => OnPropertyChanged(nameof(SamplingModeIndex));
     partial void OnWorkingQualityChanged(WorkingQuality value) => OnPropertyChanged(nameof(WorkingQualityIndex));
-    partial void OnOutputFormatChanged(OutputFormat value)     { OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension)); }
+    partial void OnOutputFormatChanged(OutputFormat value)     { OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension)); OnPropertyChanged(nameof(SaveButtonLabel)); }
     partial void OnExportPresetChanged(ExportPreset value)     => OnPropertyChanged(nameof(ExportPresetIndex));
 }

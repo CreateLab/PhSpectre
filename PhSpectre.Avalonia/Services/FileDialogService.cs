@@ -23,6 +23,20 @@ public static class FileDialogService
         return result.Count > 0 ? result[0].TryGetLocalPath() : null;
     }
 
+    // Batch-export destination picker — separate from PickFolderAsync (source folder) so
+    // it can default to a suggested start location (e.g. "<source>/palettes").
+    public static async Task<string?> PickExportFolderAsync(TopLevel topLevel, string suggestedStartDir)
+    {
+        var startFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(suggestedStartDir);
+        var result = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select destination folder",
+            AllowMultiple = false,
+            SuggestedStartLocation = startFolder
+        });
+        return result.Count > 0 ? result[0].TryGetLocalPath() : null;
+    }
+
     public static async Task<string?> SavePngAsync(TopLevel topLevel, string suggestedName, string defaultDir)
     {
         var startFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(defaultDir);

@@ -1,18 +1,24 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhSpectre;
 using PhSpectre.Rendering;
 using PhSpectre.Services;
 using PhSpectre.Avalonia.Models;
+using PhSpectre.Avalonia.Services;
 
 namespace PhSpectre.Avalonia.ViewModels;
+
+public enum BatchExportState { Idle, Running, Cancelling, Finished, Cancelled }
 
 public partial class MainWindowViewModel : ViewModelBase
 {
@@ -27,6 +33,14 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool       _isListView = false;
     [ObservableProperty] private string?    _fileInfoText;
     [ObservableProperty] private string?    _outputSizeText;
+
+    // Batch export
+    [ObservableProperty] private BatchExportState _batchState = BatchExportState.Idle;
+    [ObservableProperty] private int       _batchTotal;
+    [ObservableProperty] private int       _batchProcessed;
+    [ObservableProperty] private string?   _batchCurrentFileName;
+    [ObservableProperty] private string?   _batchResultText;
+    [ObservableProperty] private ObservableCollection<BatchExportError> _batchErrors = [];
 
     public bool IsGridView
     {
@@ -51,17 +65,81 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    public Func<Task<string?>>?                 PickFolderAsync { get; set; }
-    public Func<string, string, Task<string?>>? SavePngAsync    { get; set; }
+    // Batch computed state — the button labels/visibility/enablement all flow from
+    // BatchState, never toggled directly from code-behind.
+    public bool IsBatchActive     => BatchState is BatchExportState.Running or BatchExportState.Cancelling;
+    public bool ShowSaveAllButton => !IsBatchActive;
+    public bool ShowBatchProgress => IsBatchActive;
+    public bool ShowBatchResult   => BatchState is BatchExportState.Finished or BatchExportState.Cancelled;
+    public bool BatchHasErrors    => BatchErrors.Count > 0;
+    public string IdleButtonText   => $"Save all ({Files.Count})";
+    public string ActiveButtonText => BatchState == BatchExportState.Cancelling ? "Cancelling…" : "Cancel";
+    public double BatchProgressPercent => BatchTotal == 0 ? 0 : BatchProcessed * 100.0 / BatchTotal;
+    public string BatchProgressText    => BatchTotal == 0 ? "" : $"{BatchProcessed} / {BatchTotal} ({(int)BatchProgressPercent}%)";
+
+    partial void OnBatchStateChanged(BatchExportState value)
+    {
+        OnPropertyChanged(nameof(IsBatchActive));
+        OnPropertyChanged(nameof(ShowSaveAllButton));
+        OnPropertyChanged(nameof(ShowBatchProgress));
+        OnPropertyChanged(nameof(ShowBatchResult));
+        OnPropertyChanged(nameof(ActiveButtonText));
+        SavePngAsync2Command.NotifyCanExecuteChanged();
+        SaveAllCommand.NotifyCanExecuteChanged();
+        CancelBatchCommand.NotifyCanExecuteChanged();
+        OpenFolderCommand.NotifyCanExecuteChanged();
+    }
+    partial void OnBatchProcessedChanged(int value) { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); }
+    partial void OnBatchTotalChanged(int value)     { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); }
+
+    public Func<Task<string?>>?                 PickFolderAsync      { get; set; }
+    public Func<string, string, Task<string?>>? SavePngAsync         { get; set; }
+    public Func<string, Task<string?>>?          PickBatchFolderAsync { get; set; }
+    public Func<IReadOnlyList<BatchExportError>, Task>? ShowBatchErrorsAsync { get; set; }
 
     private string?                  _lastTempPng;
     private string                   _lastExtension = ".png";
     private CancellationTokenSource? _renderCts;
     private CancellationTokenSource? _thumbnailCts;
+    private CancellationTokenSource? _batchCts;
+    private DispatcherTimer?         _settingsDebounceTimer;
+    private DispatcherTimer?         _batchCancelGuardTimer;
+    private DispatcherTimer?         _batchResultTimer;
+    private bool                     _batchCancelGuardActive;
+    private string?                  _lastBatchDestFolder;
 
     public MainWindowViewModel()
     {
-        _files.CollectionChanged += (_, _) => OnPropertyChanged(nameof(FilePositionText));
+        _files.CollectionChanged += (_, _) =>
+        {
+            OnPropertyChanged(nameof(FilePositionText));
+            OnPropertyChanged(nameof(IdleButtonText));
+            SaveAllCommand.NotifyCanExecuteChanged();
+        };
+
+        // [ObservableProperty]'s generated On{X}Changed only fires on reassigning the whole
+        // BatchErrors reference — but Add()/Clear() mutate the same instance, so BatchHasErrors
+        // needs its own subscription to actually track them.
+        _batchErrors.CollectionChanged += (_, _) => OnPropertyChanged(nameof(BatchHasErrors));
+
+        // The settings sidebar is always visible and applies live — no OK button. Any
+        // change re-renders the current photo after a short debounce (typing through a
+        // ComboBox, or several quick changes, shouldn't trigger a render per keystroke).
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (SelectedFile == null || IsBatchActive) return;
+
+        _settingsDebounceTimer?.Stop();
+        _settingsDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _settingsDebounceTimer.Tick += (_, _) =>
+        {
+            _settingsDebounceTimer!.Stop();
+            _ = GeneratePaletteAsync(SelectedFile);
+        };
+        _settingsDebounceTimer.Start();
     }
 
     partial void OnIsListViewChanged(bool value) => OnPropertyChanged(nameof(IsGridView));
@@ -75,7 +153,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleView() => IsListView = !IsListView;
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanOpenFolder))]
     private async Task OpenFolderAsync()
     {
         if (PickFolderAsync == null) return;
@@ -96,6 +174,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _thumbnailCts = new CancellationTokenSource();
         _ = LoadThumbnailsAsync(_thumbnailCts.Token);
     }
+
+    private bool CanOpenFolder() => !IsBatchActive;
 
     private async Task LoadThumbnailsAsync(CancellationToken token)
     {
@@ -140,7 +220,7 @@ public partial class MainWindowViewModel : ViewModelBase
             File.Copy(_lastTempPng, dest, overwrite: true);
     }
 
-    private bool CanSavePng() => PaletteBitmap != null && !IsGenerating;
+    private bool CanSavePng() => PaletteBitmap != null && !IsGenerating && !IsBatchActive;
 
     private async Task GeneratePaletteAsync(FileEntry? entry)
     {
@@ -172,34 +252,16 @@ public partial class MainWindowViewModel : ViewModelBase
             var folder = Path.GetDirectoryName(filePath) ?? "";
             FileInfoText = $"{entry.FileName}  ·  {ps.Width}×{ps.Height}  ·  {folder}";
 
-            PhSpectre.Models.ColorPalette palette;
-            await using (var fs = File.OpenRead(filePath))
-                palette = await new PaletteExtractor().ExtractAsync(fs, Settings.Colors, Settings.SamplingMode, token);
-
-            token.ThrowIfCancellationRequested();
-
             _lastExtension = Settings.FileExtension;
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
-            var snap = (filePath, Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity,
-                        Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches, Settings.HalfSize,
-                        Settings.OutputFormat, Settings.ExportPreset);
-            await Task.Run(() => PaletteImageRenderer.Render(
-                snap.filePath, palette, tmpOut,
-                showHex:       snap.ShowHex,
-                metaVerbosity: snap.MetaVerbosity,
-                metaStyle:     snap.MetaStyle,
-                theme:         snap.Theme,
-                hexBelow:      snap.HexBelow,
-                showSwatches:  snap.ShowSwatches,
-                downscale:     snap.HalfSize ? 2 : 1,
-                format:        snap.OutputFormat,
-                exportPreset:  snap.ExportPreset), token);
+            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+            await PaletteExportService.ExportAsync(filePath, tmpOut, exportSettings, token);
 
             token.ThrowIfCancellationRequested();
 
             _lastTempPng   = tmpOut;
-            var sizeBytes  = new System.IO.FileInfo(tmpOut).Length;
-            var formatLabel = snap.OutputFormat == OutputFormat.Jpeg ? "JPG" : "PNG";
+            var sizeBytes  = new FileInfo(tmpOut).Length;
+            var formatLabel = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
             OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";
             PaletteBitmap  = new Bitmap(tmpOut);
         }
@@ -217,4 +279,170 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
     }
+
+    // ── Batch export ──────────────────────────────────────────────────────────────
+
+    [RelayCommand(CanExecute = nameof(CanSaveAll))]
+    private async Task SaveAllAsync()
+    {
+        if (PickBatchFolderAsync == null || Files.Count == 0) return;
+
+        var sourceFolder = Path.GetDirectoryName(Files[0].FullPath) ?? "";
+        var defaultDir = _lastBatchDestFolder ?? Path.Combine(sourceFolder, "palettes");
+        Directory.CreateDirectory(defaultDir);
+
+        // The folder picker itself is the "are you sure" — Esc/Cancel here leaves
+        // everything untouched and the button stays "Save all (N)".
+        var destFolder = await PickBatchFolderAsync(defaultDir);
+        if (destFolder == null) return;
+
+        _lastBatchDestFolder = destFolder;
+        await RunBatchAsync(destFolder);
+    }
+
+    private bool CanSaveAll() => Files.Count > 0 && !IsBatchActive;
+
+    [RelayCommand(CanExecute = nameof(CanCancelBatch))]
+    private void CancelBatch()
+    {
+        BatchState = BatchExportState.Cancelling;
+        _batchCts?.Cancel();
+    }
+
+    private bool CanCancelBatch() => BatchState == BatchExportState.Running && !_batchCancelGuardActive;
+
+    [RelayCommand]
+    private async Task ShowBatchErrors()
+    {
+        if (ShowBatchErrorsAsync != null)
+            await ShowBatchErrorsAsync(BatchErrors);
+    }
+
+    private async Task RunBatchAsync(string destFolder)
+    {
+        _batchResultTimer?.Stop();
+
+        var snapshot = Files.Select(f => f.FullPath).ToList();
+        var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+
+        _batchCts = new CancellationTokenSource();
+        var cancelToken = _batchCts.Token;
+
+        BatchErrors.Clear();
+        BatchTotal = snapshot.Count;
+        BatchProcessed = 0;
+        BatchCurrentFileName = snapshot.Count > 0 ? Path.GetFileName(snapshot[0]) : null;
+        _batchCancelGuardActive = true; // set before the state flip so CanCancelBatch is never briefly true
+        BatchState = BatchExportState.Running;
+        StartCancelGuard();
+
+        int saved = 0, failed = 0, overwritten = 0, processed = 0;
+        bool diskFull = false;
+
+        // Bounded parallelism — the pipeline (k-means clustering + full-res ImageSharp
+        // draw) is CPU/memory heavy enough that unlimited concurrency would thrash on a
+        // folder of 40MP photos, but strictly sequential leaves cores idle. A file that
+        // has already started a export always finishes (CancellationToken.None below) —
+        // cancelling only stops the loop from *starting* new ones via the semaphore wait.
+        var degree = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
+        using var gate = new SemaphoreSlim(degree);
+        var tasks = new List<Task>();
+
+        foreach (var sourcePath in snapshot)
+        {
+            if (cancelToken.IsCancellationRequested) break;
+
+            try { await gate.WaitAsync(cancelToken); }
+            catch (OperationCanceledException) { break; }
+
+            var fileName = Path.GetFileName(sourcePath);
+            tasks.Add(Task.Run(async () =>
+            {
+                try
+                {
+                    var destName = Path.GetFileNameWithoutExtension(sourcePath) + "_palette" + exportSettings.FileExtension;
+                    var destPath = Path.Combine(destFolder, destName);
+                    bool existed = File.Exists(destPath);
+
+                    await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None);
+
+                    Interlocked.Increment(ref saved);
+                    if (existed) Interlocked.Increment(ref overwritten);
+                }
+                catch (IOException ex) when (IsDiskFull(ex))
+                {
+                    Interlocked.Increment(ref failed);
+                    diskFull = true;
+                    _batchCts?.Cancel(); // stop starting further files
+                    await Dispatcher.UIThread.InvokeAsync(() => BatchErrors.Add(new BatchExportError(fileName, ex.Message)));
+                }
+                catch (Exception ex)
+                {
+                    Interlocked.Increment(ref failed);
+                    await Dispatcher.UIThread.InvokeAsync(() => BatchErrors.Add(new BatchExportError(fileName, ex.Message)));
+                }
+                finally
+                {
+                    int done = Interlocked.Increment(ref processed);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (done > BatchProcessed) BatchProcessed = done;
+                        BatchCurrentFileName = fileName;
+                    });
+                    gate.Release();
+                }
+            }));
+        }
+
+        await Task.WhenAll(tasks);
+
+        BatchCurrentFileName = null;
+
+        if (diskFull)
+        {
+            BatchResultText = $"Stopped — disk full: {saved} saved before it ran out";
+            BatchState = BatchExportState.Finished;
+        }
+        else if (cancelToken.IsCancellationRequested)
+        {
+            BatchResultText = $"Cancelled: {saved} saved";
+            BatchState = BatchExportState.Cancelled;
+        }
+        else
+        {
+            var overwriteNote = overwritten > 0 ? $", overwritten: {overwritten}" : "";
+            BatchResultText = failed > 0
+                ? $"Done: {saved} saved, {failed} failed{overwriteNote}"
+                : $"Done: {saved} saved{overwriteNote}";
+            BatchState = BatchExportState.Finished;
+        }
+
+        _batchCancelGuardTimer?.Stop();
+
+        _batchResultTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _batchResultTimer.Tick += (_, _) =>
+        {
+            _batchResultTimer!.Stop();
+            BatchState = BatchExportState.Idle;
+        };
+        _batchResultTimer.Start();
+    }
+
+    private void StartCancelGuard()
+    {
+        _batchCancelGuardActive = true;
+        CancelBatchCommand.NotifyCanExecuteChanged();
+        _batchCancelGuardTimer?.Stop();
+        _batchCancelGuardTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(700) };
+        _batchCancelGuardTimer.Tick += (_, _) =>
+        {
+            _batchCancelGuardTimer!.Stop();
+            _batchCancelGuardActive = false;
+            CancelBatchCommand.NotifyCanExecuteChanged();
+        };
+        _batchCancelGuardTimer.Start();
+    }
+
+    // HRESULT_FROM_WIN32(ERROR_HANDLE_DISK_FULL=39) / HRESULT_FROM_WIN32(ERROR_DISK_FULL=112)
+    private static bool IsDiskFull(IOException ex) => (ex.HResult & 0xFFFF) is 39 or 112;
 }

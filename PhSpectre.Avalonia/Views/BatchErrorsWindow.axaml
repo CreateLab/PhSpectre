@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:models="using:PhSpectre.Avalonia.Models"
+        x:Class="PhSpectre.Avalonia.Views.BatchErrorsWindow"
+        x:CompileBindings="False"
+        Title="Batch export — errors"
+        Width="480" Height="360" MinWidth="360" MinHeight="240"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BackgroundBrush}">
+
+    <Grid RowDefinitions="*,Auto" Margin="16">
+        <ListBox Grid.Row="0" ItemsSource="{Binding}" Background="Transparent" BorderThickness="0">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="models:BatchExportError">
+                    <StackPanel Margin="0,4">
+                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding Message}" Opacity="0.7" FontSize="12" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <Button Grid.Row="1" Content="Close" Classes="secondary"
+                HorizontalAlignment="Right" Margin="0,12,0,0"
+                Padding="24,6"
+                IsCancel="True" IsDefault="True"
+                Click="OnCloseClick"/>
+    </Grid>
+
+</Window>

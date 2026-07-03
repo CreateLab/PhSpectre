@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using PhSpectre.Avalonia.Services;
 using PhSpectre.Avalonia.ViewModels;
 
@@ -18,15 +17,14 @@ public partial class MainWindow : Window
     {
         if (DataContext is not MainWindowViewModel vm) return;
         var topLevel = TopLevel.GetTopLevel(this)!;
-        vm.PickFolderAsync = () => FileDialogService.PickFolderAsync(topLevel);
-        vm.SavePngAsync    = (name, dir) => FileDialogService.SavePngAsync(topLevel, name, dir);
-    }
-
-    private async void OnSettingsClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainWindowViewModel vm) return;
-        var dialog = new SettingsView { DataContext = vm.Settings };
-        await dialog.ShowDialog(this);
+        vm.PickFolderAsync      = () => FileDialogService.PickFolderAsync(topLevel);
+        vm.SavePngAsync         = (name, dir) => FileDialogService.SavePngAsync(topLevel, name, dir);
+        vm.PickBatchFolderAsync = defaultDir => FileDialogService.PickExportFolderAsync(topLevel, defaultDir);
+        vm.ShowBatchErrorsAsync = errors =>
+        {
+            var window = new BatchErrorsWindow { DataContext = errors };
+            return window.ShowDialog(this);
+        };
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

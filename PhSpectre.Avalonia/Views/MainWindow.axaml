@@ -5,10 +5,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        xmlns:views="using:PhSpectre.Avalonia.Views"
         mc:Ignorable="d"
         x:Class="PhSpectre.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
-        Width="1100" Height="700"
+        Width="1500" Height="1000"
         Title="PhSpectre"
         Icon="/Assets/PhSpectre.ico">
 
@@ -22,7 +23,7 @@
         <Border BorderBrush="{StaticResource ToolbarBackgroundBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="2">
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="8,6">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,6">
                 <Button Grid.Column="0" Command="{Binding OpenFolderCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <materialIcons:MaterialIcon Kind="FolderOutline" Width="16" Height="16" VerticalAlignment="Center"/>
@@ -36,17 +37,11 @@
                            Margin="12,0"
                            Opacity="0.65"
                            FontSize="12"/>
-                <Button Grid.Column="2" Click="OnSettingsClick">
-                    <StackPanel Orientation="Horizontal" Spacing="6">
-                        <materialIcons:MaterialIcon Kind="CogOutline" Width="16" Height="16" VerticalAlignment="Center"/>
-                        <TextBlock Text="Settings" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </Button>
             </Grid>
         </Border>
 
         <!-- Main content -->
-        <Grid Grid.Row="1" ColumnDefinitions="220,5,*">
+        <Grid Grid.Row="1" ColumnDefinitions="220,5,*,300">
 
             <!-- Left panel: toggle + file lists + status -->
             <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
@@ -135,11 +130,11 @@
                 </GridSplitter.Template>
             </GridSplitter>
 
-            <!-- Preview panel -->
-            <Grid Grid.Column="2" RowDefinitions="*,Auto" Margin="0,0,4,4">
+            <!-- Preview panel — image only; save lives in the settings sidebar now -->
+            <Grid Grid.Column="2" Margin="0,0,4,4">
 
                 <!-- Dual preview: 40% original / 60% result -->
-                <Grid Grid.Row="0" ColumnDefinitions="2*,3*">
+                <Grid ColumnDefinitions="2*,3*">
 
                     <Border Grid.Column="0" Margin="4" Background="{StaticResource SurfaceBrush}" CornerRadius="4">
                         <Panel>
@@ -178,23 +173,72 @@
                                    Foreground="{StaticResource ErrorBrush}" Margin="8"/>
                     </Grid>
                 </Grid>
-
-                <!-- Save bar: size estimate + save button -->
-                <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="4,6,0,0">
-                    <TextBlock Grid.Column="0"
-                               Text="{Binding OutputSizeText}"
-                               VerticalAlignment="Center"
-                               FontSize="11"
-                               Opacity="0.5"/>
-                    <Button Grid.Column="1"
-                            Command="{Binding SavePngAsync2Command}">
-                        <StackPanel Orientation="Horizontal" Spacing="6">
-                            <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="16" Height="16" VerticalAlignment="Center"/>
-                            <TextBlock Text="Save PNG" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-                </Grid>
             </Grid>
+
+            <!-- Settings — permanent sidebar, not a separate window; changes apply live.
+                 Save PNG/JPEG closes out the OUTPUT group at the bottom, pinned outside the
+                 ScrollViewer so it's always visible even while settings are scrolled. -->
+            <Border Grid.Column="3"
+                    BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1,0,0,0"
+                    Background="{StaticResource SurfaceBrush}">
+                <Grid RowDefinitions="*,Auto">
+                    <ScrollViewer Grid.Row="0"
+                                  Padding="16,12"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  IsEnabled="{Binding !IsBatchActive}">
+                        <views:SettingsPanel DataContext="{Binding Settings}" HorizontalAlignment="Stretch"/>
+                    </ScrollViewer>
+
+                    <StackPanel Grid.Row="1" Margin="16,0,16,16" Spacing="8">
+                        <Border Height="1" Background="{StaticResource CardBorderBrush}"/>
+                        <TextBlock Text="{Binding OutputSizeText}"
+                                   HorizontalAlignment="Center"
+                                   FontSize="11" Opacity="0.5"/>
+                        <Button Classes="primary" Height="38"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding SavePngAsync2Command}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <materialIcons:MaterialIcon Kind="ContentSaveOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Settings.SaveButtonLabel}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Batch progress — visible only while Running/Cancelling -->
+                        <StackPanel IsVisible="{Binding ShowBatchProgress}" Spacing="4" Margin="0,8,0,0">
+                            <ProgressBar Minimum="0" Maximum="100" Value="{Binding BatchProgressPercent}" Height="6"/>
+                            <TextBlock Text="{Binding BatchProgressText}"
+                                       HorizontalAlignment="Center" FontSize="11" Opacity="0.7"/>
+                            <TextBlock Text="{Binding BatchCurrentFileName}"
+                                       HorizontalAlignment="Center" FontSize="11" Opacity="0.5"
+                                       TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+
+                        <!-- Batch result — visible after Finished/Cancelled, until the next action or ~5s -->
+                        <StackPanel IsVisible="{Binding ShowBatchResult}" Spacing="4" Margin="0,8,0,0">
+                            <TextBlock Text="{Binding BatchResultText}"
+                                       HorizontalAlignment="Center" FontSize="11" Opacity="0.85"
+                                       TextWrapping="Wrap"/>
+                            <Button Classes="text" Content="Details" FontSize="12" MinWidth="0" MinHeight="0" Padding="0"
+                                    HorizontalAlignment="Center"
+                                    IsVisible="{Binding BatchHasErrors}"
+                                    Command="{Binding ShowBatchErrorsCommand}"/>
+                        </StackPanel>
+
+                        <!-- Save all / Cancel — mutually exclusive, same slot, ≥12px below Save PNG -->
+                        <Button Classes="secondary" Height="36" Margin="0,12,0,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                IsVisible="{Binding ShowSaveAllButton}"
+                                Command="{Binding SaveAllCommand}"
+                                Content="{Binding IdleButtonText}"/>
+                        <Button Classes="danger-outline" Height="36" Margin="0,12,0,0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                IsVisible="{Binding IsBatchActive}"
+                                Command="{Binding CancelBatchCommand}"
+                                Content="{Binding ActiveButtonText}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </Grid>
     </Grid>
 

@@ -8,9 +8,13 @@ public partial class SettingsPanel : UserControl
     {
         InitializeComponent();
 
-        SamplingModeBox.Items.Add("Vivid — saturated colors stand out");
-        SamplingModeBox.Items.Add("Standard — most frequent colors by area");
-        SamplingModeBox.Items.Add("Contrast — vivid mid-lightness colors");
+        // Short label in the box + full explanation as a ToolTip — desktop mouse users get
+        // the explanation on hover, touch users on Android just see the short label (there's
+        // no hover to trigger a tooltip there, which is an acceptable trade for not having
+        // every ComboBox row overflow a 300px-wide panel or a phone screen).
+        AddItem(SamplingModeBox, "Vivid",    "Saturated colors stand out");
+        AddItem(SamplingModeBox, "Standard", "Most frequent colors by area");
+        AddItem(SamplingModeBox, "Contrast", "Vivid mid-lightness colors");
 
         ColorCountBox.Items.Add("Auto");
         for (int i = 3; i <= 8; i++)
@@ -25,17 +29,24 @@ public partial class SettingsPanel : UserControl
         MetaStyleBox.Items.Add("Film strip");
         MetaStyleBox.Items.Add("Overlay");
 
-        WorkingQualityBox.Items.Add("Fast — 2000px, quickest");
-        WorkingQualityBox.Items.Add("Balanced — 3400px");
-        WorkingQualityBox.Items.Add("Best — 4800px, closer to desktop detail");
+        AddItem(WorkingQualityBox, "Fast",     "2000px, quickest processing");
+        AddItem(WorkingQualityBox, "Balanced", "3400px");
+        AddItem(WorkingQualityBox, "Best",     "4800px, closer to desktop detail");
 
-        OutputFormatBox.Items.Add("PNG — lossless, larger file");
-        OutputFormatBox.Items.Add("JPEG — smaller file");
+        AddItem(OutputFormatBox, "PNG",  "Lossless, larger file");
+        AddItem(OutputFormatBox, "JPEG", "Smaller file, lossy compression");
 
-        ExportPresetBox.Items.Add("Original size");
-        ExportPresetBox.Items.Add("Square (1080×1080)");
-        ExportPresetBox.Items.Add("Instagram post (1080×1350)");
-        ExportPresetBox.Items.Add("Story (1080×1920) — IG/TG");
-        ExportPresetBox.Items.Add("Telegram landscape (1920×1080)");
+        AddItem(ExportPresetBox, "Original",     "Original size, no cropping or resizing");
+        AddItem(ExportPresetBox, "Square",       "1080×1080 — Instagram/Telegram square post");
+        AddItem(ExportPresetBox, "IG post",      "1080×1350 (4:5) — Instagram feed default");
+        AddItem(ExportPresetBox, "Story",        "1080×1920 — Instagram & Telegram Stories");
+        AddItem(ExportPresetBox, "TG landscape", "1920×1080 — Telegram landscape photo");
+    }
+
+    private static void AddItem(ComboBox box, string shortText, string fullText)
+    {
+        var item = new ComboBoxItem { Content = shortText };
+        ToolTip.SetTip(item, fullText);
+        box.Items.Add(item);
     }
 }
