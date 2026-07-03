@@ -1,13 +1,12 @@
 name: Build — Windows
 
+# Build-only sanity check on every commit — no version stamping and no release. Versioned
+# releases are published from release.yml, triggered by pushing a vX.Y.Z tag.
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -33,27 +32,3 @@ jobs:
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish/windows
-
-      - name: Move release tag
-        if: github.event_name == 'push'
-        run: |
-          git tag -f latest-windows
-          git push origin latest-windows --force
-
-      - name: Remove stale release assets
-        if: github.event_name == 'push'
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release delete-asset latest-windows PhSpectre.App.exe --repo ${{ github.repository }} --yes
-
-      - name: Create or update release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-windows
-          name: "Latest — Windows x64"
-          body: |
-            Automated build · commit ${{ github.sha }}
-          prerelease: true
-          files: publish/windows/PhSpectre.Desktop.exe

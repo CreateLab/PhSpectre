@@ -42,6 +42,23 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string?   _batchResultText;
     [ObservableProperty] private ObservableCollection<BatchExportError> _batchErrors = [];
 
+    // Toolbar update banner — same underlying check as Android's Settings row
+    // (AppUpdateService.Instance), just rendered differently since Desktop has a
+    // toolbar and Android doesn't.
+    public bool    IsUpdateAvailable  => AppUpdateService.Instance.IsAvailable;
+    public string  UpdateBannerText   => $"Update available: {AppUpdateService.Instance.LatestVersionText}";
+    public Func<string, Task>? OpenUrlAsync { get; set; }
+
+    [RelayCommand]
+    private async Task OpenUpdateUrl()
+    {
+        if (OpenUrlAsync != null && AppUpdateService.Instance.ReleaseUrl is { } url)
+            await OpenUrlAsync(url);
+    }
+
+    [RelayCommand]
+    private void DismissUpdate() => AppUpdateService.Instance.Dismiss();
+
     public bool IsGridView
     {
         get => !IsListView;
@@ -126,6 +143,15 @@ public partial class MainWindowViewModel : ViewModelBase
         // change re-renders the current photo after a short debounce (typing through a
         // ComboBox, or several quick changes, shouldn't trigger a render per keystroke).
         Settings.PropertyChanged += OnSettingsPropertyChanged;
+
+        AppUpdateService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(AppUpdateService.IsAvailable) or nameof(AppUpdateService.LatestVersionText))
+            {
+                OnPropertyChanged(nameof(IsUpdateAvailable));
+                OnPropertyChanged(nameof(UpdateBannerText));
+            }
+        };
     }
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)

@@ -1,3 +1,4 @@
+using System;
 using Avalonia.Controls;
 using Avalonia.Input;
 using PhSpectre.Avalonia.Services;
@@ -25,6 +26,8 @@ public partial class MainWindow : Window
             var window = new BatchErrorsWindow { DataContext = errors };
             return window.ShowDialog(this);
         };
+        vm.OpenUrlAsync         = url => topLevel.Launcher.LaunchUriAsync(new Uri(url));
+        vm.Settings.OpenUrlAsync = url => topLevel.Launcher.LaunchUriAsync(new Uri(url));
     }
 
     protected override void OnKeyDown(KeyEventArgs e)

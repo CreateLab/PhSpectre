@@ -30,7 +30,7 @@
         <Style Selector="TextBlock.row-label">
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="Margin" Value="0,0,12,0"/>
+            <Setter Property="Margin" Value="0,0,12,4"/>
         </Style>
         <Style Selector="Grid.settings-row">
             <Setter Property="MinHeight" Value="44"/>
@@ -58,31 +58,43 @@
         <TextBlock Text="PALETTE" Classes="section-header first"/>
         <StackPanel Spacing="10">
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="SamplingRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Sampling" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="SamplingModeBox"
                           SelectedIndex="{Binding SamplingModeIndex}"/>
             </Grid>
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="ColorCountRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Colors" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="ColorCountBox"
                           SelectedIndex="{Binding ColorCountIndex}"/>
             </Grid>
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="ExportThemeRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <!-- Controls the exported image's background/text theme, not the app's own
                      UI (that's fixed — dark on Android, always-light on Desktop). Labeled
                      "Export theme" (not "Theme") so it doesn't read as a dead app-theme toggle. -->
@@ -114,21 +126,29 @@
         <TextBlock Text="METADATA" Classes="section-header"/>
         <StackPanel Spacing="10">
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="VerbosityRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Verbosity" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="MetaVerbosityBox"
                           SelectedIndex="{Binding MetaVerbosityIndex}"/>
             </Grid>
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="StyleRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Style" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="MetaStyleBox"
                           SelectedIndex="{Binding MetaStyleIndex}"/>
@@ -141,21 +161,29 @@
         <TextBlock Text="OUTPUT" Classes="section-header"/>
         <StackPanel Spacing="10">
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="FormatRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Format" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="OutputFormatBox"
                           SelectedIndex="{Binding OutputFormatIndex}"/>
             </Grid>
 
-            <Grid Classes="settings-row">
+            <Grid x:Name="ExportSizeRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Export size" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="ExportPresetBox"
                           SelectedIndex="{Binding ExportPresetIndex}"/>
@@ -169,16 +197,33 @@
                 <TextBlock Text="Half size (2× downscale)" TextWrapping="Wrap"/>
             </CheckBox>
 
-            <Grid Classes="settings-row" IsVisible="{Binding IsMobile}">
+            <Grid x:Name="WorkingQualityRow" Classes="settings-row" IsVisible="{Binding IsMobile}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
                 <TextBlock Grid.Column="0" Text="Working size" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="WorkingQualityBox"
                           SelectedIndex="{Binding WorkingQualityIndex}"/>
             </Grid>
 
+        </StackPanel>
+
+        <!-- ── About ─────────────────────────────────────────────── -->
+        <Border Classes="section-sep"/>
+        <TextBlock Text="ABOUT" Classes="section-header"/>
+        <StackPanel Spacing="10">
+            <TextBlock Text="{Binding AppVersionText}" Opacity="0.6" FontSize="12"/>
+            <!-- Desktop gets a dismissible toolbar banner instead (MainWindow.axaml) —
+                 this row only matters where there's no toolbar to put that in. -->
+            <Button Classes="text" IsVisible="{Binding ShowUpdateRow}" MinWidth="0" MinHeight="0" Padding="0"
+                    HorizontalAlignment="Left" HorizontalContentAlignment="Left"
+                    Content="{Binding UpdateAvailableText}"
+                    Command="{Binding OpenUpdateUrlCommand}"/>
         </StackPanel>
 
     </StackPanel>

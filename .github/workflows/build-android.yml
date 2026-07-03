@@ -1,13 +1,12 @@
 name: Build — Android
 
+# Build-only sanity check on every commit — no version stamping and no release. Versioned
+# releases are published from release.yml, triggered by pushing a vX.Y.Z tag.
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -39,25 +38,3 @@ jobs:
             -c Release \
             -f net10.0-android \
             -o publish/android
-
-      - name: Rename APK
-        run: |
-          apk=$(find publish/android -name "*-Signed.apk" | head -n 1)
-          mv "$apk" publish/android/PhSpectre-android.apk
-
-      - name: Move release tag
-        if: github.event_name == 'push'
-        run: |
-          git tag -f latest-android
-          git push origin latest-android --force
-
-      - name: Create or update release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-android
-          name: "Latest — Android APK"
-          body: |
-            Automated build · commit ${{ github.sha }}
-          prerelease: true
-          files: publish/android/PhSpectre-android.apk

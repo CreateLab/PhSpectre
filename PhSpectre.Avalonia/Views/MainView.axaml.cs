@@ -22,6 +22,7 @@ public partial class MainView : UserControl
         // tree, so TopLevel.GetTopLevel(this) would still return null at this point.
         vm.PickImageAsync = () => FileDialogService.PickImageAsync(RequireTopLevel());
         vm.SavePngAsync   = (name, path) => FileDialogService.SavePngFromFileAsync(RequireTopLevel(), name, path);
+        vm.Settings.OpenUrlAsync = url => RequireTopLevel().Launcher.LaunchUriAsync(new Uri(url));
     }
 
     private TopLevel RequireTopLevel() =>

@@ -1,5 +1,8 @@
 using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using PhSpectre.Avalonia.Services;
 using PhSpectre.Rendering;
 
 namespace PhSpectre.Avalonia.ViewModels;
@@ -26,6 +29,36 @@ public partial class SettingsViewModel : ViewModelBase
     public bool  IsMobile => OperatingSystem.IsAndroid();
     public Theme Theme    => IsDarkTheme ? Theme.Dark : Theme.Light;
     public int?  Colors   => ColorCount == 0 ? null : ColorCount;
+
+    // Android shows this row directly in Settings (there's no toolbar to put a banner
+    // in); Desktop gets its own dismissible toolbar banner instead (MainWindowViewModel)
+    // and hides this row via the existing IsMobile-gated XAML pattern.
+    public string AppVersionText      => $"PhSpectre {AppUpdateService.Instance.CurrentVersionText}";
+    public bool   IsUpdateAvailable   => AppUpdateService.Instance.IsAvailable;
+    public string UpdateAvailableText => $"Update available: {AppUpdateService.Instance.LatestVersionText}";
+    public bool   ShowUpdateRow       => IsMobile && IsUpdateAvailable;
+
+    public Func<string, Task>? OpenUrlAsync { get; set; }
+
+    public SettingsViewModel()
+    {
+        AppUpdateService.Instance.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(AppUpdateService.IsAvailable) or nameof(AppUpdateService.LatestVersionText))
+            {
+                OnPropertyChanged(nameof(IsUpdateAvailable));
+                OnPropertyChanged(nameof(UpdateAvailableText));
+                OnPropertyChanged(nameof(ShowUpdateRow));
+            }
+        };
+    }
+
+    [RelayCommand]
+    private async Task OpenUpdateUrl()
+    {
+        if (OpenUrlAsync != null && AppUpdateService.Instance.ReleaseUrl is { } url)
+            await OpenUrlAsync(url);
+    }
 
     public string FileExtension    => OutputFormat == OutputFormat.Jpeg ? ".jpg" : ".png";
     public string SaveButtonLabel  => OutputFormat == OutputFormat.Jpeg ? "Save JPEG" : "Save PNG";

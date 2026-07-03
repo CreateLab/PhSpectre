@@ -4,6 +4,8 @@ namespace PhSpectre.Avalonia.Views;
 
 public partial class SettingsPanel : UserControl
 {
+    private bool? _isNarrow;
+
     public SettingsPanel()
     {
         InitializeComponent();
@@ -41,6 +43,8 @@ public partial class SettingsPanel : UserControl
         AddItem(ExportPresetBox, "IG post",      "1080×1350 (4:5) — Instagram feed default");
         AddItem(ExportPresetBox, "Story",        "1080×1920 — Instagram & Telegram Stories");
         AddItem(ExportPresetBox, "TG landscape", "1920×1080 — Telegram landscape photo");
+
+        SizeChanged += (_, e) => ApplyResponsiveLayout(e.NewSize.Width);
     }
 
     private static void AddItem(ComboBox box, string shortText, string fullText)
@@ -48,5 +52,37 @@ public partial class SettingsPanel : UserControl
         var item = new ComboBoxItem { Content = shortText };
         ToolTip.SetTip(item, fullText);
         box.Items.Add(item);
+    }
+
+    // Container-query stand-in: Avalonia has no width-based style triggers, so each
+    // settings-row Grid's two children are repositioned in code when the panel itself
+    // (not the window) gets too narrow to fit "label: control" on one line — this covers
+    // both a narrow Desktop sidebar and small Android screens with the same code path.
+    private void ApplyResponsiveLayout(double width)
+    {
+        var narrow = width < 260;
+        if (_isNarrow == narrow) return;
+        _isNarrow = narrow;
+
+        foreach (var row in new[]
+                 {
+                     SamplingRow, ColorCountRow, ExportThemeRow, VerbosityRow,
+                     StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow
+                 })
+        {
+            if (row.Children.Count < 2) continue;
+            var label = row.Children[0];
+            var value = row.Children[1];
+            if (narrow)
+            {
+                Grid.SetRow(label, 0); Grid.SetColumn(label, 0); Grid.SetColumnSpan(label, 2);
+                Grid.SetRow(value, 1); Grid.SetColumn(value, 0); Grid.SetColumnSpan(value, 2);
+            }
+            else
+            {
+                Grid.SetRow(label, 0); Grid.SetColumn(label, 0); Grid.SetColumnSpan(label, 1);
+                Grid.SetRow(value, 0); Grid.SetColumn(value, 1); Grid.SetColumnSpan(value, 1);
+            }
+        }
     }
 }

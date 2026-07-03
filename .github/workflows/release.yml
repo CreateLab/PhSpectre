@@ -1,0 +1,158 @@
+name: Release
+
+# One tag = one release with all three platform artifacts, versioned from the tag itself.
+# To ship a release: git tag vX.Y.Z && git push origin vX.Y.Z — everything else is automatic.
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore PhSpectre.Desktop/PhSpectre.Desktop.csproj
+
+      - name: Publish
+        run: >-
+          dotnet publish PhSpectre.Desktop/PhSpectre.Desktop.csproj
+          -c Release
+          -r win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:Version=${{ env.VERSION }}
+          -p:InformationalVersion=${{ env.VERSION }}+${{ github.sha }}
+          -o publish/windows
+
+      - name: Package
+        run: Compress-Archive -Path publish/windows/PhSpectre.Desktop.exe -DestinationPath PhSpectre-${{ env.VERSION }}-windows-x64.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: PhSpectre-${{ env.VERSION }}-windows-x64.zip
+
+  linux:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore PhSpectre.Desktop/PhSpectre.Desktop.csproj
+
+      - name: Publish
+        run: |
+          dotnet publish PhSpectre.Desktop/PhSpectre.Desktop.csproj \
+            -c Release \
+            -r linux-x64 \
+            --self-contained true \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:Version=${VERSION} \
+            -p:InformationalVersion=${VERSION}+${GITHUB_SHA} \
+            -o publish/linux
+
+      - name: Package
+        run: |
+          mv publish/linux/PhSpectre.Desktop publish/linux/PhSpectre-linux-x64
+          tar -czf PhSpectre-${VERSION}-linux-x64.tar.gz -C publish/linux PhSpectre-linux-x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: PhSpectre-${{ env.VERSION }}-linux-x64.tar.gz
+
+  android:
+    needs: version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Android workload
+        run: dotnet workload install android
+
+      - name: Restore
+        run: dotnet restore PhSpectre.Android/PhSpectre.Android.csproj
+
+      - name: Publish APK
+        run: |
+          dotnet publish PhSpectre.Android/PhSpectre.Android.csproj \
+            -c Release \
+            -f net10.0-android \
+            -p:Version=${VERSION} \
+            -p:InformationalVersion=${VERSION}+${GITHUB_SHA} \
+            -p:ApplicationDisplayVersion=${VERSION} \
+            -p:ApplicationVersion=${GITHUB_RUN_NUMBER} \
+            -o publish/android
+
+      - name: Rename APK
+        run: |
+          apk=$(find publish/android -name "*-Signed.apk" | head -n 1)
+          mv "$apk" PhSpectre-${VERSION}-android.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: PhSpectre-${{ env.VERSION }}-android.apk
+
+  release:
+    needs: [version, windows, linux, android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "PhSpectre ${{ needs.version.outputs.version }}"
+          generate_release_notes: true
+          prerelease: false
+          files: dist/*

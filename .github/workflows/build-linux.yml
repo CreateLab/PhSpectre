@@ -1,13 +1,12 @@
 name: Build — Linux
 
+# Build-only sanity check on every commit — no version stamping and no release. Versioned
+# releases are published from release.yml, triggered by pushing a vX.Y.Z tag.
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
-
-permissions:
-  contents: write
 
 jobs:
   build:
@@ -33,23 +32,3 @@ jobs:
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -o publish/linux
-
-      - name: Rename binary
-        run: mv publish/linux/PhSpectre.Desktop publish/linux/PhSpectre-linux-x64
-
-      - name: Move release tag
-        if: github.event_name == 'push'
-        run: |
-          git tag -f latest-linux
-          git push origin latest-linux --force
-
-      - name: Create or update release
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest-linux
-          name: "Latest — Linux x64"
-          body: |
-            Automated build · commit ${{ github.sha }}
-          prerelease: true
-          files: publish/linux/PhSpectre-linux-x64

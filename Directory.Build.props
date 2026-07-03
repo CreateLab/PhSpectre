@@ -1,0 +1,8 @@
+<Project>
+    <PropertyGroup>
+        <!-- Local/dev builds never pass -p:InformationalVersion, so they always land here.
+             release.yml overrides this with "<tag-version>+<sha>" at publish time — see
+             AppVersionInfo.cs, which treats anything that isn't a clean X.Y.Z as "dev". -->
+        <InformationalVersion>0.0.0-dev</InformationalVersion>
+    </PropertyGroup>
+</Project>

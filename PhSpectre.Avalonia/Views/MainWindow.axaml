@@ -10,6 +10,7 @@
         x:Class="PhSpectre.Avalonia.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Width="1500" Height="1000"
+        MinWidth="900" MinHeight="560"
         Title="PhSpectre"
         Icon="/Assets/PhSpectre.ico">
 
@@ -23,7 +24,7 @@
         <Border BorderBrush="{StaticResource ToolbarBackgroundBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="2">
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="8,6">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="8,6">
                 <Button Grid.Column="0" Command="{Binding OpenFolderCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <materialIcons:MaterialIcon Kind="FolderOutline" Width="16" Height="16" VerticalAlignment="Center"/>
@@ -37,6 +38,25 @@
                            Margin="12,0"
                            Opacity="0.65"
                            FontSize="12"/>
+
+                <!-- Update banner — not a modal/dialog on purpose, just an unobtrusive
+                     toolbar item; dismissing it persists the dismissed version so it
+                     doesn't come back until a newer release ships. -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"
+                            IsVisible="{Binding IsUpdateAvailable}">
+                    <Button Classes="text" MinWidth="0" MinHeight="0" Padding="8,4"
+                            Command="{Binding OpenUpdateUrlCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="ArrowUpBoldCircleOutline" Width="14" Height="14" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding UpdateBannerText}" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Classes="icon-toolbar" Width="24" Height="24"
+                            Command="{Binding DismissUpdateCommand}"
+                            ToolTip.Tip="Dismiss">
+                        <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
+                    </Button>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -183,11 +203,17 @@
                     Background="{StaticResource SurfaceBrush}">
                 <Grid RowDefinitions="*,Auto">
                     <ScrollViewer Grid.Row="0"
-                                  Padding="16,12"
+                                  MinHeight="120"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   IsEnabled="{Binding !IsBatchActive}">
-                        <views:SettingsPanel DataContext="{Binding Settings}" HorizontalAlignment="Stretch"/>
+                        <!-- Padding lives on the scrolled content, not the ScrollViewer itself,
+                             so the bottom gap is part of the scrollable extent — otherwise the
+                             last row gets clipped flush against the viewport edge even at
+                             full scroll. -->
+                        <views:SettingsPanel DataContext="{Binding Settings}"
+                                              HorizontalAlignment="Stretch"
+                                              Margin="16,12,16,24"/>
                     </ScrollViewer>
 
                     <StackPanel Grid.Row="1" Margin="16,0,16,16" Spacing="8">

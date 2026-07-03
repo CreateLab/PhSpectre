@@ -7,6 +7,7 @@ using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
 using Avalonia.Styling;
+using PhSpectre.Avalonia.Services;
 using PhSpectre.Avalonia.ViewModels;
 using PhSpectre.Avalonia.Views;
 
@@ -54,5 +55,10 @@ public partial class App : Application
         }
 
         base.OnFrameworkInitializationCompleted();
+
+        // Fire-and-forget: never blocks startup, and CheckAsync() itself no-ops
+        // silently on dev builds, network failures, or when the daily cooldown hasn't
+        // elapsed yet.
+        _ = AppUpdateService.Instance.CheckAsync();
     }
 }
