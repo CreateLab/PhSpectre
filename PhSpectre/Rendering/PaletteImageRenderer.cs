@@ -42,7 +42,37 @@ public static class PaletteImageRenderer
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
+        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale);
+    }
 
+    // Renders from an already-decoded image (caller owns disposal) — skips a redundant
+    // re-decode when the caller (e.g. the mobile pipeline) already holds the working copy
+    // in memory. The image is assumed already auto-oriented by the caller.
+    public static void Render(
+        Image<Rgb24> original,
+        ColorPalette palette,
+        string outputPath,
+        bool showHex = true,
+        MetaVerbosity metaVerbosity = MetaVerbosity.Default,
+        MetaStyle metaStyle = MetaStyle.FilmStrip,
+        Theme theme = Theme.Dark,
+        bool hexBelow = false,
+        bool showSwatches = true,
+        int downscale = 1)
+        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale);
+
+    private static void RenderCore(
+        Image<Rgb24> original,
+        ColorPalette palette,
+        string outputPath,
+        bool showHex,
+        MetaVerbosity metaVerbosity,
+        MetaStyle metaStyle,
+        Theme theme,
+        bool hexBelow,
+        bool showSwatches,
+        int downscale)
+    {
         ExifData? exif = metaVerbosity != MetaVerbosity.Off ? ReadExif(original) : null;
 
         bool landscape = original.Width >= original.Height;
@@ -56,7 +86,7 @@ public static class PaletteImageRenderer
         canvas.SaveAsPng(outputPath);
     }
 
-    // ── Landscape: photo → [filmstrip] → swatches ──────────────────────────
+    // ── Landscape: photo → swatches → [filmstrip] ──────────────────────────
 
     private static Image<Rgb24> BuildLandscapeCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
@@ -74,16 +104,20 @@ public static class PaletteImageRenderer
         int swatchW  = (original.Width - 2 * margin - (n - 1) * gap) / n;
         float swatchFs = Math.Clamp(panelH / 14f * 6f, 60f, 168f);
         int textPad  = Math.Max(3, panelH / 25);
-        Font? swatchFont = showHex ? ResolveMetaFont(swatchFs) : null;
+        Font? swatchFont = showHex ? FitSwatchFont(swatchFs, swatchW - 2 * textPad) : null;
 
         // Meta strip
         (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width);
 
-        // Canvas layout — swatch panel is optional
-        int canvasH      = original.Height + (style == MetaStyle.FilmStrip ? stripH : 0) + (showSwatches ? panelH : 0);
-        int swatchPanelY = original.Height + (style == MetaStyle.FilmStrip ? stripH : 0);
+        // Canvas layout — swatch panel is optional. Swatches sit directly under the photo;
+        // the filmstrip (when present) goes after the swatches, not before.
+        int canvasH      = original.Height + (showSwatches ? panelH : 0) + (style == MetaStyle.FilmStrip ? stripH : 0);
+        int swatchPanelY = original.Height;
         int labelH       = showHex && hexBelow ? (int)swatchFs + textPad : 0;
         int swatchY      = swatchPanelY + (panelH - swatchH - labelH) / 2;
+        int stripY       = style == MetaStyle.FilmStrip
+            ? original.Height + (showSwatches ? panelH : 0)
+            : original.Height - stripH;
 
         Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
 
@@ -93,12 +127,12 @@ public static class PaletteImageRenderer
             ctx.Fill(tc.Background);
             ctx.DrawImage(original, new Point(0, 0), 1f);
 
-            DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
-                x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
-                w: original.Width, overlayTextColor: overlayTextColor);
-
             if (showSwatches)
                 DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc);
+
+            DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
+                x: 0, y: stripY,
+                w: original.Width, overlayTextColor: overlayTextColor);
         });
         return canvas;
     }
@@ -119,9 +153,9 @@ public static class PaletteImageRenderer
         int gap      = Math.Max(4, panelW / 20);
         int textPad  = Math.Max(3, panelW / 25);
         float swatchFs = Math.Clamp(panelW / 8f * 6f, 60f, 144f);
-        Font? swatchFont = showHex ? ResolveMetaFont(swatchFs) : null;
         int swatchW  = panelW * 7 / 10;
         int swatchX  = original.Width + (panelW - swatchW) / 2;
+        Font? swatchFont = showHex ? FitSwatchFont(swatchFs, swatchW - 2 * textPad) : null;
 
         // Reserve extra space per swatch when drawing label below
         int labelH  = showHex && hexBelow ? (int)swatchFs + textPad : 0;
@@ -187,8 +221,16 @@ public static class PaletteImageRenderer
         string[] lines = BuildMetaLines(exif, verbosity);
         if (lines.Length == 0) return ([], 0, 0f, null);
 
-        float fs     = Math.Clamp(photoWidth / 20f, 40f, 180f);
-        Font font    = ResolveMetaFont(fs);
+        // Font size is picked so a fixed-length reference string just fills the available
+        // width, instead of guessing "photoWidth / N". That keeps how much metadata text
+        // fits roughly constant at any photo resolution *and* across platforms: measuring
+        // against the font actually resolved here also cancels out metric differences
+        // between e.g. desktop Consolas and Android Roboto, which a hardcoded ratio can't.
+        const int targetChars = 55;
+        var probeFont   = ResolveMetaFont(100f);
+        float probeW    = TextMeasurer.MeasureSize(new string('0', targetChars), new TextOptions(probeFont)).Width;
+        float fs        = Math.Max(photoWidth * 0.95f * 100f / probeW, 40f);
+        Font font       = ResolveMetaFont(fs);
 
         float stripPadF = fs * 0.6f;
         float maxTextW  = photoWidth - 2 * stripPadF;
@@ -261,16 +303,6 @@ public static class PaletteImageRenderer
 
         if (style == MetaStyle.Overlay)
         {
-            // Semi-transparent box in top-left — BlendPercentage is the correct way
-            // to achieve transparency on an Rgb24 canvas (ctx.Fill with Rgba32 loses alpha).
-            float maxTextW = lines.Max(l => TextMeasurer.MeasureSize(l, new TextOptions(font)).Width);
-            int boxW = Math.Min((int)(maxTextW + pad * 2), w);
-            int boxH = lines.Length * lineH + pad * 2;
-            var overlayOpts = new DrawingOptions
-            {
-                GraphicsOptions = new GraphicsOptions { BlendPercentage = 0.55f, Antialias = false }
-            };
-            ctx.Fill(overlayOpts, Color.Black, new RectangleF(x, 0, boxW, boxH));
             Color textClr = overlayTextColor ?? Color.White;
             for (int i = 0; i < lines.Length; i++)
                 ctx.DrawText(new RichTextOptions(font)
@@ -422,14 +454,86 @@ public static class PaletteImageRenderer
 
     // ── Font helpers ────────────────────────────────────────────────────────
 
+    // Embedding JetBrains Mono guarantees the same typography on desktop and Android
+    // regardless of what's installed on the OS, instead of depending on SystemFonts
+    // resolving to whatever monospace family happens to be present (Consolas on Windows,
+    // some Roboto variant on Android) — those differ enough in glyph width that text
+    // capacity per line used to vary by platform. Lazily loaded once; null if anything
+    // about the embedded-resource lookup fails, in which case ResolveMetaFont below
+    // falls through to the pre-existing SystemFonts chain unchanged.
+    private static readonly FontFamily? EmbeddedMonoFamily = LoadEmbeddedMonoFont();
+
+    private static FontFamily? LoadEmbeddedMonoFont()
+    {
+        try
+        {
+            var asm = typeof(PaletteImageRenderer).Assembly;
+            var resourceName = asm.GetManifestResourceNames()
+                .FirstOrDefault(n => n.Contains("JetBrainsMono", StringComparison.OrdinalIgnoreCase));
+            if (resourceName == null) return null;
+
+            using var stream = asm.GetManifestResourceStream(resourceName);
+            if (stream == null) return null;
+
+            return new FontCollection().Add(stream);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static Font ResolveMetaFont(float size)
     {
-        foreach (string name in new[] { "Consolas", "Courier New", "Lucida Console", "Arial" })
+        if (EmbeddedMonoFamily is { } embedded)
+        {
+            try { return embedded.CreateFont(size, FontStyle.Regular); }
+            catch { /* fall through to the system-font chain below */ }
+        }
+
+        // Desktop (Windows/Linux) names first, then the common Android system font names,
+        // so mobile doesn't fall through to the "pick anything installed" last resort below.
+        foreach (string name in new[]
+        {
+            "Consolas", "Courier New", "Lucida Console",
+            "Roboto Mono", "Droid Sans Mono", "Noto Sans Mono",
+            "Roboto", "Droid Sans", "Noto Sans", "Arial"
+        })
         {
             try { return SystemFonts.CreateFont(name, size, FontStyle.Regular); }
             catch (FontFamilyNotFoundException) { }
         }
-        return SystemFonts.Families.First().CreateFont(size, FontStyle.Regular);
+
+        // Last resort: pick any installed family, but skip emoji/symbol fonts — on some
+        // platforms/devices those sort first and silently render plain text as blank glyphs.
+        var families = SystemFonts.Families.ToList();
+        var textFamily = families.FirstOrDefault(f =>
+            !string.IsNullOrEmpty(f.Name) &&
+            !f.Name.Contains("emoji",    StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("symbol",   StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("dingbat",  StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("wingding", StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("math",     StringComparison.OrdinalIgnoreCase));
+
+        var family = !string.IsNullOrEmpty(textFamily.Name) ? textFamily : families.First();
+        return family.CreateFont(size, FontStyle.Regular);
+    }
+
+    // Shrinks the swatch hex-label font until "#000000" (all hex labels are the same
+    // 7-char width) actually fits inside the swatch, instead of trusting a size guessed
+    // from panel geometry alone — that guess badly overflows on narrow/portrait swatches.
+    private static Font FitSwatchFont(float startSize, float maxTextWidth)
+    {
+        const float minSize = 10f;
+        if (maxTextWidth <= 0) return ResolveMetaFont(minSize);
+
+        for (float size = startSize; size > minSize; size -= 2f)
+        {
+            var font = ResolveMetaFont(size);
+            if (TextMeasurer.MeasureSize("#000000", new TextOptions(font)).Width <= maxTextWidth)
+                return font;
+        }
+        return ResolveMetaFont(minSize);
     }
 
     private static Color ContrastColor(byte r, byte g, byte b)
@@ -464,9 +568,7 @@ public static class PaletteImageRenderer
             }
         });
 
-        // With 55% black overlay the effective background = 0.45 × original_lum.
-        // White text is readable when effective background < ~0.18 → original_lum < 0.40.
         double avgLum = count > 0 ? totalLum / count : 0;
-        return avgLum > 0.40 ? Color.Black : Color.White;
+        return avgLum > 0.35 ? Color.Black : Color.White;
     }
 }

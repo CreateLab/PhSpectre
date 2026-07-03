@@ -16,17 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore PhSpectre.App/PhSpectre.App.csproj
+        run: dotnet restore PhSpectre.Desktop/PhSpectre.Desktop.csproj
 
       - name: Publish
         run: >-
-          dotnet publish PhSpectre.App/PhSpectre.App.csproj
+          dotnet publish PhSpectre.Desktop/PhSpectre.Desktop.csproj
           -c Release
           -r win-x64
           --self-contained true
@@ -49,4 +49,4 @@ jobs:
           body: |
             Automated build · commit ${{ github.sha }}
           prerelease: true
-          files: publish/windows/PhSpectre.App.exe
+          files: publish/windows/PhSpectre.Desktop.exe

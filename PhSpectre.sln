@@ -8,7 +8,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpecre.Tests", "PhSpecre.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.API", "PhSpectre.API\PhSpectre.API.csproj", "{F25995DB-D0C9-47E8-B266-7EA984047375}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.App", "PhSpectre.App\PhSpectre.App.csproj", "{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.Avalonia", "PhSpectre.Avalonia\PhSpectre.Avalonia.csproj", "{B853A723-A6C4-444E-98C8-C85E910EAB9C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.Android", "PhSpectre.Android\PhSpectre.Android.csproj", "{E9EEC57B-F167-4F22-9551-47186C2DEC86}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.Desktop", "PhSpectre.Desktop\PhSpectre.Desktop.csproj", "{9BEDC78E-4FF0-45F4-AA60-61E8DE4E338A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,9 +36,17 @@ Global
 		{F25995DB-D0C9-47E8-B266-7EA984047375}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F25995DB-D0C9-47E8-B266-7EA984047375}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F25995DB-D0C9-47E8-B266-7EA984047375}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F55A5D09-45BC-45A7-A9E6-D28F3ECED8B6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B853A723-A6C4-444E-98C8-C85E910EAB9C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B853A723-A6C4-444E-98C8-C85E910EAB9C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B853A723-A6C4-444E-98C8-C85E910EAB9C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B853A723-A6C4-444E-98C8-C85E910EAB9C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9EEC57B-F167-4F22-9551-47186C2DEC86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9EEC57B-F167-4F22-9551-47186C2DEC86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9EEC57B-F167-4F22-9551-47186C2DEC86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9EEC57B-F167-4F22-9551-47186C2DEC86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9BEDC78E-4FF0-45F4-AA60-61E8DE4E338A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9BEDC78E-4FF0-45F4-AA60-61E8DE4E338A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9BEDC78E-4FF0-45F4-AA60-61E8DE4E338A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9BEDC78E-4FF0-45F4-AA60-61E8DE4E338A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -16,17 +16,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          global-json-file: global.json
 
       - name: Restore
-        run: dotnet restore PhSpectre.App/PhSpectre.App.csproj
+        run: dotnet restore PhSpectre.Desktop/PhSpectre.Desktop.csproj
 
       - name: Publish
         run: |
-          dotnet publish PhSpectre.App/PhSpectre.App.csproj \
+          dotnet publish PhSpectre.Desktop/PhSpectre.Desktop.csproj \
             -c Release \
             -r linux-x64 \
             --self-contained true \
@@ -35,7 +35,7 @@ jobs:
             -o publish/linux
 
       - name: Rename binary
-        run: mv publish/linux/PhSpectre.App publish/linux/PhSpectre-linux-x64
+        run: mv publish/linux/PhSpectre.Desktop publish/linux/PhSpectre-linux-x64
 
       - name: Move release tag
         if: github.event_name == 'push'

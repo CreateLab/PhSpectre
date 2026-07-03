@@ -1,0 +1,36 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Space Grotesk is the ambient UI font (titles, button labels). JetBrains Mono is
+         opted into per-control via the mono-data classes below wherever text is data
+         (file names, sizes) rather than UI chrome — keeps the "data vs UI" split from
+         the design spec instead of one blanket font for everything. -->
+
+    <Style Selector="TextBlock">
+        <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/SpaceGrotesk[wght].ttf#Space Grotesk"/>
+    </Style>
+    <Style Selector="Button">
+        <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/SpaceGrotesk[wght].ttf#Space Grotesk"/>
+    </Style>
+
+    <Style Selector="TextBlock.mono-data">
+        <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.mono-data-small">
+        <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+    </Style>
+
+    <Style Selector="TextBlock.app-title">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="TextBlock.button-label">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+
+</Styles>

@@ -1,0 +1,153 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:views="using:PhSpectre.Avalonia.Views"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="800"
+             x:Class="PhSpectre.Avalonia.Views.MainView"
+             x:DataType="vm:MainViewModel">
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <Panel Background="{StaticResource BackgroundBrush}">
+
+        <!-- Main flow: pick a photo, see the palette, save it -->
+        <Grid RowDefinitions="Auto,*" IsVisible="{Binding !IsSettingsOpen}">
+
+            <!-- Toolbar -->
+            <Border Grid.Row="0" Background="{StaticResource BackgroundBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="16,14">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="PhSpectre"
+                               Classes="app-title"
+                               VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Classes="icon-toolbar"
+                                IsVisible="{Binding HasResult}"
+                                Command="{Binding PickPhotoCommand}"
+                                ToolTip.Tip="Pick a new photo">
+                            <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="18" Height="18"
+                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                        <Button Classes="icon-toolbar"
+                                Command="{Binding ToggleSettingsCommand}"
+                                ToolTip.Tip="Settings">
+                            <materialIcons:MaterialIcon Kind="CogOutline" Width="18" Height="18"
+                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ScrollViewer Grid.Row="1">
+                <StackPanel Spacing="14" Margin="16,16,16,24">
+
+                    <Button Classes="primary"
+                            Command="{Binding PickPhotoCommand}"
+                            IsVisible="{Binding !HasResult}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="18" Height="18"
+                                                         VerticalAlignment="Center"
+                                                         Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="Pick a Photo" Classes="button-label" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Text="{Binding FileInfoText}"
+                               IsVisible="{Binding FileInfoText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               Classes="mono-data-small"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               HorizontalAlignment="Stretch"/>
+
+                    <!-- Result -->
+                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1" CornerRadius="12" ClipToBounds="True" MinHeight="280">
+                        <Panel Margin="4">
+                            <Image Source="{Binding PaletteBitmap}" Stretch="Uniform"/>
+
+                            <StackPanel IsVisible="{Binding IsGenerating}"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Spacing="10" Width="160">
+                                <ProgressBar IsIndeterminate="True" Height="3"/>
+                                <TextBlock Text="Generating…" HorizontalAlignment="Center"
+                                           Opacity="0.75" FontSize="12"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding ErrorMessage}"
+                                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                       TextWrapping="Wrap" TextAlignment="Center"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{StaticResource ErrorBrush}" Margin="20" FontSize="13"/>
+
+                            <!-- Empty state: dashed box, whole zone opens the picker -->
+                            <Button IsVisible="{Binding ShowPlaceholder}"
+                                    Command="{Binding PickPhotoCommand}"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
+                                    Background="Transparent" BorderThickness="0" Padding="0">
+                                <Panel HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                                    <Rectangle HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                               RadiusX="10" RadiusY="10"
+                                               Stroke="{StaticResource CardBorderBrush}" StrokeThickness="1"
+                                               StrokeDashArray="4,3" Fill="Transparent"/>
+                                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                                        <materialIcons:MaterialIcon Kind="ImageOffOutline" Width="40" Height="40"
+                                                                     HorizontalAlignment="Center"
+                                                                     Foreground="{StaticResource TextMutedBrush}"/>
+                                        <TextBlock Text="No photo selected" Classes="mono-data-small"
+                                                   HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Panel>
+                            </Button>
+                        </Panel>
+                    </Border>
+
+                    <!-- Save bar -->
+                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasResult}">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding OutputSizeText}"
+                                   Classes="mono-data-small"
+                                   VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Classes="secondary"
+                                Command="{Binding SavePngCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <materialIcons:MaterialIcon Kind="{Binding SaveIconKind}" Width="16" Height="16"
+                                                             VerticalAlignment="Center"
+                                                             Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding SaveButtonText}" FontSize="13" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- Settings — in-view panel, since Android is single-activity and can't open a second window -->
+        <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsSettingsOpen}">
+            <Border Grid.Row="0" Background="{StaticResource BackgroundBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="16,14">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="Settings"
+                               Classes="app-title"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="Done"
+                            Classes="text"
+                            Command="{Binding ToggleSettingsCommand}"/>
+                </Grid>
+            </Border>
+            <ScrollViewer Grid.Row="1" Padding="16,16,16,24">
+                <views:SettingsPanel DataContext="{Binding Settings}"/>
+            </ScrollViewer>
+        </Grid>
+
+    </Panel>
+</UserControl>

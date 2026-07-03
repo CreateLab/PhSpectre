@@ -1,0 +1,64 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Primary action (e.g. Pick a Photo): outline button, white border, full hierarchy weight -->
+    <Style Selector="Button.primary">
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderPrimaryBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#14FFFFFF"/>
+    </Style>
+
+    <!-- Secondary action (e.g. Save to Gallery): thin border, muted text -->
+    <Style Selector="Button.secondary">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Padding" Value="16,0"/>
+    </Style>
+    <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#0FFFFFFF"/>
+    </Style>
+
+    <!-- Plain text action (e.g. Done on the settings header): no border, full-weight text -->
+    <Style Selector="Button.text">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Padding" Value="8,6"/>
+    </Style>
+    <Style Selector="Button.text:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="Button.text:pointerover">
+        <Setter Property="Opacity" Value="0.7"/>
+    </Style>
+
+    <!-- Small square icon-only button used in toolbars (settings, reopen-photo) -->
+    <Style Selector="Button.icon-toolbar">
+        <Setter Property="Width" Value="32"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.icon-toolbar:pointerover /template/ ContentPresenter">
+        <Setter Property="Background" Value="#14FFFFFF"/>
+    </Style>
+
+</Styles>

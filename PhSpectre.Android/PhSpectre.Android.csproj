@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0-android</TargetFramework>
+        <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+        <Nullable>enable</Nullable>
+        <ApplicationId>com.CompanyName.PhSpectre</ApplicationId>
+        <ApplicationVersion>1</ApplicationVersion>
+        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+        <AndroidPackageFormat>apk</AndroidPackageFormat>
+        <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+        <!-- Local dev machine only — CI runners auto-detect SDK/JDK via ANDROID_HOME/JAVA_HOME,
+             and GitHub Actions always sets CI=true, so these are skipped there. -->
+        <AndroidSdkDirectory Condition="'$(CI)' != 'true'">C:\Android\sdk</AndroidSdkDirectory>
+        <JavaSdkDirectory Condition="'$(CI)' != 'true'">C:\Android\jdk</JavaSdkDirectory>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <AndroidResource Include="Icon.png">
+            <Link>Resources\drawable\Icon.png</Link>
+        </AndroidResource>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Avalonia.Android" Version="12.0.5"/>
+        <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.15"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\PhSpectre.Avalonia\PhSpectre.Avalonia.csproj"/>
+    </ItemGroup>
+</Project>

@@ -14,7 +14,22 @@ internal sealed class ImageSamplerService
     {
         using var image = await Image.LoadAsync<Rgb24>(imageStream, cancellationToken);
         image.Mutate(ctx => ctx.AutoOrient().Resize(SampleSize, SampleSize));
+        return ExtractPixels(image);
+    }
 
+    // Samples an already-decoded image directly — avoids re-decoding from disk when the
+    // caller (e.g. the mobile pipeline) already has the working copy in memory. Clones
+    // before resizing so the caller's image, still needed for rendering, is untouched.
+    public Task<(byte R, byte G, byte B)[]> SampleAsync(
+        Image<Rgb24> image,
+        CancellationToken cancellationToken = default)
+    {
+        using var clone = image.Clone(ctx => ctx.AutoOrient().Resize(SampleSize, SampleSize));
+        return Task.FromResult(ExtractPixels(clone));
+    }
+
+    private static (byte R, byte G, byte B)[] ExtractPixels(Image<Rgb24> image)
+    {
         var pixels = new (byte R, byte G, byte B)[SampleSize * SampleSize];
         image.ProcessPixelRows(accessor =>
         {

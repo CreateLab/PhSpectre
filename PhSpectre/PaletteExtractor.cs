@@ -1,5 +1,7 @@
 using PhSpectre.Models;
 using PhSpectre.Services;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre;
 
@@ -32,6 +34,23 @@ public sealed class PaletteExtractor
             throw new ArgumentOutOfRangeException(nameof(colorCount), "Color count must be between 1 and 32.");
 
         var pixels = await _sampler.SampleAsync(imageStream, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return _kMeans.Cluster(pixels, colorCount, samplingMode, cancellationToken);
+    }
+
+    // Extracts directly from an already-decoded image, skipping a redundant re-decode
+    // when the caller already holds the working copy in memory.
+    public async Task<ColorPalette> ExtractAsync(
+        Image<Rgb24> image,
+        int? colorCount = null,
+        SamplingMode samplingMode = SamplingMode.Vivid,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(image);
+        if (colorCount.HasValue && (colorCount.Value < 1 || colorCount.Value > 32))
+            throw new ArgumentOutOfRangeException(nameof(colorCount), "Color count must be between 1 and 32.");
+
+        var pixels = await _sampler.SampleAsync(image, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         return _kMeans.Cluster(pixels, colorCount, samplingMode, cancellationToken);
     }
