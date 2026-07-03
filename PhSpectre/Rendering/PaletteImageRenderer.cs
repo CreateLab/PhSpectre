@@ -2,6 +2,7 @@ using PhSpectre.Models;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -12,6 +13,16 @@ namespace PhSpectre.Rendering;
 public enum MetaVerbosity { Off, Short, Default, Detail, Full }
 public enum MetaStyle    { FilmStrip, Overlay }
 public enum Theme        { Dark, Light }
+public enum OutputFormat { Png, Jpeg }
+
+// Fixed-size frames for sharing to social apps. The finished card (photo + swatches +
+// metadata) is letterboxed into the frame at its native aspect ratio rather than cropped,
+// so nothing in the composition gets cut off. Instagram and Telegram don't actually agree
+// on one universal size — IG's feed default moved to 4:5, Telegram's chat-photo sweet spot
+// is a different square/landscape pair, and stories (shared by both) reserve top/bottom
+// space for UI chrome — so these are kept as distinct, platform-accurate presets rather
+// than one generic "square/story" pair.
+public enum ExportPreset { Original, Square, InstagramPost, Story, TelegramLandscape }
 
 public static class PaletteImageRenderer
 {
@@ -38,11 +49,13 @@ public static class PaletteImageRenderer
         Theme theme = Theme.Dark,
         bool hexBelow = false,
         bool showSwatches = true,
-        int downscale = 1)
+        int downscale = 1,
+        OutputFormat format = OutputFormat.Png,
+        ExportPreset exportPreset = ExportPreset.Original)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale);
+        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset);
     }
 
     // Renders from an already-decoded image (caller owns disposal) — skips a redundant
@@ -58,8 +71,10 @@ public static class PaletteImageRenderer
         Theme theme = Theme.Dark,
         bool hexBelow = false,
         bool showSwatches = true,
-        int downscale = 1)
-        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale);
+        int downscale = 1,
+        OutputFormat format = OutputFormat.Png,
+        ExportPreset exportPreset = ExportPreset.Original)
+        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset);
 
     private static void RenderCore(
         Image<Rgb24> original,
@@ -71,19 +86,67 @@ public static class PaletteImageRenderer
         Theme theme,
         bool hexBelow,
         bool showSwatches,
-        int downscale)
+        int downscale,
+        OutputFormat format,
+        ExportPreset exportPreset)
     {
         ExifData? exif = metaVerbosity != MetaVerbosity.Off ? ReadExif(original) : null;
 
         bool landscape = original.Width >= original.Height;
-        using var canvas = landscape
+        var canvas = landscape
             ? BuildLandscapeCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches)
             : BuildPortraitCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches);
 
         if (downscale > 1)
             canvas.Mutate(ctx => ctx.Resize(canvas.Width / downscale, canvas.Height / downscale));
 
-        canvas.SaveAsPng(outputPath);
+        if (exportPreset != ExportPreset.Original)
+        {
+            // (width, height, safe-top, safe-bottom) — safe margins keep content clear of
+            // the story UI chrome (profile/timestamp bar on top, reply box on bottom).
+            var (targetW, targetH, safeTop, safeBottom) = exportPreset switch
+            {
+                ExportPreset.Square            => (1080, 1080, 0, 0),
+                ExportPreset.InstagramPost     => (1080, 1350, 0, 0),   // IG feed default is now 4:5
+                ExportPreset.Story             => (1080, 1920, 250, 340),
+                ExportPreset.TelegramLandscape => (1920, 1080, 0, 0),
+                _ => (canvas.Width, canvas.Height, 0, 0)
+            };
+            var framed = FitToFrame(canvas, targetW, targetH, GetThemeColors(theme).Background, safeTop, safeBottom);
+            canvas.Dispose();
+            canvas = framed;
+        }
+
+        using (canvas)
+        {
+            if (format == OutputFormat.Jpeg)
+                canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = 92 });
+            else
+                canvas.SaveAsPng(outputPath);
+        }
+    }
+
+    // Scales the finished card to fit inside a fixed-size frame (never cropping) and
+    // centers it on the theme background — used for social presets (§ExportPreset).
+    // safeTop/safeBottom shrink the region the content is allowed to occupy (and center
+    // within), without changing the frame's actual pixel dimensions.
+    private static Image<Rgb24> FitToFrame(Image<Rgb24> canvas, int targetW, int targetH, Color background, int safeTop = 0, int safeBottom = 0)
+    {
+        int innerH = targetH - safeTop - safeBottom;
+        double scale = Math.Min((double)targetW / canvas.Width, (double)innerH / canvas.Height);
+        int newW = Math.Max(1, (int)Math.Round(canvas.Width * scale));
+        int newH = Math.Max(1, (int)Math.Round(canvas.Height * scale));
+
+        var frame = new Image<Rgb24>(targetW, targetH);
+        frame.Mutate(ctx =>
+        {
+            ctx.Fill(background);
+            using var resized = canvas.Clone(c => c.Resize(newW, newH));
+            int x = (targetW - newW) / 2;
+            int y = safeTop + (innerH - newH) / 2;
+            ctx.DrawImage(resized, new Point(x, y), 1f);
+        });
+        return frame;
     }
 
     // ── Landscape: photo → swatches → [filmstrip] ──────────────────────────

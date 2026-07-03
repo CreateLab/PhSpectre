@@ -24,20 +24,25 @@ internal static class GallerySaver
         var resolver = context.ContentResolver;
         if (resolver == null) return false;
 
-        if (OperatingSystem.IsAndroidVersionAtLeast(29))
-            return await SaveScopedAsync(resolver, sourcePath, displayName);
+        var mimeType = MimeTypeFor(displayName);
 
-        return SaveLegacy(context, sourcePath, displayName);
+        if (OperatingSystem.IsAndroidVersionAtLeast(29))
+            return await SaveScopedAsync(resolver, sourcePath, displayName, mimeType);
+
+        return SaveLegacy(context, sourcePath, displayName, mimeType);
     }
+
+    private static string MimeTypeFor(string displayName) =>
+        Path.GetExtension(displayName).ToLowerInvariant() is ".jpg" or ".jpeg" ? "image/jpeg" : "image/png";
 
     // API 29+ (scoped storage): no storage permission needed to create our own
     // MediaStore entries — the whole point of scoped storage.
     [SupportedOSPlatform("android29.0")]
-    private static async Task<bool> SaveScopedAsync(ContentResolver resolver, string sourcePath, string displayName)
+    private static async Task<bool> SaveScopedAsync(ContentResolver resolver, string sourcePath, string displayName, string mimeType)
     {
         var values = new ContentValues();
         values.Put(MediaStore.IMediaColumns.DisplayName, displayName);
-        values.Put(MediaStore.IMediaColumns.MimeType, "image/png");
+        values.Put(MediaStore.IMediaColumns.MimeType, mimeType);
         values.Put(MediaStore.IMediaColumns.RelativePath, global::Android.OS.Environment.DirectoryPictures + "/" + RelativeFolder);
         values.Put(MediaStore.IMediaColumns.IsPending, 1);
 
@@ -57,7 +62,7 @@ internal static class GallerySaver
     // API 23-28: scoped storage doesn't exist yet, so this needs WRITE_EXTERNAL_STORAGE
     // (declared in the manifest, maxSdkVersion 28) actually granted at runtime. If it
     // isn't, this throws and the caller surfaces it as an error rather than crashing.
-    private static bool SaveLegacy(Context context, string sourcePath, string displayName)
+    private static bool SaveLegacy(Context context, string sourcePath, string displayName, string mimeType)
     {
         var picturesDir = global::Android.OS.Environment
             .GetExternalStoragePublicDirectory(global::Android.OS.Environment.DirectoryPictures)!.AbsolutePath;
@@ -66,7 +71,7 @@ internal static class GallerySaver
         var targetPath = Path.Combine(targetDir, displayName);
         File.Copy(sourcePath, targetPath, overwrite: true);
 
-        MediaScannerConnection.ScanFile(context, [targetPath], ["image/png"], null);
+        MediaScannerConnection.ScanFile(context, [targetPath], [mimeType], null);
         return true;
     }
 }

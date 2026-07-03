@@ -31,10 +31,19 @@ public static class FileDialogService
             Title = "Save palette",
             SuggestedFileName = suggestedName,
             SuggestedStartLocation = startFolder,
-            FileTypeChoices = [new FilePickerFileType("PNG") { Patterns = ["*.png"] }]
+            FileTypeChoices = FileTypeChoicesFor(suggestedName)
         });
         return result?.TryGetLocalPath();
     }
+
+    // The output can be PNG or JPEG depending on Settings.OutputFormat — pick the file-type
+    // filter to match, from the extension already baked into the suggested filename.
+    private static FilePickerFileType[] FileTypeChoicesFor(string suggestedName) =>
+        Path.GetExtension(suggestedName).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => [new FilePickerFileType("JPEG") { Patterns = ["*.jpg", "*.jpeg"] }],
+            _                  => [new FilePickerFileType("PNG")  { Patterns = ["*.png"] }]
+        };
 
     // Mobile pickers (e.g. Android SAF) hand back content-URI files with no local
     // filesystem path, so picking/saving there has to go through streams instead.
@@ -65,7 +74,7 @@ public static class FileDialogService
         {
             Title = "Save palette",
             SuggestedFileName = suggestedName,
-            FileTypeChoices = [new FilePickerFileType("PNG") { Patterns = ["*.png"] }]
+            FileTypeChoices = FileTypeChoicesFor(suggestedName)
         });
         if (result == null) return false;
 

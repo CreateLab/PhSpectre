@@ -20,15 +20,31 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool           _showSwatches   = true;
     [ObservableProperty] private bool           _halfSize       = false;
     [ObservableProperty] private WorkingQuality _workingQuality = WorkingQuality.Fast;
+    [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Png;
+    [ObservableProperty] private ExportPreset   _exportPreset   = ExportPreset.Original;
 
     public bool  IsMobile => OperatingSystem.IsAndroid();
     public Theme Theme    => IsDarkTheme ? Theme.Dark : Theme.Light;
     public int?  Colors   => ColorCount == 0 ? null : ColorCount;
 
+    public string FileExtension => OutputFormat == OutputFormat.Jpeg ? ".jpg" : ".png";
+
     public int WorkingQualityIndex
     {
         get => (int)WorkingQuality;
         set => WorkingQuality = (WorkingQuality)value;
+    }
+
+    public int OutputFormatIndex
+    {
+        get => (int)OutputFormat;
+        set => OutputFormat = (OutputFormat)value;
+    }
+
+    public int ExportPresetIndex
+    {
+        get => (int)ExportPreset;
+        set => ExportPreset = (ExportPreset)value;
     }
 
     // ComboBox index shims
@@ -61,4 +77,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnMetaStyleChanged(MetaStyle value)          => OnPropertyChanged(nameof(MetaStyleIndex));
     partial void OnSamplingModeChanged(SamplingMode value)    => OnPropertyChanged(nameof(SamplingModeIndex));
     partial void OnWorkingQualityChanged(WorkingQuality value) => OnPropertyChanged(nameof(WorkingQualityIndex));
+    partial void OnOutputFormatChanged(OutputFormat value)     { OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension)); }
+    partial void OnExportPresetChanged(ExportPreset value)     => OnPropertyChanged(nameof(ExportPresetIndex));
 }

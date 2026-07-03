@@ -40,6 +40,13 @@ jobs:
           git tag -f latest-windows
           git push origin latest-windows --force
 
+      - name: Remove stale release assets
+        if: github.event_name == 'push'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete-asset latest-windows PhSpectre.App.exe --repo ${{ github.repository }} --yes
+
       - name: Create or update release
         if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2

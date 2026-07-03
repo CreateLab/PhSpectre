@@ -28,5 +28,14 @@ public partial class SettingsPanel : UserControl
         WorkingQualityBox.Items.Add("Fast — 2000px, quickest");
         WorkingQualityBox.Items.Add("Balanced — 3400px");
         WorkingQualityBox.Items.Add("Best — 4800px, closer to desktop detail");
+
+        OutputFormatBox.Items.Add("PNG — lossless, larger file");
+        OutputFormatBox.Items.Add("JPEG — smaller file");
+
+        ExportPresetBox.Items.Add("Original size");
+        ExportPresetBox.Items.Add("Square (1080×1080)");
+        ExportPresetBox.Items.Add("Instagram post (1080×1350)");
+        ExportPresetBox.Items.Add("Story (1080×1920) — IG/TG");
+        ExportPresetBox.Items.Add("Telegram landscape (1920×1080)");
     }
 }

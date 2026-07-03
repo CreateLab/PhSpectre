@@ -38,6 +38,7 @@ public partial class MainViewModel : ViewModelBase
 
     private string?                  _lastTempPng;
     private string?                  _lastFileName;
+    private string                   _lastExtension = ".png";
     private CancellationTokenSource? _renderCts;
 
     // Photos above the chosen cap (long edge) get downscaled before processing — running
@@ -90,7 +91,7 @@ public partial class MainViewModel : ViewModelBase
     private async Task SavePng()
     {
         if (SavePngAsync == null || _lastTempPng == null || _lastFileName == null) return;
-        var suggested = Path.GetFileNameWithoutExtension(_lastFileName) + "_palette.png";
+        var suggested = Path.GetFileNameWithoutExtension(_lastFileName) + "_palette" + _lastExtension;
         var ok = await SavePngAsync(suggested, _lastTempPng);
         if (!ok) return;
 
@@ -149,9 +150,11 @@ public partial class MainViewModel : ViewModelBase
             var palette = await new PaletteExtractor().ExtractAsync(working, Settings.Colors, Settings.SamplingMode, token);
             token.ThrowIfCancellationRequested();
 
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
+            _lastExtension = Settings.FileExtension;
+            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             var snap = (Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity,
-                        Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches);
+                        Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches,
+                        Settings.OutputFormat, Settings.ExportPreset);
             await Task.Run(() => PaletteImageRenderer.Render(
                 working, palette, tmpOut,
                 showHex:       snap.ShowHex,
@@ -160,13 +163,16 @@ public partial class MainViewModel : ViewModelBase
                 theme:         snap.Theme,
                 hexBelow:      snap.HexBelow,
                 showSwatches:  snap.ShowSwatches,
-                downscale:     1), token); // resolution already capped via WorkingQuality above
+                downscale:     1, // resolution already capped via WorkingQuality above
+                format:        snap.OutputFormat,
+                exportPreset:  snap.ExportPreset), token);
 
             token.ThrowIfCancellationRequested();
 
             _lastTempPng   = tmpOut;
             var sizeBytes  = new FileInfo(tmpOut).Length;
-            OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB PNG";
+            var formatLabel = snap.OutputFormat == OutputFormat.Jpeg ? "JPG" : "PNG";
+            OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";
             PaletteBitmap  = new Bitmap(tmpOut);
         }
         catch (OperationCanceledException) { }

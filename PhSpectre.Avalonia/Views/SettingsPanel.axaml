@@ -4,108 +4,142 @@
              x:Class="PhSpectre.Avalonia.Views.SettingsPanel"
              x:DataType="vm:SettingsViewModel">
 
-    <StackPanel Spacing="6">
+    <UserControl.Styles>
+        <Style Selector="Expander.settings-section">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style Selector="Expander.settings-section TextBlock.section-header">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#555555"/>
+            <Setter Property="LetterSpacing" Value="0.8"/>
+        </Style>
+    </UserControl.Styles>
+
+    <StackPanel Spacing="0">
 
         <!-- ── Palette ───────────────────────────────────────────── -->
-        <TextBlock Text="PALETTE"
-                   FontSize="10" FontWeight="SemiBold"
-                   Foreground="#555555" LetterSpacing="0.8"
-                   Margin="2,0,0,4"/>
+        <Expander Classes="settings-section" IsExpanded="True">
+            <Expander.Header>
+                <TextBlock Text="PALETTE" Classes="section-header"/>
+            </Expander.Header>
 
-        <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
-            <StackPanel Spacing="10">
+            <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,4,0,0">
+                <StackPanel Spacing="10">
 
-                <Grid ColumnDefinitions="110,*">
-                    <TextBlock Text="Sampling" VerticalAlignment="Center" Opacity="0.75"/>
-                    <ComboBox Grid.Column="1" x:Name="SamplingModeBox"
-                              SelectedIndex="{Binding SamplingModeIndex}"
-                              HorizontalAlignment="Stretch"/>
-                </Grid>
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Sampling" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="SamplingModeBox"
+                                  SelectedIndex="{Binding SamplingModeIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
 
-                <Grid ColumnDefinitions="110,*">
-                    <TextBlock Text="Colors" VerticalAlignment="Center" Opacity="0.75"/>
-                    <ComboBox Grid.Column="1" x:Name="ColorCountBox"
-                              SelectedIndex="{Binding ColorCountIndex}"
-                              HorizontalAlignment="Stretch"/>
-                </Grid>
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Colors" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="ColorCountBox"
+                                  SelectedIndex="{Binding ColorCountIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
 
-                <Grid ColumnDefinitions="110,*">
-                    <TextBlock Text="Theme" VerticalAlignment="Center" Opacity="0.75"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                        <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
-                        <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
-                                                      Converter={x:Static BoolConverters.Not}}"/>
-                    </StackPanel>
-                </Grid>
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Theme" VerticalAlignment="Center" Opacity="0.75"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                            <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
+                            <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
+                                                          Converter={x:Static BoolConverters.Not}}"/>
+                        </StackPanel>
+                    </Grid>
 
-            </StackPanel>
-        </Border>
+                </StackPanel>
+            </Border>
+        </Expander>
 
         <!-- ── Swatches ──────────────────────────────────────────── -->
-        <TextBlock Text="SWATCHES"
-                   FontSize="10" FontWeight="SemiBold"
-                   Foreground="#555555" LetterSpacing="0.8"
-                   Margin="2,10,0,4"/>
+        <Expander Classes="settings-section" IsExpanded="True">
+            <Expander.Header>
+                <TextBlock Text="SWATCHES" Classes="section-header"/>
+            </Expander.Header>
 
-        <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
-            <StackPanel Spacing="8">
-                <CheckBox Content="Show hex labels on swatches"
-                          IsChecked="{Binding ShowHex}"/>
-                <CheckBox Content="Labels below swatches (default: on top)"
-                          IsChecked="{Binding HexBelow}"
-                          IsEnabled="{Binding ShowHex}"
-                          Margin="0,0,0,0"/>
-            </StackPanel>
-        </Border>
+            <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,4,0,0">
+                <StackPanel Spacing="8">
+                    <CheckBox Content="Show hex labels on swatches"
+                              IsChecked="{Binding ShowHex}"/>
+                    <CheckBox Content="Labels below swatches (default: on top)"
+                              IsChecked="{Binding HexBelow}"
+                              IsEnabled="{Binding ShowHex}"
+                              Margin="0,0,0,0"/>
+                </StackPanel>
+            </Border>
+        </Expander>
 
         <!-- ── Metadata ──────────────────────────────────────────── -->
-        <TextBlock Text="METADATA"
-                   FontSize="10" FontWeight="SemiBold"
-                   Foreground="#555555" LetterSpacing="0.8"
-                   Margin="2,10,0,4"/>
+        <Expander Classes="settings-section" IsExpanded="True">
+            <Expander.Header>
+                <TextBlock Text="METADATA" Classes="section-header"/>
+            </Expander.Header>
 
-        <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
-            <StackPanel Spacing="10">
+            <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,4,0,0">
+                <StackPanel Spacing="10">
 
-                <Grid ColumnDefinitions="110,*">
-                    <TextBlock Text="Verbosity" VerticalAlignment="Center" Opacity="0.75"/>
-                    <ComboBox Grid.Column="1" x:Name="MetaVerbosityBox"
-                              SelectedIndex="{Binding MetaVerbosityIndex}"
-                              HorizontalAlignment="Stretch"/>
-                </Grid>
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Verbosity" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="MetaVerbosityBox"
+                                  SelectedIndex="{Binding MetaVerbosityIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
 
-                <Grid ColumnDefinitions="110,*">
-                    <TextBlock Text="Style" VerticalAlignment="Center" Opacity="0.75"/>
-                    <ComboBox Grid.Column="1" x:Name="MetaStyleBox"
-                              SelectedIndex="{Binding MetaStyleIndex}"
-                              HorizontalAlignment="Stretch"/>
-                </Grid>
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Style" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="MetaStyleBox"
+                                  SelectedIndex="{Binding MetaStyleIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
 
-            </StackPanel>
-        </Border>
+                </StackPanel>
+            </Border>
+        </Expander>
 
         <!-- ── Output ────────────────────────────────────────── -->
-        <TextBlock Text="OUTPUT"
-                   FontSize="10" FontWeight="SemiBold"
-                   Foreground="#555555" LetterSpacing="0.8"
-                   Margin="2,10,0,4"/>
+        <Expander Classes="settings-section" IsExpanded="True">
+            <Expander.Header>
+                <TextBlock Text="OUTPUT" Classes="section-header"/>
+            </Expander.Header>
 
-        <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10">
-            <StackPanel Spacing="8">
-                <CheckBox Content="Show color palette (swatches)"
-                          IsChecked="{Binding ShowSwatches}"/>
-                <CheckBox Content="Half size — compress 2× (~4× smaller file)"
-                          IsChecked="{Binding HalfSize}"
-                          IsVisible="{Binding !IsMobile}"/>
+            <Border BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,10" Margin="0,4,0,0">
+                <StackPanel Spacing="10">
 
-                <StackPanel IsVisible="{Binding IsMobile}" Spacing="8" Margin="0,2,0,0">
-                    <TextBlock Text="Working size" VerticalAlignment="Center" Opacity="0.75"/>
-                    <ComboBox x:Name="WorkingQualityBox"
-                              SelectedIndex="{Binding WorkingQualityIndex}"
-                              HorizontalAlignment="Stretch"/>
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Format" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="OutputFormatBox"
+                                  SelectedIndex="{Binding OutputFormatIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                    <Grid ColumnDefinitions="110,*">
+                        <TextBlock Text="Export size" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox Grid.Column="1" x:Name="ExportPresetBox"
+                                  SelectedIndex="{Binding ExportPresetIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+
+                    <CheckBox Content="Show color palette (swatches)"
+                              IsChecked="{Binding ShowSwatches}"/>
+                    <CheckBox Content="Half size — compress 2× (~4× smaller file)"
+                              IsChecked="{Binding HalfSize}"
+                              IsVisible="{Binding !IsMobile}"/>
+
+                    <StackPanel IsVisible="{Binding IsMobile}" Spacing="8" Margin="0,2,0,0">
+                        <TextBlock Text="Working size" VerticalAlignment="Center" Opacity="0.75"/>
+                        <ComboBox x:Name="WorkingQualityBox"
+                                  SelectedIndex="{Binding WorkingQualityIndex}"
+                                  HorizontalAlignment="Stretch"/>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-        </Border>
+            </Border>
+        </Expander>
 
     </StackPanel>
 

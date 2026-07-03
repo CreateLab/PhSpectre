@@ -55,6 +55,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public Func<string, string, Task<string?>>? SavePngAsync    { get; set; }
 
     private string?                  _lastTempPng;
+    private string                   _lastExtension = ".png";
     private CancellationTokenSource? _renderCts;
     private CancellationTokenSource? _thumbnailCts;
 
@@ -133,7 +134,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private async Task SavePngAsync2()
     {
         if (SavePngAsync == null || _lastTempPng == null || SelectedFile == null) return;
-        var suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + "_palette.png";
+        var suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + "_palette" + _lastExtension;
         var dest = await SavePngAsync(suggested, Path.GetDirectoryName(SelectedFile.FullPath)!);
         if (dest != null)
             File.Copy(_lastTempPng, dest, overwrite: true);
@@ -177,9 +178,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
             token.ThrowIfCancellationRequested();
 
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
+            _lastExtension = Settings.FileExtension;
+            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             var snap = (filePath, Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity,
-                        Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches, Settings.HalfSize);
+                        Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches, Settings.HalfSize,
+                        Settings.OutputFormat, Settings.ExportPreset);
             await Task.Run(() => PaletteImageRenderer.Render(
                 snap.filePath, palette, tmpOut,
                 showHex:       snap.ShowHex,
@@ -188,13 +191,16 @@ public partial class MainWindowViewModel : ViewModelBase
                 theme:         snap.Theme,
                 hexBelow:      snap.HexBelow,
                 showSwatches:  snap.ShowSwatches,
-                downscale:     snap.HalfSize ? 2 : 1), token);
+                downscale:     snap.HalfSize ? 2 : 1,
+                format:        snap.OutputFormat,
+                exportPreset:  snap.ExportPreset), token);
 
             token.ThrowIfCancellationRequested();
 
             _lastTempPng   = tmpOut;
             var sizeBytes  = new System.IO.FileInfo(tmpOut).Length;
-            OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB PNG";
+            var formatLabel = snap.OutputFormat == OutputFormat.Jpeg ? "JPG" : "PNG";
+            OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";
             PaletteBitmap  = new Bitmap(tmpOut);
         }
         catch (OperationCanceledException) { }
