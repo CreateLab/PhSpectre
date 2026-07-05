@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using PhSpectre.Avalonia.ViewModels;
 
 namespace PhSpectre.Avalonia.Views;
 
@@ -47,6 +49,11 @@ public partial class SettingsPanel : UserControl
         SizeChanged += (_, e) => ApplyResponsiveLayout(e.NewSize.Width);
     }
 
+    private void ToggleMetadataEditor_Tapped(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm) vm.ToggleMetadataEditorCommand.Execute(null);
+    }
+
     private static void AddItem(ComboBox box, string shortText, string fullText)
     {
         var item = new ComboBoxItem { Content = shortText };
@@ -67,7 +74,9 @@ public partial class SettingsPanel : UserControl
         foreach (var row in new[]
                  {
                      SamplingRow, ColorCountRow, ExportThemeRow, VerbosityRow,
-                     StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow
+                     StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow,
+                     MetaCameraRow, MetaLensRow, MetaFocalRow, MetaApertureRow,
+                     MetaShutterRow, MetaIsoRow, MetaDateRow
                  })
         {
             if (row.Children.Count < 2) continue;

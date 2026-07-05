@@ -33,6 +33,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool       _isListView = false;
     [ObservableProperty] private string?    _fileInfoText;
     [ObservableProperty] private string?    _outputSizeText;
+    [ObservableProperty] private bool       _isRegenerateAvailable;
 
     // Batch export
     [ObservableProperty] private BatchExportState _batchState = BatchExportState.Idle;
@@ -67,9 +68,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public bool ShowResultPlaceholder => !IsGenerating && PaletteBitmap == null && string.IsNullOrEmpty(ErrorMessage);
 
-    partial void OnIsGeneratingChanged(bool value)    => OnPropertyChanged(nameof(ShowResultPlaceholder));
+    partial void OnIsGeneratingChanged(bool value)    { OnPropertyChanged(nameof(ShowResultPlaceholder)); RegenerateCommand.NotifyCanExecuteChanged(); }
     partial void OnPaletteBitmapChanged(Bitmap? value) => OnPropertyChanged(nameof(ShowResultPlaceholder));
     partial void OnErrorMessageChanged(string? value)  => OnPropertyChanged(nameof(ShowResultPlaceholder));
+    partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
+
+    private bool CanRegenerate() => IsRegenerateAvailable && SelectedFile != null && !IsBatchActive && !IsGenerating;
+
+    [RelayCommand(CanExecute = nameof(CanRegenerate))]
+    private async Task Regenerate()
+    {
+        await GeneratePaletteAsync(SelectedFile);
+        IsRegenerateAvailable = false;
+    }
 
     public string FilePositionText
     {
@@ -105,6 +116,7 @@ public partial class MainWindowViewModel : ViewModelBase
         SaveAllCommand.NotifyCanExecuteChanged();
         CancelBatchCommand.NotifyCanExecuteChanged();
         OpenFolderCommand.NotifyCanExecuteChanged();
+        RegenerateCommand.NotifyCanExecuteChanged();
     }
     partial void OnBatchProcessedChanged(int value) { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); }
     partial void OnBatchTotalChanged(int value)     { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); }
@@ -119,7 +131,6 @@ public partial class MainWindowViewModel : ViewModelBase
     private CancellationTokenSource? _renderCts;
     private CancellationTokenSource? _thumbnailCts;
     private CancellationTokenSource? _batchCts;
-    private DispatcherTimer?         _settingsDebounceTimer;
     private DispatcherTimer?         _batchCancelGuardTimer;
     private DispatcherTimer?         _batchResultTimer;
     private bool                     _batchCancelGuardActive;
@@ -139,9 +150,10 @@ public partial class MainWindowViewModel : ViewModelBase
         // needs its own subscription to actually track them.
         _batchErrors.CollectionChanged += (_, _) => OnPropertyChanged(nameof(BatchHasErrors));
 
-        // The settings sidebar is always visible and applies live — no OK button. Any
-        // change re-renders the current photo after a short debounce (typing through a
-        // ComboBox, or several quick changes, shouldn't trigger a render per keystroke).
+        // The settings sidebar is always visible and applies live, but changing a setting
+        // never re-renders on its own — that's a forced/surprising cost the user explicitly
+        // didn't want. Instead a settings change just surfaces the Regenerate button; the
+        // actual re-render only happens when the user clicks it.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
 
         AppUpdateService.Instance.PropertyChanged += (_, e) =>
@@ -156,16 +168,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (SelectedFile == null || IsBatchActive) return;
-
-        _settingsDebounceTimer?.Stop();
-        _settingsDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
-        _settingsDebounceTimer.Tick += (_, _) =>
-        {
-            _settingsDebounceTimer!.Stop();
-            _ = GeneratePaletteAsync(SelectedFile);
-        };
-        _settingsDebounceTimer.Start();
+        // Settings.LoadMetadataFields (called when a new photo is selected) bulk-assigns the
+        // metadata text fields, which would otherwise look like a user edit and pop up
+        // Regenerate for a photo that's already about to render fresh.
+        if (SelectedFile == null || IsBatchActive || Settings.IsBulkLoading) return;
+        IsRegenerateAvailable = true;
     }
 
     partial void OnIsListViewChanged(bool value) => OnPropertyChanged(nameof(IsGridView));
@@ -173,6 +180,8 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedFileChanged(FileEntry? value)
     {
         OnPropertyChanged(nameof(FilePositionText));
+        Settings.LoadMetadataFields(value != null ? PaletteImageRenderer.ReadMetadata(value.FullPath) : null);
+        IsRegenerateAvailable = false; // the fresh render below is already current — nothing to regenerate yet
         _ = GeneratePaletteAsync(value);
     }
 
@@ -261,6 +270,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OutputSizeText  = null;
         _lastTempPng    = null;
         SavePngAsync2Command.NotifyCanExecuteChanged();
+        RegenerateCommand.NotifyCanExecuteChanged();
 
         if (entry == null) return;
 
@@ -281,7 +291,8 @@ public partial class MainWindowViewModel : ViewModelBase
             _lastExtension = Settings.FileExtension;
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            await PaletteExportService.ExportAsync(filePath, tmpOut, exportSettings, token);
+            await PaletteExportService.ExportAsync(filePath, tmpOut, exportSettings, token,
+                metadataOverride: Settings.BuildMetadataOverride());
 
             token.ThrowIfCancellationRequested();
 

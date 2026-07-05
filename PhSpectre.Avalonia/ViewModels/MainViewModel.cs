@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,6 +33,7 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private string? _outputSizeText;
     [ObservableProperty] private bool    _isSettingsOpen;
     [ObservableProperty] private bool    _isSaved;
+    [ObservableProperty] private bool    _isRegenerateAvailable;
 
     public Func<Task<(Stream Stream, string FileName)?>>? PickImageAsync { get; set; }
     public Func<string, string, Task<bool>>?               SavePngAsync  { get; set; }
@@ -40,6 +42,35 @@ public partial class MainViewModel : ViewModelBase
     private string?                  _lastFileName;
     private string                   _lastExtension = ".png";
     private CancellationTokenSource? _renderCts;
+
+    // Kept on disk across renders (unlike the old single-shot tmpIn) so a settings/metadata
+    // change can be re-rendered without asking the user to pick the same photo again.
+    private string? _currentSourcePath;
+
+    public MainViewModel()
+    {
+        // Mirrors Desktop's MainWindowViewModel: a settings change never re-renders on its
+        // own — it only surfaces the Regenerate button. Actual re-render is user-triggered.
+        Settings.PropertyChanged += OnSettingsPropertyChanged;
+    }
+
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // Settings.LoadMetadataFields (called right after a new photo is ingested) bulk-assigns
+        // the metadata text fields, which would otherwise look like a user edit and pop up
+        // Regenerate for a photo that's already about to render fresh.
+        if (_currentSourcePath == null || IsGenerating || Settings.IsBulkLoading) return;
+        IsRegenerateAvailable = true;
+    }
+
+    private bool CanRegenerate() => IsRegenerateAvailable && _currentSourcePath != null && !IsGenerating;
+
+    [RelayCommand(CanExecute = nameof(CanRegenerate))]
+    private async Task Regenerate()
+    {
+        await RenderCurrentAsync();
+        IsRegenerateAvailable = false;
+    }
 
     // Photos above the chosen cap (long edge) get downscaled before processing — running
     // the full extract/render/PNG-encode pipeline at native mobile-camera resolution is
@@ -61,7 +92,8 @@ public partial class MainViewModel : ViewModelBase
 
     private DispatcherTimer? _saveConfirmTimer;
 
-    partial void OnIsGeneratingChanged(bool value)      => OnPropertyChanged(nameof(ShowPlaceholder));
+    partial void OnIsGeneratingChanged(bool value)      { OnPropertyChanged(nameof(ShowPlaceholder)); RegenerateCommand.NotifyCanExecuteChanged(); }
+    partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
     partial void OnPaletteBitmapChanged(Bitmap? value)
     {
         OnPropertyChanged(nameof(ShowPlaceholder));
@@ -84,7 +116,7 @@ public partial class MainViewModel : ViewModelBase
         var picked = await PickImageAsync();
         if (picked == null) return;
 
-        await GeneratePaletteAsync(picked.Value.Stream, picked.Value.FileName);
+        await IngestNewPhotoAsync(picked.Value.Stream, picked.Value.FileName);
     }
 
     [RelayCommand(CanExecute = nameof(CanSavePng))]
@@ -108,8 +140,39 @@ public partial class MainViewModel : ViewModelBase
 
     private bool CanSavePng() => PaletteBitmap != null && !IsGenerating;
 
-    private async Task GeneratePaletteAsync(Stream sourceStream, string fileName)
+    // Copies a newly picked photo to a stable temp path (replacing whatever was there before)
+    // and renders it. Unlike a one-shot render, this path survives afterwards — see
+    // _currentSourcePath — so a later settings/metadata change can re-render without asking
+    // the user to pick the same photo again.
+    private async Task IngestNewPhotoAsync(Stream sourceStream, string fileName)
     {
+        _renderCts?.Cancel();
+
+        var oldSourcePath = _currentSourcePath;
+        var newSourcePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{fileName}");
+        await using (var fs = File.Create(newSourcePath))
+            await sourceStream.CopyToAsync(fs);
+        await sourceStream.DisposeAsync();
+
+        _currentSourcePath = newSourcePath;
+        _lastFileName = fileName;
+
+        if (oldSourcePath != null)
+        {
+            try { File.Delete(oldSourcePath); } catch { /* best effort */ }
+        }
+
+        Settings.LoadMetadataFields(PaletteImageRenderer.ReadMetadata(_currentSourcePath));
+        IsRegenerateAvailable = false; // the render below is already current — nothing to regenerate yet
+
+        await RenderCurrentAsync();
+    }
+
+    private async Task RenderCurrentAsync()
+    {
+        if (_currentSourcePath == null) return;
+        var sourcePath = _currentSourcePath;
+
         _renderCts?.Cancel();
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
@@ -120,24 +183,17 @@ public partial class MainViewModel : ViewModelBase
         FileInfoText   = null;
         OutputSizeText = null;
         _lastTempPng   = null;
-        _lastFileName  = fileName;
         _saveConfirmTimer?.Stop();
         IsSaved = false;
         SavePngCommand.NotifyCanExecuteChanged();
 
         IsGenerating = true;
-        var tmpIn = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{fileName}");
         Image<Rgb24>? working = null;
         try
         {
-            await using (var fs = File.Create(tmpIn))
-                await sourceStream.CopyToAsync(fs, token);
-            await sourceStream.DisposeAsync();
-
-            // Single decode of the source photo, downscaled to the working cap in the
-            // same pass. Preview/extraction/render below all reuse this one in-memory
-            // image instead of each re-decoding the file from disk.
-            working = await Task.Run(() => ImageLoader.LoadWorkingCopy(tmpIn, MaxWorkingDimension), token);
+            // Re-decoded from disk every time (not cached across renders) so a Working size
+            // change picks up its new cap immediately instead of reusing an old downscale.
+            working = await Task.Run(() => ImageLoader.LoadWorkingCopy(sourcePath, MaxWorkingDimension), token);
             token.ThrowIfCancellationRequested();
 
             using var previewMs = await Task.Run(() => ImageLoader.ToJpegStream(working), token);
@@ -145,7 +201,7 @@ public partial class MainViewModel : ViewModelBase
             OriginalBitmap = new Bitmap(previewMs);
 
             var ps = OriginalBitmap.PixelSize;
-            FileInfoText = $"{fileName}  ·  {ps.Width}×{ps.Height}";
+            FileInfoText = $"{_lastFileName}  ·  {ps.Width}×{ps.Height}";
 
             var palette = await new PaletteExtractor().ExtractAsync(working, Settings.Colors, Settings.SamplingMode, token);
             token.ThrowIfCancellationRequested();
@@ -155,17 +211,19 @@ public partial class MainViewModel : ViewModelBase
             var snap = (Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity,
                         Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches,
                         Settings.OutputFormat, Settings.ExportPreset);
+            var metadataOverride = Settings.BuildMetadataOverride();
             await Task.Run(() => PaletteImageRenderer.Render(
                 working, palette, tmpOut,
-                showHex:       snap.ShowHex,
-                metaVerbosity: snap.MetaVerbosity,
-                metaStyle:     snap.MetaStyle,
-                theme:         snap.Theme,
-                hexBelow:      snap.HexBelow,
-                showSwatches:  snap.ShowSwatches,
-                downscale:     1, // resolution already capped via WorkingQuality above
-                format:        snap.OutputFormat,
-                exportPreset:  snap.ExportPreset), token);
+                showHex:          snap.ShowHex,
+                metaVerbosity:    snap.MetaVerbosity,
+                metaStyle:        snap.MetaStyle,
+                theme:            snap.Theme,
+                hexBelow:         snap.HexBelow,
+                showSwatches:     snap.ShowSwatches,
+                downscale:        1, // resolution already capped via WorkingQuality above
+                format:           snap.OutputFormat,
+                exportPreset:     snap.ExportPreset,
+                metadataOverride: metadataOverride), token);
 
             token.ThrowIfCancellationRequested();
 
@@ -183,7 +241,6 @@ public partial class MainViewModel : ViewModelBase
         finally
         {
             working?.Dispose();
-            File.Delete(tmpIn);
             if (!token.IsCancellationRequested)
             {
                 IsGenerating = false;

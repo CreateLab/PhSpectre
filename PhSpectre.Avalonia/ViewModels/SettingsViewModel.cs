@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhSpectre.Avalonia.Services;
 using PhSpectre.Rendering;
+using PhotoMetadata = PhSpectre.Rendering.PaletteImageRenderer.PhotoMetadata;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
@@ -25,6 +26,74 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private WorkingQuality _workingQuality = WorkingQuality.Fast;
     [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Png;
     [ObservableProperty] private ExportPreset   _exportPreset   = ExportPreset.Original;
+
+    // Editable subset of the photo's metadata strip (Camera/Lens/Focal/Aperture/Shutter/Iso/
+    // Date) — the other 5 fields PhotoMetadata carries (FocalEq, ExposureBias, WhiteBalance,
+    // ExpProgram, Serial) are always taken as-is from the detected EXIF, never user-edited.
+    [ObservableProperty] private bool   _isMetadataEditorExpanded;
+    [ObservableProperty] private string _metaCameraText   = "";
+    [ObservableProperty] private string _metaLensText     = "";
+    [ObservableProperty] private string _metaFocalText    = "";
+    [ObservableProperty] private string _metaApertureText = "";
+    [ObservableProperty] private string _metaShutterText  = "";
+    [ObservableProperty] private string _metaIsoText      = "";
+    [ObservableProperty] private string _metaDateText     = "";
+
+    private PhotoMetadata? _detectedMetadata;
+
+    // True only while LoadMetadataFields is bulk-populating the 7 text fields above (e.g.
+    // right after a new photo is selected) — lets the owning ViewModel's Settings.PropertyChanged
+    // watcher tell "user actually edited something" apart from "we just loaded a new photo's
+    // detected EXIF", so the Regenerate button doesn't pop up for a photo that's already current.
+    public bool IsBulkLoading { get; private set; }
+
+    private static readonly PhotoMetadata EmptyMetadata = new("", "", "", "", "", "", "", "", "", "", "", "");
+
+    public void LoadMetadataFields(PhotoMetadata? detected)
+    {
+        IsBulkLoading = true;
+        try
+        {
+            _detectedMetadata = detected;
+            var m = detected ?? EmptyMetadata;
+            MetaCameraText   = m.Camera;
+            MetaLensText     = m.Lens;
+            MetaFocalText    = m.Focal;
+            MetaApertureText = m.Aperture;
+            MetaShutterText  = m.Shutter;
+            MetaIsoText      = m.Iso;
+            MetaDateText     = m.Date;
+        }
+        finally
+        {
+            IsBulkLoading = false;
+        }
+    }
+
+    public PhotoMetadata BuildMetadataOverride()
+    {
+        var baseline = _detectedMetadata ?? EmptyMetadata;
+        return baseline with
+        {
+            Camera   = MetaCameraText,
+            Lens     = MetaLensText,
+            Focal    = MetaFocalText,
+            Aperture = MetaApertureText,
+            Shutter  = MetaShutterText,
+            Iso      = MetaIsoText,
+            Date     = MetaDateText
+        };
+    }
+
+    [RelayCommand]
+    private void ResetMetadata() => LoadMetadataFields(_detectedMetadata);
+
+    [RelayCommand]
+    private void ToggleMetadataEditor() => IsMetadataEditorExpanded = !IsMetadataEditorExpanded;
+
+    public string MetadataEditorToggleLabel => IsMetadataEditorExpanded ? "Hide" : "Edit";
+
+    partial void OnIsMetadataEditorExpandedChanged(bool value) => OnPropertyChanged(nameof(MetadataEditorToggleLabel));
 
     public bool  IsMobile => OperatingSystem.IsAndroid();
     public Theme Theme    => IsDarkTheme ? Theme.Dark : Theme.Light;

@@ -50,6 +50,11 @@
             <Setter Property="MinHeight" Value="44"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+        <Style Selector="TextBox">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MinHeight" Value="40"/>
+        </Style>
     </UserControl.Styles>
 
     <StackPanel Spacing="0" Grid.IsSharedSizeScope="True">
@@ -210,6 +215,120 @@
                 <ComboBox Grid.Column="1" x:Name="WorkingQualityBox"
                           SelectedIndex="{Binding WorkingQualityIndex}"/>
             </Grid>
+
+        </StackPanel>
+
+        <!-- ── Photo metadata ────────────────────────────────────── -->
+        <Border Classes="section-sep"/>
+        <Grid ColumnDefinitions="*,50">
+            <TextBlock Grid.Column="0" Text="PHOTO METADATA" Classes="section-header"/>
+            <Border Grid.Column="1" Background="Transparent" Cursor="Hand"
+                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,20,0,8"
+                    Tapped="ToggleMetadataEditor_Tapped">
+                <TextBlock Text="{Binding MetadataEditorToggleLabel}" FontSize="11"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+            </Border>
+        </Grid>
+        <!-- Only Camera/Lens/Focal/Aperture/Shutter/ISO/Date are editable — the strip's other
+             fields (35mm-eq, exposure bias, white balance, exposure program, serial) always
+             come straight from the photo's real EXIF. -->
+        <StackPanel Spacing="10" IsVisible="{Binding IsMetadataEditorExpanded}">
+
+            <Grid x:Name="MetaCameraRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Camera" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaCameraText}" PlaceholderText="e.g. Canon EOS R5"/>
+            </Grid>
+
+            <Grid x:Name="MetaLensRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Lens" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaLensText}" PlaceholderText="e.g. RF 24-70mm f/2.8"/>
+            </Grid>
+
+            <Grid x:Name="MetaFocalRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Focal" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaFocalText}" PlaceholderText="e.g. 50mm"/>
+            </Grid>
+
+            <Grid x:Name="MetaApertureRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Aperture" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaApertureText}" PlaceholderText="e.g. f/2.8"/>
+            </Grid>
+
+            <Grid x:Name="MetaShutterRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Shutter" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaShutterText}" PlaceholderText="e.g. 1/200s"/>
+            </Grid>
+
+            <Grid x:Name="MetaIsoRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="ISO" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaIsoText}" PlaceholderText="e.g. ISO 400"/>
+            </Grid>
+
+            <Grid x:Name="MetaDateRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Date" Classes="row-label"/>
+                <TextBox Grid.Column="1" Text="{Binding MetaDateText}" PlaceholderText="e.g. 2026-07-05"/>
+            </Grid>
+
+            <Button Classes="secondary" HorizontalAlignment="Left"
+                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                    Content="Reset to photo's EXIF"
+                    Command="{Binding ResetMetadataCommand}"/>
 
         </StackPanel>
 

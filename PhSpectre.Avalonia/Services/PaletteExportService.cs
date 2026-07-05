@@ -11,7 +11,8 @@ namespace PhSpectre.Avalonia.Services;
 public static class PaletteExportService
 {
     public static async Task ExportAsync(
-        string sourcePath, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken)
+        string sourcePath, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
     {
         PhSpectre.Models.ColorPalette palette;
         await using (var fs = System.IO.File.OpenRead(sourcePath))
@@ -21,14 +22,15 @@ public static class PaletteExportService
 
         await Task.Run(() => PaletteImageRenderer.Render(
             sourcePath, palette, destPath,
-            showHex:       settings.ShowHex,
-            metaVerbosity: settings.MetaVerbosity,
-            metaStyle:     settings.MetaStyle,
-            theme:         settings.Theme,
-            hexBelow:      settings.HexBelow,
-            showSwatches:  settings.ShowSwatches,
-            downscale:     settings.HalfSize ? 2 : 1,
-            format:        settings.Format,
-            exportPreset:  settings.ExportPreset), cancellationToken);
+            showHex:          settings.ShowHex,
+            metaVerbosity:    settings.MetaVerbosity,
+            metaStyle:        settings.MetaStyle,
+            theme:            settings.Theme,
+            hexBelow:         settings.HexBelow,
+            showSwatches:     settings.ShowSwatches,
+            downscale:        settings.HalfSize ? 2 : 1,
+            format:           settings.Format,
+            exportPreset:     settings.ExportPreset,
+            metadataOverride: metadataOverride), cancellationToken);
     }
 }

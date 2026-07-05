@@ -218,6 +218,19 @@
 
                     <StackPanel Grid.Row="1" Margin="16,0,16,16" Spacing="8">
                         <Border Height="1" Background="{StaticResource CardBorderBrush}"/>
+
+                        <!-- Settings/metadata changes never re-render on their own — this
+                             button is the only thing that triggers it, so nothing surprising
+                             happens while the user is still adjusting things. -->
+                        <Button Classes="secondary" Height="34" IsVisible="{Binding IsRegenerateAvailable}"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding RegenerateCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <materialIcons:MaterialIcon Kind="Refresh" Width="16" Height="16" VerticalAlignment="Center"/>
+                                <TextBlock Text="Regenerate" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <TextBlock Text="{Binding OutputSizeText}"
                                    HorizontalAlignment="Center"
                                    FontSize="11" Opacity="0.5"/>

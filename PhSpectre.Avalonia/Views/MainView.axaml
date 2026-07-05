@@ -110,6 +110,18 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         </Panel>
                     </Border>
 
+                    <!-- Settings/metadata changes never re-render on their own — this button
+                         is the only thing that triggers it, so nothing surprising happens
+                         while the user is still adjusting things. -->
+                    <Button Classes="secondary" IsVisible="{Binding IsRegenerateAvailable}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            Command="{Binding RegenerateCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="Refresh" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Regenerate" FontSize="13" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <!-- Save bar -->
                     <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasResult}">
                         <TextBlock Grid.Column="0"

@@ -32,7 +32,10 @@ public static class PaletteImageRenderer
         ? new ThemeColors(Color.ParseHex("F5F5F5"), Color.ParseHex("1A1A1A"))
         : new ThemeColors(Color.ParseHex("111111"), Color.White);
 
-    private record ExifData(
+    // 12 display-formatted metadata fields drawn into the strip/overlay. Camera, Lens, Focal,
+    // Aperture, Shutter, Iso, and Date are user-editable in the settings UI; the rest
+    // (FocalEq, ExposureBias, WhiteBalance, ExpProgram, Serial) are always auto-read from EXIF.
+    public record PhotoMetadata(
         string Camera, string Lens,
         string Focal,  string FocalEq,
         string Aperture, string Shutter, string Iso,
@@ -51,11 +54,12 @@ public static class PaletteImageRenderer
         bool showSwatches = true,
         int downscale = 1,
         OutputFormat format = OutputFormat.Png,
-        ExportPreset exportPreset = ExportPreset.Original)
+        ExportPreset exportPreset = ExportPreset.Original,
+        PhotoMetadata? metadataOverride = null)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset);
+        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride);
     }
 
     // Renders from an already-decoded image (caller owns disposal) — skips a redundant
@@ -73,8 +77,9 @@ public static class PaletteImageRenderer
         bool showSwatches = true,
         int downscale = 1,
         OutputFormat format = OutputFormat.Png,
-        ExportPreset exportPreset = ExportPreset.Original)
-        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset);
+        ExportPreset exportPreset = ExportPreset.Original,
+        PhotoMetadata? metadataOverride = null)
+        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride);
 
     private static void RenderCore(
         Image<Rgb24> original,
@@ -88,9 +93,10 @@ public static class PaletteImageRenderer
         bool showSwatches,
         int downscale,
         OutputFormat format,
-        ExportPreset exportPreset)
+        ExportPreset exportPreset,
+        PhotoMetadata? metadataOverride = null)
     {
-        ExifData? exif = metaVerbosity != MetaVerbosity.Off ? ReadExif(original) : null;
+        PhotoMetadata? exif = metaVerbosity == MetaVerbosity.Off ? null : (metadataOverride ?? ReadMetadata(original));
 
         bool landscape = original.Width >= original.Height;
         var canvas = landscape
@@ -153,7 +159,7 @@ public static class PaletteImageRenderer
 
     private static Image<Rgb24> BuildLandscapeCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
-        ExifData? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
+        PhotoMetadata? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
         bool showSwatches = true)
     {
         int n = palette.Swatches.Count;
@@ -204,7 +210,7 @@ public static class PaletteImageRenderer
 
     private static Image<Rgb24> BuildPortraitCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
-        ExifData? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
+        PhotoMetadata? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
         bool showSwatches = true)
     {
         int n = palette.Swatches.Count;
@@ -276,7 +282,7 @@ public static class PaletteImageRenderer
     // ── Strip helpers ───────────────────────────────────────────────────────
 
     private static (string[] lines, int stripH, float fontSize, Font? font) PrepareStrip(
-        ExifData? exif, MetaVerbosity verbosity, int photoWidth)
+        PhotoMetadata? exif, MetaVerbosity verbosity, int photoWidth)
     {
         if (exif == null || verbosity == MetaVerbosity.Off)
             return ([], 0, 0f, null);
@@ -418,7 +424,7 @@ public static class PaletteImageRenderer
 
     // ── Metadata lines ──────────────────────────────────────────────────────
 
-    private static string[] BuildMetaLines(ExifData e, MetaVerbosity v)
+    private static string[] BuildMetaLines(PhotoMetadata e, MetaVerbosity v)
     {
         static string J(params string[] parts) =>
             string.Join("  ·  ", parts.Where(p => !string.IsNullOrWhiteSpace(p)));
@@ -441,11 +447,24 @@ public static class PaletteImageRenderer
 
     // ── EXIF reading ────────────────────────────────────────────────────────
 
-    private static ExifData? ReadExif(Image image)
+    // Reads metadata only, without decoding pixel data — for callers that need to show/edit
+    // metadata fields separately from (and cheaper than) a full render.
+    public static PhotoMetadata? ReadMetadata(string path)
     {
         try
         {
-        var p = image.Metadata.ExifProfile;
+            var info = Image.Identify(path);
+            return info == null ? null : ReadMetadata(info.Metadata.ExifProfile);
+        }
+        catch { return null; }
+    }
+
+    public static PhotoMetadata? ReadMetadata(Image image) => ReadMetadata(image.Metadata.ExifProfile);
+
+    private static PhotoMetadata? ReadMetadata(ExifProfile? p)
+    {
+        try
+        {
         if (p == null) return null;
 
         string Str(ExifTag<string> tag)
@@ -508,7 +527,7 @@ public static class PaletteImageRenderer
         string serial = Str(ExifTag.SerialNumber);
         if (!string.IsNullOrEmpty(serial)) serial = $"S/N: {serial}";
 
-        return new ExifData(camera, lens, focal, focalEq, aperture, shutter, iso, date, ev, wb, ep, serial);
+        return new PhotoMetadata(camera, lens, focal, focalEq, aperture, shutter, iso, date, ev, wb, ep, serial);
         }
         catch { return null; }
     }
