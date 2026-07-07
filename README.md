@@ -8,6 +8,23 @@ Extracts a dominant color palette from a JPEG photo and renders it as a PNG — 
 [![Build — Linux](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml)
 [![Test](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml)
 
+## Screenshots
+
+Desktop app — folder browser, palette settings, and live preview:
+
+![Desktop app](screens/desktop-app.jpg)
+
+Generated palettes — portrait and landscape layouts, with and without hex labels:
+
+<p>
+  <img src="screens/palette-portrait.jpg" width="49%" alt="Portrait palette with hex labels" />
+  <img src="screens/palette-vivid.jpg" width="49%" alt="Portrait palette, vivid colors" />
+</p>
+<p>
+  <img src="screens/palette-landscape.jpg" width="49%" alt="Landscape palette with hex labels" />
+  <img src="screens/palette-no-hex.jpg" width="49%" alt="Landscape palette without hex labels" />
+</p>
+
 ## Releases
 
 Releases are tagged `vX.Y.Z` (semantic versioning) and each one bundles all three platforms —
