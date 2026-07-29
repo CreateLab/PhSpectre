@@ -3,6 +3,7 @@ using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -128,7 +129,11 @@ public static class PaletteImageRenderer
             if (format == OutputFormat.Jpeg)
                 canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = 92 });
             else
-                canvas.SaveAsPng(outputPath);
+                // Adaptive filtering (ImageSharp's default) tries all 5 PNG row filters
+                // per scanline and picks the smallest — ~2x+ slower than a fixed filter
+                // for ~30-45% smaller output. Not worth it on multi-thousand-pixel photo
+                // canvases where this encode was the single largest cost in the pipeline.
+                canvas.SaveAsPng(outputPath, new PngEncoder { FilterMethod = PngFilterMethod.None });
         }
     }
 
