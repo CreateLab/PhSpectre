@@ -30,7 +30,7 @@ Generated palettes — portrait and landscape layouts, with and without hex labe
 
 Releases are tagged `vX.Y.Z` (semantic versioning) and each one bundles all four platforms —
 `PhSpectre-X.Y.Z-windows-x64.zip`, `PhSpectre-X.Y.Z-linux-x64.tar.gz`,
-`PhSpectre-X.Y.Z-macos-arm64.tar.gz`, `PhSpectre-X.Y.Z-android.apk` — with an auto-generated
+`PhSpectre-X.Y.Z-macos-arm64.zip` (a proper `.app` bundle), `PhSpectre-X.Y.Z-android.apk` — with an auto-generated
 changelog. Grab the latest from the
 [Releases page](https://github.com/CreateLab/PhSpectre/releases/latest).
 

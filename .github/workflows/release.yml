@@ -121,15 +121,67 @@ jobs:
             -p:InformationalVersion=${VERSION}+${GITHUB_SHA} \
             -o publish/macos
 
+      - name: Build .app bundle
+        run: |
+          set -e
+          APP=publish/macos/PhSpectre.app
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+
+          mv publish/macos/PhSpectre.Desktop "$APP/Contents/MacOS/PhSpectre"
+          chmod +x "$APP/Contents/MacOS/PhSpectre"
+
+          # sips/iconutil ship preinstalled on macOS runners — no extra deps needed
+          # to turn the app's PNG icon into a .icns for the bundle.
+          ICONSET=publish/macos/PhSpectre.iconset
+          mkdir -p "$ICONSET"
+          SRC=PhSpectre.Avalonia/Assets/Icon.png
+          for size in 16 32 128 256 512; do
+            sips -z $size $size "$SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+            sips -z $((size * 2)) $((size * 2)) "$SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/PhSpectre.icns"
+
+          cat > "$APP/Contents/Info.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>CFBundleName</key>
+              <string>PhSpectre</string>
+              <key>CFBundleDisplayName</key>
+              <string>PhSpectre</string>
+              <key>CFBundleIdentifier</key>
+              <string>com.createlab.phspectre</string>
+              <key>CFBundleVersion</key>
+              <string>${VERSION}</string>
+              <key>CFBundleShortVersionString</key>
+              <string>${VERSION}</string>
+              <key>CFBundleExecutable</key>
+              <string>PhSpectre</string>
+              <key>CFBundleIconFile</key>
+              <string>PhSpectre.icns</string>
+              <key>CFBundlePackageType</key>
+              <string>APPL</string>
+              <key>NSHighResolutionCapable</key>
+              <true/>
+              <key>LSMinimumSystemVersion</key>
+              <string>11.0</string>
+          </dict>
+          </plist>
+          PLIST
+
       - name: Package
         run: |
-          mv publish/macos/PhSpectre.Desktop publish/macos/PhSpectre-macos-arm64
-          tar -czf PhSpectre-${VERSION}-macos-arm64.tar.gz -C publish/macos PhSpectre-macos-arm64
+          # ditto (not zip) preserves the .app bundle structure correctly — the
+          # standard way to zip an .app for distribution on macOS.
+          ditto -c -k --sequesterRsrc --keepParent \
+            publish/macos/PhSpectre.app \
+            PhSpectre-${VERSION}-macos-arm64.zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: macos
-          path: PhSpectre-${{ env.VERSION }}-macos-arm64.tar.gz
+          path: PhSpectre-${{ env.VERSION }}-macos-arm64.zip
 
   android:
     needs: version
