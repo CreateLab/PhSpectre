@@ -2,10 +2,11 @@
 
 Extracts a dominant color palette from a JPEG photo and renders it as a PNG — original image alongside color swatches and optional EXIF metadata.
 
-**Download:** [latest release](https://github.com/CreateLab/PhSpectre/releases/latest) (Windows x64, Linux x64, Android APK)
+**Download:** [latest release](https://github.com/CreateLab/PhSpectre/releases/latest) (Windows x64, Linux x64, macOS arm64, Android APK)
 
 [![Build — Windows](https://github.com/CreateLab/PhSpectre/actions/workflows/build-windows.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-windows.yml)
 [![Build — Linux](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml)
+[![Build — macOS](https://github.com/CreateLab/PhSpectre/actions/workflows/build-macos.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-macos.yml)
 [![Test](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml)
 
 ## Screenshots
@@ -27,16 +28,17 @@ Generated palettes — portrait and landscape layouts, with and without hex labe
 
 ## Releases
 
-Releases are tagged `vX.Y.Z` (semantic versioning) and each one bundles all three platforms —
+Releases are tagged `vX.Y.Z` (semantic versioning) and each one bundles all four platforms —
 `PhSpectre-X.Y.Z-windows-x64.zip`, `PhSpectre-X.Y.Z-linux-x64.tar.gz`,
-`PhSpectre-X.Y.Z-android.apk` — with an auto-generated changelog. Grab the latest from the
+`PhSpectre-X.Y.Z-macos-arm64.tar.gz`, `PhSpectre-X.Y.Z-android.apk` — with an auto-generated
+changelog. Grab the latest from the
 [Releases page](https://github.com/CreateLab/PhSpectre/releases/latest).
 
 The apps check for a newer release on startup (once a day at most) and show a small,
 dismissible notice when one's available — no auto-download/auto-install, it just links to
 the release page.
 
-Every commit to `master` still gets a plain build-and-test check on all three platforms
+Every commit to `master` still gets a plain build-and-test check on all four platforms
 (no version, no release) via the Build/Test workflows above — those aren't installable
 releases, just CI signal.
 
