@@ -130,41 +130,14 @@ jobs:
           mv publish/macos/PhSpectre.Desktop "$APP/Contents/MacOS/PhSpectre"
           chmod +x "$APP/Contents/MacOS/PhSpectre"
 
-          # Icon.png is an indexed-color PNG, which macOS's sips/ImageIO can
-          # refuse to read ("not a valid file") even though every other decoder
-          # (incl. ImageSharp, used here) handles it fine. Re-save it as a plain
-          # truecolor RGBA PNG first so sips has something it's happy with.
-          mkdir -p /tmp/iconconv
-          cat > /tmp/iconconv/iconconv.csproj <<'EOF'
-          <Project Sdk="Microsoft.NET.Sdk">
-            <PropertyGroup>
-              <OutputType>Exe</OutputType>
-              <TargetFramework>net10.0</TargetFramework>
-              <ImplicitUsings>enable</ImplicitUsings>
-            </PropertyGroup>
-            <ItemGroup>
-              <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-            </ItemGroup>
-          </Project>
-          EOF
-          cat > /tmp/iconconv/Program.cs <<'EOF'
-          using SixLabors.ImageSharp;
-          using SixLabors.ImageSharp.PixelFormats;
-          using SixLabors.ImageSharp.Processing;
-
-          using var img = Image.Load<Rgba32>(args[0]);
-          img.Mutate(ctx => ctx.Resize(1024, 1024));
-          img.SaveAsPng(args[1]);
-          EOF
-          dotnet run --project /tmp/iconconv -c Release -- \
-            "$(pwd)/PhSpectre.Avalonia/Assets/Icon.png" \
-            "$(pwd)/publish/macos/icon-source.png"
-
-          # sips/iconutil ship preinstalled on macOS runners — no extra deps needed
-          # to turn the normalized PNG icon into a .icns for the bundle.
+          # PhSpectre.Avalonia/Assets/Icon.png is gitignored (*.png) and only
+          # ever existed on a local dev machine — never checked out on CI. Use
+          # the Android app icon instead: it's explicitly un-ignored, tracked,
+          # and a plain 432x432 truecolor+alpha PNG that sips reads natively.
+          # sips/iconutil ship preinstalled on macOS runners — no extra deps.
           ICONSET=publish/macos/PhSpectre.iconset
           mkdir -p "$ICONSET"
-          SRC=publish/macos/icon-source.png
+          SRC=PhSpectre.Android/Icon.png
           for size in 16 32 128 256 512; do
             sips -z $size $size "$SRC" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
             sips -z $((size * 2)) $((size * 2)) "$SRC" --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
