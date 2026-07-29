@@ -35,7 +35,8 @@ app.UseSwagger();
 app.UseSwaggerUI();
 app.UseRateLimiter();
 
-app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [FromForm] string? theme, [FromForm] string? mode) =>
+app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [FromForm] string? theme, [FromForm] string? mode,
+    [FromForm] string? sort, [FromForm] string? shape, [FromForm] bool? showPercent) =>
 {
     if (file == null)
         return Results.Json(new { error = "file is required" }, statusCode: 400);
@@ -64,6 +65,25 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
     if (colors is < 1 or > 32)
         return Results.Json(new { error = "colors must be between 1 and 32" }, statusCode: 400);
 
+    SortOrder parsedSort = SortOrder.None;
+    if (!string.IsNullOrEmpty(sort))
+    {
+        if      (sort.Equals("none",      StringComparison.OrdinalIgnoreCase)) parsedSort = SortOrder.None;
+        else if (sort.Equals("hue",       StringComparison.OrdinalIgnoreCase)) parsedSort = SortOrder.Hue;
+        else if (sort.Equals("luminance", StringComparison.OrdinalIgnoreCase)) parsedSort = SortOrder.Luminance;
+        else if (sort.Equals("percent",   StringComparison.OrdinalIgnoreCase)) parsedSort = SortOrder.Percent;
+        else return Results.Json(new { error = "sort must be 'none', 'hue', 'luminance' or 'percent'" }, statusCode: 400);
+    }
+
+    SwatchShape parsedShape = SwatchShape.Rectangle;
+    if (!string.IsNullOrEmpty(shape))
+    {
+        if      (shape.Equals("rect",    StringComparison.OrdinalIgnoreCase)) parsedShape = SwatchShape.Rectangle;
+        else if (shape.Equals("rounded", StringComparison.OrdinalIgnoreCase)) parsedShape = SwatchShape.Rounded;
+        else if (shape.Equals("circle",  StringComparison.OrdinalIgnoreCase)) parsedShape = SwatchShape.Circle;
+        else return Results.Json(new { error = "shape must be 'rect', 'rounded' or 'circle'" }, statusCode: 400);
+    }
+
     var tmpIn  = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
     var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
     try
@@ -79,7 +99,10 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
             showHex: true,
             metaVerbosity: MetaVerbosity.Default,
             metaStyle: MetaStyle.FilmStrip,
-            theme: parsedTheme);
+            theme: parsedTheme,
+            sortOrder: parsedSort,
+            swatchShape: parsedShape,
+            showPercent: showPercent ?? false);
 
         var bytes = await File.ReadAllBytesAsync(tmpOut);
         return Results.File(bytes, "application/octet-stream", "palette.png");
@@ -111,7 +134,7 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
         content.Schema.Required.Add("file");
     }
     op.Responses["200"].Description = "PNG palette image";
-    op.Responses["400"] = new OpenApiResponse { Description = "Invalid input (missing file, wrong format, bad theme/colors)" };
+    op.Responses["400"] = new OpenApiResponse { Description = "Invalid input (missing file, wrong format, bad theme/colors/sort/shape)" };
     op.Responses["429"] = new OpenApiResponse { Description = "Rate limit exceeded — 10 requests/minute per IP" };
     op.Responses["500"] = new OpenApiResponse { Description = "Internal rendering error" };
     return op;

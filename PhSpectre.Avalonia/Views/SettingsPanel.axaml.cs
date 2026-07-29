@@ -46,6 +46,15 @@ public partial class SettingsPanel : UserControl
         AddItem(ExportPresetBox, "Story",        "1080×1920 — Instagram & Telegram Stories");
         AddItem(ExportPresetBox, "TG landscape", "1920×1080 — Telegram landscape photo");
 
+        SwatchShapeBox.Items.Add("Rectangle");
+        SwatchShapeBox.Items.Add("Rounded");
+        SwatchShapeBox.Items.Add("Circle");
+
+        SortOrderBox.Items.Add("None");
+        SortOrderBox.Items.Add("Hue");
+        SortOrderBox.Items.Add("Luminance");
+        SortOrderBox.Items.Add("Percent");
+
         SizeChanged += (_, e) => ApplyResponsiveLayout(e.NewSize.Width);
     }
 
@@ -75,6 +84,7 @@ public partial class SettingsPanel : UserControl
                  {
                      SamplingRow, ColorCountRow, ExportThemeRow, VerbosityRow,
                      StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow,
+                     ShapeRow, SortRow,
                      MetaCameraRow, MetaLensRow, MetaFocalRow, MetaApertureRow,
                      MetaShutterRow, MetaIsoRow, MetaDateRow
                  })

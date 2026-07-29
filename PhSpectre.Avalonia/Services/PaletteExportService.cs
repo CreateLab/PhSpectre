@@ -31,6 +31,12 @@ public static class PaletteExportService
             downscale:        settings.HalfSize ? 2 : 1,
             format:           settings.Format,
             exportPreset:     settings.ExportPreset,
-            metadataOverride: metadataOverride), cancellationToken);
+            metadataOverride: metadataOverride,
+            labelScale:       settings.LabelScale,
+            swatchScale:      settings.SwatchScale,
+            showPercent:      settings.ShowPercent,
+            swatchShape:      settings.SwatchShape,
+            sortOrder:        settings.SortOrder,
+            customBackground: settings.CustomBackground), cancellationToken);
     }
 }

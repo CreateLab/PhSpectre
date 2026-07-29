@@ -27,6 +27,14 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Png;
     [ObservableProperty] private ExportPreset   _exportPreset   = ExportPreset.Original;
 
+    [ObservableProperty] private float          _labelScale          = 1.0f;
+    [ObservableProperty] private float          _swatchScale         = 1.0f;
+    [ObservableProperty] private bool           _showPercent         = false;
+    [ObservableProperty] private SwatchShape    _swatchShape         = SwatchShape.Rectangle;
+    [ObservableProperty] private SortOrder      _sortOrder           = SortOrder.None;
+    [ObservableProperty] private bool           _useCustomBackground = false;
+    [ObservableProperty] private string         _customBackgroundHex = "#FFFFFF";
+
     // Editable subset of the photo's metadata strip (Camera/Lens/Focal/Aperture/Shutter/Iso/
     // Date) — the other 5 fields PhotoMetadata carries (FocalEq, ExposureBias, WhiteBalance,
     // ExpProgram, Serial) are always taken as-is from the detected EXIF, never user-edited.
@@ -150,6 +158,18 @@ public partial class SettingsViewModel : ViewModelBase
         set => ExportPreset = (ExportPreset)value;
     }
 
+    public int SwatchShapeIndex
+    {
+        get => (int)SwatchShape;
+        set => SwatchShape = (SwatchShape)value;
+    }
+
+    public int SortOrderIndex
+    {
+        get => (int)SortOrder;
+        set => SortOrder = (SortOrder)value;
+    }
+
     // ComboBox index shims
     public int ColorCountIndex
     {
@@ -182,4 +202,6 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnWorkingQualityChanged(WorkingQuality value) => OnPropertyChanged(nameof(WorkingQualityIndex));
     partial void OnOutputFormatChanged(OutputFormat value)     { OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension)); OnPropertyChanged(nameof(SaveButtonLabel)); }
     partial void OnExportPresetChanged(ExportPreset value)     => OnPropertyChanged(nameof(ExportPresetIndex));
+    partial void OnSwatchShapeChanged(SwatchShape value)       => OnPropertyChanged(nameof(SwatchShapeIndex));
+    partial void OnSortOrderChanged(SortOrder value)           => OnPropertyChanged(nameof(SortOrderIndex));
 }

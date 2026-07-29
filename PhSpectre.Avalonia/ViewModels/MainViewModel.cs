@@ -210,7 +210,11 @@ public partial class MainViewModel : ViewModelBase
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             var snap = (Settings.ShowHex, Settings.HexBelow, Settings.MetaVerbosity,
                         Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches,
-                        Settings.OutputFormat, Settings.ExportPreset);
+                        Settings.OutputFormat, Settings.ExportPreset,
+                        Settings.LabelScale, Settings.SwatchScale, Settings.ShowPercent,
+                        Settings.SwatchShape, Settings.SortOrder,
+                        CustomBackground: Settings.UseCustomBackground
+                            && Color.TryParseHex(Settings.CustomBackgroundHex, out var bg) ? bg : (Color?)null);
             var metadataOverride = Settings.BuildMetadataOverride();
             await Task.Run(() => PaletteImageRenderer.Render(
                 working, palette, tmpOut,
@@ -223,7 +227,13 @@ public partial class MainViewModel : ViewModelBase
                 downscale:        1, // resolution already capped via WorkingQuality above
                 format:           snap.OutputFormat,
                 exportPreset:     snap.ExportPreset,
-                metadataOverride: metadataOverride), token);
+                metadataOverride: metadataOverride,
+                labelScale:       snap.LabelScale,
+                swatchScale:      snap.SwatchScale,
+                showPercent:      snap.ShowPercent,
+                swatchShape:      snap.SwatchShape,
+                sortOrder:        snap.SortOrder,
+                customBackground: snap.CustomBackground), token);
 
             token.ThrowIfCancellationRequested();
 

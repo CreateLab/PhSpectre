@@ -55,6 +55,11 @@
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="MinHeight" Value="40"/>
         </Style>
+        <Style Selector="Slider">
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="MinHeight" Value="32"/>
+        </Style>
     </UserControl.Styles>
 
     <StackPanel Spacing="0" Grid.IsSharedSizeScope="True">
@@ -124,6 +129,69 @@
                       ToolTip.Tip="Off puts labels above the swatch instead of below">
                 <TextBlock Text="Labels below swatches" TextWrapping="Wrap"/>
             </CheckBox>
+            <CheckBox IsChecked="{Binding ShowPercent}">
+                <TextBlock Text="Show percentage on swatches" TextWrapping="Wrap"/>
+            </CheckBox>
+
+            <Grid x:Name="ShapeRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Shape" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="SwatchShapeBox"
+                          SelectedIndex="{Binding SwatchShapeIndex}"/>
+            </Grid>
+
+            <Grid x:Name="SortRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Sort" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="SortOrderBox"
+                          SelectedIndex="{Binding SortOrderIndex}"/>
+            </Grid>
+
+            <Grid x:Name="SwatchScaleRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Plate size" Classes="row-label"/>
+                <Slider Grid.Column="1" Value="{Binding SwatchScale}"
+                        Minimum="0.5" Maximum="2.0" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                <TextBlock Grid.Column="2" Text="{Binding SwatchScale, StringFormat={}{0:0.0}x}"
+                           Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
+            </Grid>
+
+            <Grid x:Name="LabelScaleRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Label size" Classes="row-label"/>
+                <Slider Grid.Column="1" Value="{Binding LabelScale}"
+                        Minimum="0.5" Maximum="2.0" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+                <TextBlock Grid.Column="2" Text="{Binding LabelScale, StringFormat={}{0:0.0}x}"
+                           Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
+            </Grid>
+
+            <CheckBox IsChecked="{Binding UseCustomBackground}">
+                <TextBlock Text="Custom background color" TextWrapping="Wrap"/>
+            </CheckBox>
+            <TextBox Text="{Binding CustomBackgroundHex}" IsEnabled="{Binding UseCustomBackground}"
+                      PlaceholderText="#RRGGBB"/>
         </StackPanel>
 
         <!-- ── Metadata ──────────────────────────────────────────── -->

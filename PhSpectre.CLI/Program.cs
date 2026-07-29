@@ -7,6 +7,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("       [--mode vivid|standard|contrast]");
     Console.Error.WriteLine("       [--no-meta] [--meta-short] [--meta-detail] [--meta-full] [--meta-overlay]");
     Console.Error.WriteLine("       [--theme dark|light]");
+    Console.Error.WriteLine("       [--sort none|hue|luminance|percent] [--shape rect|rounded|circle] [--show-percent]");
     return 1;
 }
 
@@ -18,6 +19,9 @@ var samplingMode  = SamplingMode.Vivid;
 var metaVerbosity = MetaVerbosity.Default;
 var metaStyle     = MetaStyle.FilmStrip;
 var theme         = Theme.Dark;
+var sortOrder     = SortOrder.None;
+var swatchShape   = SwatchShape.Rectangle;
+bool showPercent  = false;
 
 for (int i = 1; i < args.Length; i++)
 {
@@ -56,6 +60,30 @@ for (int i = 1; i < args.Length; i++)
         else { Console.Error.WriteLine($"Unknown theme '{args[i + 1]}'. Use 'dark' or 'light'."); return 1; }
         i++;
     }
+    else if (args[i] == "--sort" && i + 1 < args.Length)
+    {
+        sortOrder = args[i + 1].ToLowerInvariant() switch
+        {
+            "none"      => SortOrder.None,
+            "hue"       => SortOrder.Hue,
+            "luminance" => SortOrder.Luminance,
+            "percent"   => SortOrder.Percent,
+            _ => throw new Exception($"Unknown sort '{args[i + 1]}'. Use none, hue, luminance or percent.")
+        };
+        i++;
+    }
+    else if (args[i] == "--shape" && i + 1 < args.Length)
+    {
+        swatchShape = args[i + 1].ToLowerInvariant() switch
+        {
+            "rect"    => SwatchShape.Rectangle,
+            "rounded" => SwatchShape.Rounded,
+            "circle"  => SwatchShape.Circle,
+            _ => throw new Exception($"Unknown shape '{args[i + 1]}'. Use rect, rounded or circle.")
+        };
+        i++;
+    }
+    else if (args[i] == "--show-percent") { showPercent = true; }
     else
     {
         Console.Error.WriteLine($"Unknown argument: {args[i]}");
@@ -93,7 +121,8 @@ string outputPath = Path.Combine(
     Path.GetDirectoryName(Path.GetFullPath(imagePath))!,
     Path.GetFileNameWithoutExtension(imagePath) + "_palette.png");
 
-PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow);
+PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow,
+    sortOrder: sortOrder, swatchShape: swatchShape, showPercent: showPercent);
 
 Console.WriteLine($"Saved: {outputPath}");
 foreach (var swatch in palette.Swatches)

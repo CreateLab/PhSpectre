@@ -1,6 +1,7 @@
 using PhSpectre;
 using PhSpectre.Rendering;
 using PhSpectre.Avalonia.ViewModels;
+using SixLabors.ImageSharp;
 
 namespace PhSpectre.Avalonia.Services;
 
@@ -18,11 +19,22 @@ public sealed record PaletteExportSettings(
     bool ShowSwatches,
     bool HalfSize,
     OutputFormat Format,
-    ExportPreset ExportPreset)
+    ExportPreset ExportPreset,
+    float LabelScale,
+    float SwatchScale,
+    bool ShowPercent,
+    SwatchShape SwatchShape,
+    SortOrder SortOrder,
+    Color? CustomBackground)
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 
     public static PaletteExportSettings SnapshotFrom(SettingsViewModel s) => new(
         s.Colors, s.SamplingMode, s.ShowHex, s.HexBelow, s.MetaVerbosity, s.MetaStyle,
-        s.Theme, s.ShowSwatches, s.HalfSize, s.OutputFormat, s.ExportPreset);
+        s.Theme, s.ShowSwatches, s.HalfSize, s.OutputFormat, s.ExportPreset,
+        s.LabelScale, s.SwatchScale, s.ShowPercent, s.SwatchShape, s.SortOrder,
+        s.UseCustomBackground ? ParseHexOrNull(s.CustomBackgroundHex) : null);
+
+    private static Color? ParseHexOrNull(string? hex) =>
+        !string.IsNullOrWhiteSpace(hex) && Color.TryParseHex(hex, out var c) ? c : null;
 }

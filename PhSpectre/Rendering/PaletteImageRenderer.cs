@@ -1,6 +1,7 @@
 using PhSpectre.Models;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
@@ -25,13 +26,24 @@ public enum OutputFormat { Png, Jpeg }
 // than one generic "square/story" pair.
 public enum ExportPreset { Original, Square, InstagramPost, Story, TelegramLandscape }
 
+public enum SwatchShape { Rectangle, Rounded, Circle }
+public enum SortOrder   { None, Hue, Luminance, Percent }
+
 public static class PaletteImageRenderer
 {
     private record ThemeColors(Color Background, Color Text);
 
-    private static ThemeColors GetThemeColors(Theme theme) => theme == Theme.Light
-        ? new ThemeColors(Color.ParseHex("F5F5F5"), Color.ParseHex("1A1A1A"))
-        : new ThemeColors(Color.ParseHex("111111"), Color.White);
+    private static ThemeColors GetThemeColors(Theme theme, Color? customBackground = null)
+    {
+        if (customBackground is { } bg)
+        {
+            var px = bg.ToPixel<Rgb24>();
+            return new ThemeColors(bg, ContrastColor(px.R, px.G, px.B));
+        }
+        return theme == Theme.Light
+            ? new ThemeColors(Color.ParseHex("F5F5F5"), Color.ParseHex("1A1A1A"))
+            : new ThemeColors(Color.ParseHex("111111"), Color.White);
+    }
 
     // 12 display-formatted metadata fields drawn into the strip/overlay. Camera, Lens, Focal,
     // Aperture, Shutter, Iso, and Date are user-editable in the settings UI; the rest
@@ -56,11 +68,18 @@ public static class PaletteImageRenderer
         int downscale = 1,
         OutputFormat format = OutputFormat.Png,
         ExportPreset exportPreset = ExportPreset.Original,
-        PhotoMetadata? metadataOverride = null)
+        PhotoMetadata? metadataOverride = null,
+        float labelScale = 1.0f,
+        float swatchScale = 1.0f,
+        bool showPercent = false,
+        SwatchShape swatchShape = SwatchShape.Rectangle,
+        SortOrder sortOrder = SortOrder.None,
+        Color? customBackground = null)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride);
+        RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground);
     }
 
     // Renders from an already-decoded image (caller owns disposal) — skips a redundant
@@ -79,8 +98,15 @@ public static class PaletteImageRenderer
         int downscale = 1,
         OutputFormat format = OutputFormat.Png,
         ExportPreset exportPreset = ExportPreset.Original,
-        PhotoMetadata? metadataOverride = null)
-        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride);
+        PhotoMetadata? metadataOverride = null,
+        float labelScale = 1.0f,
+        float swatchScale = 1.0f,
+        bool showPercent = false,
+        SwatchShape swatchShape = SwatchShape.Rectangle,
+        SortOrder sortOrder = SortOrder.None,
+        Color? customBackground = null)
+        => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground);
 
     private static void RenderCore(
         Image<Rgb24> original,
@@ -95,14 +121,27 @@ public static class PaletteImageRenderer
         int downscale,
         OutputFormat format,
         ExportPreset exportPreset,
-        PhotoMetadata? metadataOverride = null)
+        PhotoMetadata? metadataOverride = null,
+        float labelScale = 1.0f,
+        float swatchScale = 1.0f,
+        bool showPercent = false,
+        SwatchShape swatchShape = SwatchShape.Rectangle,
+        SortOrder sortOrder = SortOrder.None,
+        Color? customBackground = null)
     {
+        labelScale = Math.Clamp(labelScale, 0.5f, 2.0f);
+        swatchScale = Math.Clamp(swatchScale, 0.5f, 2.0f);
+
         PhotoMetadata? exif = metaVerbosity == MetaVerbosity.Off ? null : (metadataOverride ?? ReadMetadata(original));
+
+        ColorPalette effectivePalette = sortOrder == SortOrder.None
+            ? palette
+            : new ColorPalette(SortSwatches(palette.Swatches, sortOrder));
 
         bool landscape = original.Width >= original.Height;
         var canvas = landscape
-            ? BuildLandscapeCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches)
-            : BuildPortraitCanvas(original, palette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches);
+            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground)
+            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground);
 
         if (downscale > 1)
             canvas.Mutate(ctx => ctx.Resize(canvas.Width / downscale, canvas.Height / downscale));
@@ -119,7 +158,7 @@ public static class PaletteImageRenderer
                 ExportPreset.TelegramLandscape => (1920, 1080, 0, 0),
                 _ => (canvas.Width, canvas.Height, 0, 0)
             };
-            var framed = FitToFrame(canvas, targetW, targetH, GetThemeColors(theme).Background, safeTop, safeBottom);
+            var framed = FitToFrame(canvas, targetW, targetH, GetThemeColors(theme, customBackground).Background, safeTop, safeBottom);
             canvas.Dispose();
             canvas = framed;
         }
@@ -165,29 +204,34 @@ public static class PaletteImageRenderer
     private static Image<Rgb24> BuildLandscapeCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
         PhotoMetadata? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
-        bool showSwatches = true)
+        bool showSwatches = true,
+        float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
+        SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null)
     {
         int n = palette.Swatches.Count;
-        var tc = GetThemeColors(theme);
+        var tc = GetThemeColors(theme, customBackground);
 
         // Swatch panel (computed always; only added to canvas when showSwatches=true)
-        int panelH   = Math.Max(120, original.Height / 8);
+        int panelH   = (int)(Math.Max(120, original.Height / 8) * swatchScale);
         int margin   = Math.Max(10, original.Width / 80);
         int gap      = Math.Max(4, panelH / 20);
         int swatchH  = panelH * 6 / 10;
         int swatchW  = (original.Width - 2 * margin - (n - 1) * gap) / n;
-        float swatchFs = Math.Clamp(panelH / 14f * 6f, 60f, 168f);
+        float swatchFs = Math.Clamp(panelH / 14f * 6f, 60f, 168f) * labelScale;
         int textPad  = Math.Max(3, panelH / 25);
-        Font? swatchFont = showHex ? FitSwatchFont(swatchFs, swatchW - 2 * textPad) : null;
+        int labelLines = (showHex ? 1 : 0) + (showPercent ? 1 : 0);
+        Font? swatchFont = labelLines > 0
+            ? FitSwatchFont(swatchFs, swatchW - 2 * textPad, showHex)
+            : null;
 
         // Meta strip
-        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width);
+        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width, labelScale);
 
         // Canvas layout — swatch panel is optional. Swatches sit directly under the photo;
         // the filmstrip (when present) goes after the swatches, not before.
         int canvasH      = original.Height + (showSwatches ? panelH : 0) + (style == MetaStyle.FilmStrip ? stripH : 0);
         int swatchPanelY = original.Height;
-        int labelH       = showHex && hexBelow ? (int)swatchFs + textPad : 0;
+        int labelH       = labelLines > 0 && hexBelow ? (int)swatchFs * labelLines + textPad : 0;
         int swatchY      = swatchPanelY + (panelH - swatchH - labelH) / 2;
         int stripY       = style == MetaStyle.FilmStrip
             ? original.Height + (showSwatches ? panelH : 0)
@@ -202,11 +246,11 @@ public static class PaletteImageRenderer
             ctx.DrawImage(original, new Point(0, 0), 1f);
 
             if (showSwatches)
-                DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc);
+                DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc, showPercent, swatchShape);
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: stripY,
-                w: original.Width, overlayTextColor: overlayTextColor);
+                w: original.Width, overlayTextColor: overlayTextColor, customBackground: customBackground);
         });
         return canvas;
     }
@@ -216,30 +260,35 @@ public static class PaletteImageRenderer
     private static Image<Rgb24> BuildPortraitCanvas(
         Image<Rgb24> original, ColorPalette palette, bool showHex, bool hexBelow,
         PhotoMetadata? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
-        bool showSwatches = true)
+        bool showSwatches = true,
+        float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
+        SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null)
     {
         int n = palette.Swatches.Count;
-        var tc = GetThemeColors(theme);
+        var tc = GetThemeColors(theme, customBackground);
 
         // Swatch panel (computed always; column only added to canvas when showSwatches=true)
-        int panelW   = Math.Max(100, original.Width / 5);
+        int panelW   = (int)(Math.Max(100, original.Width / 5) * swatchScale);
         int margin   = Math.Max(10, original.Height / 80);
         int gap      = Math.Max(4, panelW / 20);
         int textPad  = Math.Max(3, panelW / 25);
-        float swatchFs = Math.Clamp(panelW / 8f * 6f, 60f, 144f);
+        float swatchFs = Math.Clamp(panelW / 8f * 6f, 60f, 144f) * labelScale;
         int swatchW  = panelW * 7 / 10;
         int swatchX  = original.Width + (panelW - swatchW) / 2;
-        Font? swatchFont = showHex ? FitSwatchFont(swatchFs, swatchW - 2 * textPad) : null;
+        int labelLines = (showHex ? 1 : 0) + (showPercent ? 1 : 0);
+        Font? swatchFont = labelLines > 0
+            ? FitSwatchFont(swatchFs, swatchW - 2 * textPad, showHex)
+            : null;
 
         // Reserve extra space per swatch when drawing label below
-        int labelH  = showHex && hexBelow ? (int)swatchFs + textPad : 0;
+        int labelH  = labelLines > 0 && hexBelow ? (int)swatchFs * labelLines + textPad : 0;
         int swatchH = (original.Height - 2 * margin - (n - 1) * gap - n * labelH) / n;
 
         int canvasW = showSwatches ? original.Width + panelW : original.Width;
 
         // In overlay mode the box covers only the photo, so fit text to photo width
         int stripWidth = style == MetaStyle.Overlay ? original.Width : canvasW;
-        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth);
+        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth, labelScale);
 
         int canvasH = style == MetaStyle.FilmStrip && stripH > 0
             ? original.Height + stripH
@@ -255,29 +304,22 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
-                w: canvasW, overlayTextColor: overlayTextColor);
+                w: canvasW, overlayTextColor: overlayTextColor, customBackground: customBackground);
 
             if (showSwatches)
             for (int i = 0; i < n; i++)
             {
-                var (r, g, b) = palette.Swatches[i].Rgb;
+                var swatch = palette.Swatches[i];
+                var (r, g, b) = swatch.Rgb;
                 int y = margin + i * (swatchH + labelH + gap);
-                ctx.Fill(Color.FromRgb(r, g, b), new RectangleF(swatchX, y, swatchW, swatchH));
-                if (showHex && swatchFont != null)
+                FillSwatchShape(ctx, Color.FromRgb(r, g, b), swatchX, y, swatchW, swatchH, swatchShape);
+                if (labelLines > 0 && swatchFont != null)
                 {
+                    string[] labelText = BuildSwatchLabelLines(swatch, showHex, showPercent);
                     if (hexBelow)
-                        ctx.DrawText(new RichTextOptions(swatchFont)
-                        {
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            Origin = new PointF(swatchX + swatchW / 2f, y + swatchH + textPad)
-                        }, palette.Swatches[i].Hex, tc.Text);
+                        DrawSwatchLabelLines(ctx, swatchFont, labelText, swatchX + swatchW / 2f, y + swatchH + textPad, swatchFs, tc.Text, down: true);
                     else
-                        ctx.DrawText(new RichTextOptions(swatchFont)
-                        {
-                            HorizontalAlignment = HorizontalAlignment.Center,
-                            VerticalAlignment   = VerticalAlignment.Center,
-                            Origin = new PointF(swatchX + swatchW / 2f, y + swatchH / 2f)
-                        }, palette.Swatches[i].Hex, ContrastColor(r, g, b));
+                        DrawSwatchLabelLines(ctx, swatchFont, labelText, swatchX + swatchW / 2f, y + swatchH / 2f, swatchFs, ContrastColor(r, g, b), down: false);
                 }
             }
         });
@@ -287,7 +329,7 @@ public static class PaletteImageRenderer
     // ── Strip helpers ───────────────────────────────────────────────────────
 
     private static (string[] lines, int stripH, float fontSize, Font? font) PrepareStrip(
-        PhotoMetadata? exif, MetaVerbosity verbosity, int photoWidth)
+        PhotoMetadata? exif, MetaVerbosity verbosity, int photoWidth, float labelScale = 1.0f)
     {
         if (exif == null || verbosity == MetaVerbosity.Off)
             return ([], 0, 0f, null);
@@ -303,7 +345,7 @@ public static class PaletteImageRenderer
         const int targetChars = 55;
         var probeFont   = ResolveMetaFont(100f);
         float probeW    = TextMeasurer.MeasureSize(new string('0', targetChars), new TextOptions(probeFont)).Width;
-        float fs        = Math.Max(photoWidth * 0.95f * 100f / probeW, 40f);
+        float fs        = Math.Max(photoWidth * 0.95f * 100f / probeW, 40f) * labelScale;
         Font font       = ResolveMetaFont(fs);
 
         float stripPadF = fs * 0.6f;
@@ -367,11 +409,11 @@ public static class PaletteImageRenderer
         IImageProcessingContext ctx,
         string[] lines, int stripH, float fontSize, Font? font,
         MetaStyle style, Theme theme, int x, int y, int w,
-        Color? overlayTextColor = null)
+        Color? overlayTextColor = null, Color? customBackground = null)
     {
         if (lines.Length == 0 || font == null || stripH == 0) return;
 
-        var tc      = GetThemeColors(theme);
+        var tc      = GetThemeColors(theme, customBackground);
         int lineH   = (int)(fontSize * 1.5f);
         int pad     = (int)(fontSize * 0.6f);
 
@@ -401,30 +443,105 @@ public static class PaletteImageRenderer
         IImageProcessingContext ctx,
         ColorPalette palette, int n, int swatchW, int swatchH,
         int margin, int gap, int swatchY, int textPad,
-        bool showHex, bool hexBelow, Font? font, ThemeColors tc)
+        bool showHex, bool hexBelow, Font? font, ThemeColors tc,
+        bool showPercent = false, SwatchShape swatchShape = SwatchShape.Rectangle)
     {
+        bool showLabel = showHex || showPercent;
         for (int i = 0; i < n; i++)
         {
-            var (r, g, b) = palette.Swatches[i].Rgb;
+            var swatch = palette.Swatches[i];
+            var (r, g, b) = swatch.Rgb;
             int x = margin + i * (swatchW + gap);
-            ctx.Fill(Color.FromRgb(r, g, b), new RectangleF(x, swatchY, swatchW, swatchH));
-            if (showHex && font != null)
+            FillSwatchShape(ctx, Color.FromRgb(r, g, b), x, swatchY, swatchW, swatchH, swatchShape);
+            if (showLabel && font != null)
             {
+                string[] labelText = BuildSwatchLabelLines(swatch, showHex, showPercent);
+                float fs = font.Size;
                 if (hexBelow)
-                    ctx.DrawText(new RichTextOptions(font)
-                    {
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        Origin = new PointF(x + swatchW / 2f, swatchY + swatchH + textPad)
-                    }, palette.Swatches[i].Hex, tc.Text);
+                    DrawSwatchLabelLines(ctx, font, labelText, x + swatchW / 2f, swatchY + swatchH + textPad, fs, tc.Text, down: true);
                 else
-                    ctx.DrawText(new RichTextOptions(font)
-                    {
-                        HorizontalAlignment = HorizontalAlignment.Center,
-                        VerticalAlignment   = VerticalAlignment.Center,
-                        Origin = new PointF(x + swatchW / 2f, swatchY + swatchH / 2f)
-                    }, palette.Swatches[i].Hex, ContrastColor(r, g, b));
+                    DrawSwatchLabelLines(ctx, font, labelText, x + swatchW / 2f, swatchY + swatchH / 2f, fs, ContrastColor(r, g, b), down: false);
             }
         }
+    }
+
+    // Builds the 1-2 label lines drawn on/under a swatch — hex on top, percentage below,
+    // when both are enabled; otherwise whichever single one is active.
+    private static string[] BuildSwatchLabelLines(ColorSwatch swatch, bool showHex, bool showPercent)
+    {
+        if (showHex && showPercent) return [swatch.Hex, swatch.Percentage.ToString("P0")];
+        if (showHex) return [swatch.Hex];
+        if (showPercent) return [swatch.Percentage.ToString("P0")];
+        return [];
+    }
+
+    // Draws 1-2 stacked label lines either below the swatch (down: true, top-aligned at origin)
+    // or centered inside it (down: false, origin is the swatch's vertical center).
+    private static void DrawSwatchLabelLines(
+        IImageProcessingContext ctx, Font font, string[] lines, float centerX, float originY, float lineHeight, Color color, bool down)
+    {
+        if (lines.Length == 0) return;
+
+        // Single centered line keeps pixel-perfect glyph-metric centering via VerticalAlignment.
+        // Below-swatch or multi-line labels are stacked top-down from a computed start instead,
+        // since VerticalAlignment.Center only centers a single line, not a block of several.
+        if (!down && lines.Length == 1)
+        {
+            ctx.DrawText(new RichTextOptions(font)
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment   = VerticalAlignment.Center,
+                Origin = new PointF(centerX, originY)
+            }, lines[0], color);
+            return;
+        }
+
+        float startY = down ? originY : originY - lines.Length * lineHeight / 2f;
+        for (int i = 0; i < lines.Length; i++)
+        {
+            ctx.DrawText(new RichTextOptions(font)
+            {
+                HorizontalAlignment = HorizontalAlignment.Center,
+                Origin = new PointF(centerX, startY + i * lineHeight)
+            }, lines[i], color);
+        }
+    }
+
+    // Fills a swatch with the requested shape — shared by the landscape row (DrawSwatches)
+    // and the portrait column (BuildPortraitCanvas) so shape support lives in one place.
+    private static void FillSwatchShape(IImageProcessingContext ctx, Color color, float x, float y, float w, float h, SwatchShape shape)
+    {
+        switch (shape)
+        {
+            case SwatchShape.Circle:
+                float cx = x + w / 2f, cy = y + h / 2f, radius = Math.Min(w, h) / 2f;
+                ctx.Fill(color, new EllipsePolygon(cx, cy, radius));
+                break;
+            case SwatchShape.Rounded:
+                ctx.Fill(color, RoundedRectPath(x, y, w, h, Math.Min(Math.Min(w, h) * 0.18f, Math.Min(w, h) / 2f)));
+                break;
+            default:
+                ctx.Fill(color, new RectangleF(x, y, w, h));
+                break;
+        }
+    }
+
+    // No built-in rounded-rectangle primitive ships with this ImageSharp.Drawing version —
+    // build one from 4 corner arcs joined by straight edges.
+    private static IPath RoundedRectPath(float x, float y, float w, float h, float r)
+    {
+        var pb = new PathBuilder();
+        pb.StartFigure();
+        pb.AddArc(new PointF(x + r, y + r), r, r, 0, 180, 90);
+        pb.AddLine(new PointF(x + r, y), new PointF(x + w - r, y));
+        pb.AddArc(new PointF(x + w - r, y + r), r, r, 0, 270, 90);
+        pb.AddLine(new PointF(x + w, y + r), new PointF(x + w, y + h - r));
+        pb.AddArc(new PointF(x + w - r, y + h - r), r, r, 0, 0, 90);
+        pb.AddLine(new PointF(x + w - r, y + h), new PointF(x + r, y + h));
+        pb.AddArc(new PointF(x + r, y + h - r), r, r, 0, 90, 90);
+        pb.AddLine(new PointF(x, y + h - r), new PointF(x, y + r));
+        pb.CloseFigure();
+        return pb.Build();
     }
 
     // ── Metadata lines ──────────────────────────────────────────────────────
@@ -609,25 +726,57 @@ public static class PaletteImageRenderer
     // Shrinks the swatch hex-label font until "#000000" (all hex labels are the same
     // 7-char width) actually fits inside the swatch, instead of trusting a size guessed
     // from panel geometry alone — that guess badly overflows on narrow/portrait swatches.
-    private static Font FitSwatchFont(float startSize, float maxTextWidth)
+    private static Font FitSwatchFont(float startSize, float maxTextWidth, bool showHex = true)
     {
         const float minSize = 10f;
         if (maxTextWidth <= 0) return ResolveMetaFont(minSize);
 
+        // "#000000" (7 chars) when a hex label is drawn, otherwise the shorter "100%" —
+        // both are the widest string that style of label can ever produce.
+        string probe = showHex ? "#000000" : "100%";
         for (float size = startSize; size > minSize; size -= 2f)
         {
             var font = ResolveMetaFont(size);
-            if (TextMeasurer.MeasureSize("#000000", new TextOptions(font)).Width <= maxTextWidth)
+            if (TextMeasurer.MeasureSize(probe, new TextOptions(font)).Width <= maxTextWidth)
                 return font;
         }
         return ResolveMetaFont(minSize);
     }
 
-    private static Color ContrastColor(byte r, byte g, byte b)
+    private static double RelativeLuminance(byte r, byte g, byte b)
     {
         static double Ch(byte c) { double s = c / 255.0; return s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4); }
-        return 0.2126 * Ch(r) + 0.7152 * Ch(g) + 0.0722 * Ch(b) < 0.179 ? Color.White : Color.Black;
+        return 0.2126 * Ch(r) + 0.7152 * Ch(g) + 0.0722 * Ch(b);
     }
+
+    private static Color ContrastColor(byte r, byte g, byte b)
+        => RelativeLuminance(r, g, b) < 0.179 ? Color.White : Color.Black;
+
+    // Standard RGB→hue conversion (0-360, undefined/0 for achromatic colors) — only the hue
+    // component is needed for sorting, so this skips computing saturation/lightness.
+    internal static float RgbToHue(byte r, byte g, byte b)
+    {
+        float rf = r / 255f, gf = g / 255f, bf = b / 255f;
+        float max = Math.Max(rf, Math.Max(gf, bf));
+        float min = Math.Min(rf, Math.Min(gf, bf));
+        float delta = max - min;
+        if (delta == 0) return 0f;
+
+        float hue;
+        if (max == rf)      hue = 60f * (((gf - bf) / delta) % 6f);
+        else if (max == gf) hue = 60f * (((bf - rf) / delta) + 2f);
+        else                hue = 60f * (((rf - gf) / delta) + 4f);
+
+        return hue < 0 ? hue + 360f : hue;
+    }
+
+    internal static List<ColorSwatch> SortSwatches(IReadOnlyList<ColorSwatch> swatches, SortOrder order) => order switch
+    {
+        SortOrder.Hue       => swatches.OrderBy(s => RgbToHue(s.Rgb.R, s.Rgb.G, s.Rgb.B)).ToList(),
+        SortOrder.Luminance => swatches.OrderBy(s => RelativeLuminance(s.Rgb.R, s.Rgb.G, s.Rgb.B)).ToList(),
+        SortOrder.Percent   => swatches.OrderByDescending(s => s.Percentage).ToList(),
+        _                   => swatches.ToList()
+    };
 
     // Samples the top-left corner of the photo to decide overlay text color.
     // Uses relative luminance threshold 0.35 on the blended result (overlay at 55%).
