@@ -173,6 +173,15 @@ jobs:
           </plist>
           PLIST
 
+          # Apple Silicon requires every executable to carry at least a
+          # signature to run at all. Without one, Gatekeeper reports the
+          # misleading "PhSpectre is damaged and can't be opened" instead of
+          # the expected "unidentified developer" prompt. Ad-hoc signing (no
+          # Apple Developer account, no cost) fixes that; it doesn't pass
+          # notarization, so the unidentified-developer prompt (right-click →
+          # Open, once) is still expected on first launch.
+          codesign --force --deep -s - "$APP"
+
       - name: Package
         run: |
           # ditto (not zip) preserves the .app bundle structure correctly — the
