@@ -28,6 +28,7 @@ public enum ExportPreset { Original, Square, InstagramPost, Story, TelegramLands
 
 public enum SwatchShape { Rectangle, Rounded, Circle }
 public enum SortOrder   { None, Hue, Luminance, Percent }
+public enum CompositionGuide { None, RuleOfThirds, GoldenRatio, Diagonal, CenterCross }
 
 public static class PaletteImageRenderer
 {
@@ -74,12 +75,13 @@ public static class PaletteImageRenderer
         bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle,
         SortOrder sortOrder = SortOrder.None,
-        Color? customBackground = null)
+        Color? customBackground = null,
+        CompositionGuide compositionGuide = CompositionGuide.None)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
         RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
-            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground);
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide);
     }
 
     // Renders from an already-decoded image (caller owns disposal) — skips a redundant
@@ -104,9 +106,10 @@ public static class PaletteImageRenderer
         bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle,
         SortOrder sortOrder = SortOrder.None,
-        Color? customBackground = null)
+        Color? customBackground = null,
+        CompositionGuide compositionGuide = CompositionGuide.None)
         => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
-            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground);
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide);
 
     private static void RenderCore(
         Image<Rgb24> original,
@@ -127,7 +130,8 @@ public static class PaletteImageRenderer
         bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle,
         SortOrder sortOrder = SortOrder.None,
-        Color? customBackground = null)
+        Color? customBackground = null,
+        CompositionGuide compositionGuide = CompositionGuide.None)
     {
         labelScale = Math.Clamp(labelScale, 0.5f, 2.0f);
         swatchScale = Math.Clamp(swatchScale, 0.5f, 2.0f);
@@ -140,8 +144,8 @@ public static class PaletteImageRenderer
 
         bool landscape = original.Width >= original.Height;
         var canvas = landscape
-            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground)
-            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground);
+            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide)
+            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide);
 
         if (downscale > 1)
             canvas.Mutate(ctx => ctx.Resize(canvas.Width / downscale, canvas.Height / downscale));
@@ -206,7 +210,8 @@ public static class PaletteImageRenderer
         PhotoMetadata? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
         bool showSwatches = true,
         float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
-        SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null)
+        SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null,
+        CompositionGuide compositionGuide = CompositionGuide.None)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
@@ -244,6 +249,7 @@ public static class PaletteImageRenderer
         {
             ctx.Fill(tc.Background);
             ctx.DrawImage(original, new Point(0, 0), 1f);
+            DrawCompositionGuide(ctx, compositionGuide, 0, 0, original.Width, original.Height);
 
             if (showSwatches)
                 DrawSwatches(ctx, palette, n, swatchW, swatchH, margin, gap, swatchY, textPad, showHex, hexBelow, swatchFont, tc, showPercent, swatchShape);
@@ -262,7 +268,8 @@ public static class PaletteImageRenderer
         PhotoMetadata? exif, MetaVerbosity verbosity, MetaStyle style, Theme theme,
         bool showSwatches = true,
         float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
-        SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null)
+        SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null,
+        CompositionGuide compositionGuide = CompositionGuide.None)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
@@ -301,6 +308,7 @@ public static class PaletteImageRenderer
         {
             ctx.Fill(tc.Background);
             ctx.DrawImage(original, new Point(0, 0), 1f);
+            DrawCompositionGuide(ctx, compositionGuide, 0, 0, original.Width, original.Height);
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
@@ -542,6 +550,73 @@ public static class PaletteImageRenderer
         pb.AddLine(new PointF(x, y + h - r), new PointF(x, y + r));
         pb.CloseFigure();
         return pb.Build();
+    }
+
+    // ── Composition guide overlay ───────────────────────────────────────────
+
+    private static void DrawCompositionGuide(IImageProcessingContext ctx, CompositionGuide guide, float x, float y, float w, float h)
+    {
+        if (guide == CompositionGuide.None) return;
+        float thickness = Math.Max(1.5f, Math.Min(w, h) / 400f);
+        foreach (var (p1, p2) in BuildGuideLines(guide, x, y, w, h))
+            DrawGuideLine(ctx, p1, p2, thickness);
+    }
+
+    internal static IEnumerable<(PointF, PointF)> BuildGuideLines(CompositionGuide guide, float x, float y, float w, float h)
+    {
+        switch (guide)
+        {
+            case CompositionGuide.RuleOfThirds:
+                foreach (var f in new[] { 1f / 3f, 2f / 3f })
+                {
+                    yield return (new PointF(x + w * f, y), new PointF(x + w * f, y + h));
+                    yield return (new PointF(x, y + h * f), new PointF(x + w, y + h * f));
+                }
+                break;
+            case CompositionGuide.GoldenRatio:
+                // Phi grid: 1/phi^2 and 1/phi (~0.382 / 0.618) instead of thirds.
+                foreach (var f in new[] { 0.382f, 0.618f })
+                {
+                    yield return (new PointF(x + w * f, y), new PointF(x + w * f, y + h));
+                    yield return (new PointF(x, y + h * f), new PointF(x + w, y + h * f));
+                }
+                break;
+            case CompositionGuide.Diagonal:
+                var a = new PointF(x, y);
+                var b = new PointF(x + w, y + h);
+                yield return (a, b);
+                var c = new PointF(x + w, y);
+                var d = new PointF(x, y + h);
+                yield return (c, PerpendicularFoot(c, a, b));
+                yield return (d, PerpendicularFoot(d, a, b));
+                break;
+            case CompositionGuide.CenterCross:
+                yield return (new PointF(x + w / 2f, y), new PointF(x + w / 2f, y + h));
+                yield return (new PointF(x, y + h / 2f), new PointF(x + w, y + h / 2f));
+                break;
+        }
+    }
+
+    // Foot of the perpendicular dropped from p onto line a-b — used to build the two
+    // "golden triangle" legs off the main diagonal.
+    internal static PointF PerpendicularFoot(PointF p, PointF a, PointF b)
+    {
+        float abx = b.X - a.X, aby = b.Y - a.Y;
+        float t = ((p.X - a.X) * abx + (p.Y - a.Y) * aby) / (abx * abx + aby * aby);
+        return new PointF(a.X + t * abx, a.Y + t * aby);
+    }
+
+    // Black+white double stroke instead of a single content-adaptive color: keeps the guide
+    // visible on both light and dark photo regions without sampling per-line like
+    // GetOverlayTextColor does for the metadata overlay text.
+    private static void DrawGuideLine(IImageProcessingContext ctx, PointF p1, PointF p2, float thickness)
+    {
+        var pb = new PathBuilder();
+        pb.StartFigure();
+        pb.AddLine(p1, p2);
+        IPath path = pb.Build();
+        ctx.Draw(Color.Black.WithAlpha(0.35f), thickness * 1.8f, path);
+        ctx.Draw(Color.White.WithAlpha(0.85f), thickness, path);
     }
 
     // ── Metadata lines ──────────────────────────────────────────────────────

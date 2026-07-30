@@ -25,7 +25,8 @@ public sealed record PaletteExportSettings(
     bool ShowPercent,
     SwatchShape SwatchShape,
     SortOrder SortOrder,
-    Color? CustomBackground)
+    Color? CustomBackground,
+    CompositionGuide CompositionGuide)
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 
@@ -33,7 +34,8 @@ public sealed record PaletteExportSettings(
         s.Colors, s.SamplingMode, s.ShowHex, s.HexBelow, s.MetaVerbosity, s.MetaStyle,
         s.Theme, s.ShowSwatches, s.HalfSize, s.OutputFormat, s.ExportPreset,
         s.LabelScale, s.SwatchScale, s.ShowPercent, s.SwatchShape, s.SortOrder,
-        s.UseCustomBackground ? ParseHexOrNull(s.CustomBackgroundHex) : null);
+        s.UseCustomBackground ? ParseHexOrNull(s.CustomBackgroundHex) : null,
+        s.CompositionGuide);
 
     private static Color? ParseHexOrNull(string? hex) =>
         !string.IsNullOrWhiteSpace(hex) && Color.TryParseHex(hex, out var c) ? c : null;

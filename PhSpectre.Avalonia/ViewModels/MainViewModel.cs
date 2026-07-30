@@ -212,7 +212,7 @@ public partial class MainViewModel : ViewModelBase
                         Settings.MetaStyle, Settings.Theme, Settings.ShowSwatches,
                         Settings.OutputFormat, Settings.ExportPreset,
                         Settings.LabelScale, Settings.SwatchScale, Settings.ShowPercent,
-                        Settings.SwatchShape, Settings.SortOrder,
+                        Settings.SwatchShape, Settings.SortOrder, Settings.CompositionGuide,
                         CustomBackground: Settings.UseCustomBackground
                             && Color.TryParseHex(Settings.CustomBackgroundHex, out var bg) ? bg : (Color?)null);
             var metadataOverride = Settings.BuildMetadataOverride();
@@ -233,7 +233,8 @@ public partial class MainViewModel : ViewModelBase
                 showPercent:      snap.ShowPercent,
                 swatchShape:      snap.SwatchShape,
                 sortOrder:        snap.SortOrder,
-                customBackground: snap.CustomBackground), token);
+                customBackground: snap.CustomBackground,
+                compositionGuide: snap.CompositionGuide), token);
 
             token.ThrowIfCancellationRequested();
 

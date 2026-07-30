@@ -37,6 +37,7 @@ public static class PaletteExportService
             showPercent:      settings.ShowPercent,
             swatchShape:      settings.SwatchShape,
             sortOrder:        settings.SortOrder,
-            customBackground: settings.CustomBackground), cancellationToken);
+            customBackground: settings.CustomBackground,
+            compositionGuide: settings.CompositionGuide), cancellationToken);
     }
 }

@@ -116,6 +116,20 @@
                 </StackPanel>
             </Grid>
 
+            <Grid x:Name="GuideRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Guide lines" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="CompositionGuideBox"
+                          SelectedIndex="{Binding CompositionGuideIndex}"/>
+            </Grid>
+
         </StackPanel>
 
         <!-- ── Swatches ──────────────────────────────────────────── -->

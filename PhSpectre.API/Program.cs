@@ -36,7 +36,7 @@ app.UseSwaggerUI();
 app.UseRateLimiter();
 
 app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [FromForm] string? theme, [FromForm] string? mode,
-    [FromForm] string? sort, [FromForm] string? shape, [FromForm] bool? showPercent) =>
+    [FromForm] string? sort, [FromForm] string? shape, [FromForm] bool? showPercent, [FromForm] string? guide) =>
 {
     if (file == null)
         return Results.Json(new { error = "file is required" }, statusCode: 400);
@@ -84,6 +84,17 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
         else return Results.Json(new { error = "shape must be 'rect', 'rounded' or 'circle'" }, statusCode: 400);
     }
 
+    CompositionGuide parsedGuide = CompositionGuide.None;
+    if (!string.IsNullOrEmpty(guide))
+    {
+        if      (guide.Equals("none",     StringComparison.OrdinalIgnoreCase)) parsedGuide = CompositionGuide.None;
+        else if (guide.Equals("thirds",   StringComparison.OrdinalIgnoreCase)) parsedGuide = CompositionGuide.RuleOfThirds;
+        else if (guide.Equals("golden",   StringComparison.OrdinalIgnoreCase)) parsedGuide = CompositionGuide.GoldenRatio;
+        else if (guide.Equals("diagonal", StringComparison.OrdinalIgnoreCase)) parsedGuide = CompositionGuide.Diagonal;
+        else if (guide.Equals("cross",    StringComparison.OrdinalIgnoreCase)) parsedGuide = CompositionGuide.CenterCross;
+        else return Results.Json(new { error = "guide must be 'none', 'thirds', 'golden', 'diagonal' or 'cross'" }, statusCode: 400);
+    }
+
     var tmpIn  = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.jpg");
     var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
     try
@@ -102,7 +113,8 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
             theme: parsedTheme,
             sortOrder: parsedSort,
             swatchShape: parsedShape,
-            showPercent: showPercent ?? false);
+            showPercent: showPercent ?? false,
+            compositionGuide: parsedGuide);
 
         var bytes = await File.ReadAllBytesAsync(tmpOut);
         return Results.File(bytes, "application/octet-stream", "palette.png");
@@ -134,7 +146,7 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
         content.Schema.Required.Add("file");
     }
     op.Responses["200"].Description = "PNG palette image";
-    op.Responses["400"] = new OpenApiResponse { Description = "Invalid input (missing file, wrong format, bad theme/colors/sort/shape)" };
+    op.Responses["400"] = new OpenApiResponse { Description = "Invalid input (missing file, wrong format, bad theme/colors/sort/shape/guide)" };
     op.Responses["429"] = new OpenApiResponse { Description = "Rate limit exceeded — 10 requests/minute per IP" };
     op.Responses["500"] = new OpenApiResponse { Description = "Internal rendering error" };
     return op;

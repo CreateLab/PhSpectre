@@ -8,6 +8,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("       [--no-meta] [--meta-short] [--meta-detail] [--meta-full] [--meta-overlay]");
     Console.Error.WriteLine("       [--theme dark|light]");
     Console.Error.WriteLine("       [--sort none|hue|luminance|percent] [--shape rect|rounded|circle] [--show-percent]");
+    Console.Error.WriteLine("       [--guide none|thirds|golden|diagonal|cross]");
     return 1;
 }
 
@@ -22,6 +23,7 @@ var theme         = Theme.Dark;
 var sortOrder     = SortOrder.None;
 var swatchShape   = SwatchShape.Rectangle;
 bool showPercent  = false;
+var compositionGuide = CompositionGuide.None;
 
 for (int i = 1; i < args.Length; i++)
 {
@@ -84,6 +86,19 @@ for (int i = 1; i < args.Length; i++)
         i++;
     }
     else if (args[i] == "--show-percent") { showPercent = true; }
+    else if (args[i] == "--guide" && i + 1 < args.Length)
+    {
+        compositionGuide = args[i + 1].ToLowerInvariant() switch
+        {
+            "none"     => CompositionGuide.None,
+            "thirds"   => CompositionGuide.RuleOfThirds,
+            "golden"   => CompositionGuide.GoldenRatio,
+            "diagonal" => CompositionGuide.Diagonal,
+            "cross"    => CompositionGuide.CenterCross,
+            _ => throw new Exception($"Unknown guide '{args[i + 1]}'. Use none, thirds, golden, diagonal or cross.")
+        };
+        i++;
+    }
     else
     {
         Console.Error.WriteLine($"Unknown argument: {args[i]}");
@@ -122,7 +137,7 @@ string outputPath = Path.Combine(
     Path.GetFileNameWithoutExtension(imagePath) + "_palette.png");
 
 PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow,
-    sortOrder: sortOrder, swatchShape: swatchShape, showPercent: showPercent);
+    sortOrder: sortOrder, swatchShape: swatchShape, showPercent: showPercent, compositionGuide: compositionGuide);
 
 Console.WriteLine($"Saved: {outputPath}");
 foreach (var swatch in palette.Swatches)

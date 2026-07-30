@@ -55,6 +55,12 @@ public partial class SettingsPanel : UserControl
         SortOrderBox.Items.Add("Luminance");
         SortOrderBox.Items.Add("Percent");
 
+        AddItem(CompositionGuideBox, "None",     "No overlay");
+        AddItem(CompositionGuideBox, "Thirds",   "Rule of thirds grid");
+        AddItem(CompositionGuideBox, "Golden",   "Golden ratio (phi) grid");
+        AddItem(CompositionGuideBox, "Diagonal", "Diagonal method / golden triangles");
+        AddItem(CompositionGuideBox, "Cross",    "Center cross");
+
         SizeChanged += (_, e) => ApplyResponsiveLayout(e.NewSize.Width);
     }
 
@@ -82,7 +88,7 @@ public partial class SettingsPanel : UserControl
 
         foreach (var row in new[]
                  {
-                     SamplingRow, ColorCountRow, ExportThemeRow, VerbosityRow,
+                     SamplingRow, ColorCountRow, ExportThemeRow, GuideRow, VerbosityRow,
                      StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow,
                      ShapeRow, SortRow,
                      MetaCameraRow, MetaLensRow, MetaFocalRow, MetaApertureRow,

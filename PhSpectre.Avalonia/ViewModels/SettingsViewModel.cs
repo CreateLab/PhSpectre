@@ -34,6 +34,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private SortOrder      _sortOrder           = SortOrder.None;
     [ObservableProperty] private bool           _useCustomBackground = false;
     [ObservableProperty] private string         _customBackgroundHex = "#FFFFFF";
+    [ObservableProperty] private CompositionGuide _compositionGuide  = CompositionGuide.None;
 
     // Editable subset of the photo's metadata strip (Camera/Lens/Focal/Aperture/Shutter/Iso/
     // Date) — the other 5 fields PhotoMetadata carries (FocalEq, ExposureBias, WhiteBalance,
@@ -170,6 +171,12 @@ public partial class SettingsViewModel : ViewModelBase
         set => SortOrder = (SortOrder)value;
     }
 
+    public int CompositionGuideIndex
+    {
+        get => (int)CompositionGuide;
+        set => CompositionGuide = (CompositionGuide)value;
+    }
+
     // ComboBox index shims
     public int ColorCountIndex
     {
@@ -204,4 +211,5 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnExportPresetChanged(ExportPreset value)     => OnPropertyChanged(nameof(ExportPresetIndex));
     partial void OnSwatchShapeChanged(SwatchShape value)       => OnPropertyChanged(nameof(SwatchShapeIndex));
     partial void OnSortOrderChanged(SortOrder value)           => OnPropertyChanged(nameof(SortOrderIndex));
+    partial void OnCompositionGuideChanged(CompositionGuide value) => OnPropertyChanged(nameof(CompositionGuideIndex));
 }
