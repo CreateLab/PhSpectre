@@ -15,6 +15,14 @@ Desktop app — folder browser, palette settings, and live preview:
 
 ![Desktop app](screens/desktop-app.jpg)
 
+Collage mode — check several photos into a tray, generate one palette pooled across all of
+them (weighted by displayed area), with EXIF taken from the first photo:
+
+<p>
+  <img src="screens/collage-desktop.jpg" width="59%" alt="Desktop collage mode with a photo tray and gutter settings" />
+  <img src="screens/collage-mobile.jpg" width="39%" alt="Mobile collage output — five photos, pooled palette, EXIF strip" />
+</p>
+
 Generated palettes — portrait and landscape layouts, with and without hex labels:
 
 <p>
@@ -24,6 +32,9 @@ Generated palettes — portrait and landscape layouts, with and without hex labe
 <p>
   <img src="screens/palette-landscape.jpg" width="49%" alt="Landscape palette with hex labels" />
   <img src="screens/palette-no-hex.jpg" width="49%" alt="Landscape palette without hex labels" />
+</p>
+<p>
+  <img src="screens/palette-seagulls.jpg" width="49%" alt="Landscape palette, three-color auto count" />
 </p>
 
 ## Releases
@@ -48,6 +59,12 @@ versions, and publishes the release automatically.
 ## Desktop App
 
 Cross-platform GUI built with Avalonia. Open a folder, browse photos, preview the generated palette side-by-side and save it as PNG.
+
+**Collage mode** (desktop and Android) checks several photos into a tray and renders one
+card from all of them: photos are laid out into a single image with a configurable gutter,
+and the palette is pooled across the source photos — weighted by how much area each one
+occupies — so the gutter itself never affects the result. EXIF metadata is read from the
+first photo in the tray.
 
 Self-contained — no .NET runtime required on the target machine.
 

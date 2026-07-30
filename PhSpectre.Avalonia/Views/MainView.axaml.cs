@@ -20,8 +20,9 @@ public partial class MainView : UserControl
         // Resolved lazily on each call, not captured once here: on Android the
         // DataContext is assigned before this control is attached to the visual
         // tree, so TopLevel.GetTopLevel(this) would still return null at this point.
-        vm.PickImageAsync = () => FileDialogService.PickImageAsync(RequireTopLevel());
-        vm.SavePngAsync   = (name, path) => FileDialogService.SavePngFromFileAsync(RequireTopLevel(), name, path);
+        vm.PickImageAsync  = () => FileDialogService.PickImageAsync(RequireTopLevel());
+        vm.PickImagesAsync = () => FileDialogService.PickImagesAsync(RequireTopLevel());
+        vm.SavePngAsync    = (name, path) => FileDialogService.SavePngFromFileAsync(RequireTopLevel(), name, path);
         vm.Settings.OpenUrlAsync = url => RequireTopLevel().Launcher.LaunchUriAsync(new Uri(url));
     }
 

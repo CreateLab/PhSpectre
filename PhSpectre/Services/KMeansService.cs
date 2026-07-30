@@ -27,7 +27,9 @@ internal sealed class KMeansService
     // Weighted sampling WITH replacement at same size.
     // Vivid:    saturated pixels get higher weight (s×5 bonus).
     // Contrast: stratified by lightness — dark/mid/light each get 1/3 of the sample,
-    //           guaranteeing highlights (white) and shadows appear even when rare.
+    //           guaranteeing highlights (white) and shadows appear even when rare — and
+    //           within each band, weighted toward saturation like Vivid, so a colorful
+    //           minority still wins its band instead of losing to a duller majority.
     private static float[][] BuildWeightedSample(float[][] hsl, SamplingMode mode)
     {
         if (mode == SamplingMode.Contrast)
@@ -62,9 +64,14 @@ internal sealed class KMeansService
         return sample;
     }
 
-    // Splits pixels into 3 lightness bands [0, 0.33) / [0.33, 0.67) / [0.67, 1]
-    // and draws equal quotas from each. Guarantees highlights (e.g. white petals
-    // in a green photo) get 1/3 of k-means input regardless of pixel count.
+    // Splits pixels into 3 lightness bands [0, 0.33) / [0.33, 0.67) / [0.67, 1] and draws
+    // equal quotas from each, guaranteeing highlights (e.g. white petals in a green photo)
+    // get 1/3 of k-means input regardless of pixel count. Within each band, picks are
+    // additionally weighted by saturation (same s×5 bonus as Vivid) — otherwise a vivid but
+    // minority hue (e.g. a red flower against acres of green foliage, both roughly
+    // mid-lightness) would just get outvoted by the duller majority sharing its band, and
+    // "Contrast" would end up doing nothing but luminance stratification, never touching
+    // color at all.
     private static float[][] BuildStratifiedByLightness(float[][] hsl)
     {
         var bands = new List<int>[3];
@@ -83,9 +90,10 @@ internal sealed class KMeansService
         for (int b = 0; b < 3; b++)
         {
             if (bands[b].Count == 0) continue;
+            var cdf = BuildSaturationCdf(hsl, bands[b]);
             int quota = hsl.Length / 3;
             for (int i = 0; i < quota && si < hsl.Length; i++)
-                sample[si++] = hsl[bands[b][rng.Next(bands[b].Count)]];
+                sample[si++] = hsl[WeightedPick(bands[b], cdf, rng)];
         }
 
         // Fill rounding remainder uniformly
@@ -93,6 +101,34 @@ internal sealed class KMeansService
             sample[si++] = hsl[rng.Next(hsl.Length)];
 
         return sample;
+    }
+
+    private static double[] BuildSaturationCdf(float[][] hsl, List<int> indices)
+    {
+        var weights = new double[indices.Count];
+        double total = 0;
+        for (int i = 0; i < indices.Count; i++)
+        {
+            weights[i] = 1.0 + hsl[indices[i]][1] * 5.0;
+            total += weights[i];
+        }
+
+        var cdf = new double[indices.Count];
+        double cumulative = 0;
+        for (int i = 0; i < indices.Count; i++)
+        {
+            cumulative += weights[i] / total;
+            cdf[i] = cumulative;
+        }
+        return cdf;
+    }
+
+    private static int WeightedPick(List<int> indices, double[] cdf, Random rng)
+    {
+        double r = rng.NextDouble();
+        int idx = Array.BinarySearch(cdf, r);
+        if (idx < 0) idx = ~idx;
+        return indices[Math.Clamp(idx, 0, indices.Count - 1)];
     }
 
     private static float[][] RunKMeans(float[][] pixels, int k, CancellationToken cancellationToken = default)

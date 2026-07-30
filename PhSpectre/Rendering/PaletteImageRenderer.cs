@@ -34,6 +34,13 @@ public static class PaletteImageRenderer
 {
     private record ThemeColors(Color Background, Color Text);
 
+    // Exposes just the background half of GetThemeColors for callers outside this class
+    // that need to match it exactly rather than re-deriving their own — e.g. the collage
+    // gutter, which has to be the same color as the card background it sits inside so the
+    // two don't visibly seam.
+    public static Color GetBackgroundColor(Theme theme, Color? customBackground = null) =>
+        GetThemeColors(theme, customBackground).Background;
+
     private static ThemeColors GetThemeColors(Theme theme, Color? customBackground = null)
     {
         if (customBackground is { } bg)

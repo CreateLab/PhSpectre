@@ -101,4 +101,21 @@
         <Setter Property="Background" Value="#14FFFFFF"/>
     </Style>
 
+    <!-- Small icon button overlaid directly on a photo thumbnail (collage tray's
+         remove/reorder buttons) — needs its own opaque-ish backing so it stays legible
+         against whatever's underneath, and square-ish (small radius) corners rather than
+         icon-toolbar's near-circular look at this size. -->
+    <Style Selector="Button.tray-overlay">
+        <Setter Property="CornerRadius" Value="5"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="#99000000"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.tray-overlay:pointerover">
+        <Setter Property="Background" Value="#CC000000"/>
+    </Style>
+
 </Styles>

@@ -132,6 +132,28 @@
 
         </StackPanel>
 
+        <!-- ── Collage (only while the Main VM has switched into collage mode) ─── -->
+        <StackPanel IsVisible="{Binding ShowCollageOptions}">
+            <Border Classes="section-sep"/>
+            <TextBlock Text="COLLAGE" Classes="section-header"/>
+            <StackPanel Spacing="10">
+
+                <Grid x:Name="GutterThicknessRow" Classes="settings-row">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Gutter width" Classes="row-label"/>
+                    <Slider Grid.Column="1" Value="{Binding GutterThickness}"
+                            Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="2" Text="{Binding GutterThickness, StringFormat={}{0}px}"
+                               Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
+                </Grid>
+
+            </StackPanel>
+        </StackPanel>
+
         <!-- ── Swatches ──────────────────────────────────────────── -->
         <Border Classes="section-sep"/>
         <TextBlock Text="SWATCHES" Classes="section-header"/>

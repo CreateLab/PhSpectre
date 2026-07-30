@@ -24,13 +24,14 @@
         <Border BorderBrush="{StaticResource ToolbarBackgroundBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="2">
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="8,6">
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto,Auto" Margin="8,6">
                 <Button Grid.Column="0" Command="{Binding OpenFolderCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                         <materialIcons:MaterialIcon Kind="FolderOutline" Width="16" Height="16" VerticalAlignment="Center"/>
                         <TextBlock Text="Open Folder" VerticalAlignment="Center"/>
                     </StackPanel>
                 </Button>
+
                 <TextBlock Grid.Column="1"
                            Text="{Binding FileInfoText}"
                            HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -39,10 +40,21 @@
                            Opacity="0.65"
                            FontSize="12"/>
 
+                <!-- Kept off on the far right, away from Open Folder, so the two aren't read
+                     as a pair of equally-weighted "primary" actions. -->
+                <Button Grid.Column="2" Margin="0,0,6,0" Classes="secondary"
+                        IsVisible="{Binding IsCollageMode}"
+                        Command="{Binding ExitCollageModeCommand}">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                        <materialIcons:MaterialIcon Kind="Close" Width="16" Height="16" VerticalAlignment="Center"/>
+                        <TextBlock Text="Exit Collage" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
                 <!-- Update banner — not a modal/dialog on purpose, just an unobtrusive
                      toolbar item; dismissing it persists the dismissed version so it
                      doesn't come back until a newer release ships. -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"
+                <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"
                             IsVisible="{Binding IsUpdateAvailable}">
                     <Button Classes="text" MinWidth="0" MinHeight="0" Padding="8,4"
                             Command="{Binding OpenUpdateUrlCommand}">
@@ -68,37 +80,54 @@
 
                 <!-- View toggle with bottom separator -->
                 <Border Grid.Row="0" BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="4,4,4,4">
-                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="2">
-                        <ToggleButton IsChecked="{Binding IsListView}"
-                                      ToolTip.Tip="List view"
-                                      Padding="8,4"
-                                      Margin="4">
-                            <materialIcons:MaterialIcon Kind="ViewListOutline" Width="24" Height="24"/>
-                        </ToggleButton>
-                        <ToggleButton IsChecked="{Binding IsGridView}"
-                                      ToolTip.Tip="Grid view"
-                                      Padding="8,4"
-                                      Margin="4">
-                            <materialIcons:MaterialIcon Kind="ViewGridOutline" Width="24" Height="24"/>
-                        </ToggleButton>
-                    </StackPanel>
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" Margin="2">
+                            <ToggleButton IsChecked="{Binding IsListView}"
+                                          ToolTip.Tip="List view"
+                                          Padding="8,4"
+                                          Margin="4">
+                                <materialIcons:MaterialIcon Kind="ViewListOutline" Width="24" Height="24"/>
+                            </ToggleButton>
+                            <ToggleButton IsChecked="{Binding IsGridView}"
+                                          ToolTip.Tip="Grid view"
+                                          Padding="8,4"
+                                          Margin="4">
+                                <materialIcons:MaterialIcon Kind="ViewGridOutline" Width="24" Height="24"/>
+                            </ToggleButton>
+                        </StackPanel>
+
+                        <!-- Sits above the checkboxes it turns on, rather than next to
+                             "Open Folder" in the toolbar, where it read as a second equally-
+                             weighted primary action. -->
+                        <Button Grid.Column="2" Classes="icon-toolbar" Margin="4"
+                                IsVisible="{Binding !IsCollageMode}"
+                                Command="{Binding EnterCollageModeCommand}"
+                                ToolTip.Tip="Create collage">
+                            <materialIcons:MaterialIcon Kind="ViewGridPlusOutline" Width="18" Height="18"/>
+                        </Button>
+                    </Grid>
                 </Border>
 
                 <!-- File list — list view -->
-                <ListBox Grid.Row="1"
+                <ListBox Grid.Row="1" x:Name="FilesListBox"
                          IsVisible="{Binding IsListView}"
                          ItemsSource="{Binding Files}"
                          SelectedItem="{Binding SelectedFile}"
                          Margin="4,0,4,0">
                     <ListBox.ItemTemplate>
                         <DataTemplate x:DataType="models:FileEntry">
-                            <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <CheckBox IsChecked="{Binding IsChecked}"
+                                          IsVisible="{Binding #FilesListBox.((vm:MainWindowViewModel)DataContext).IsCollageMode}"
+                                          MinWidth="0" MinHeight="0" Padding="0" Margin="0"/>
+                                <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
 
                 <!-- File list — thumbnail view -->
-                <ListBox Grid.Row="1"
+                <ListBox Grid.Row="1" x:Name="FilesGridBox"
                          IsVisible="{Binding IsGridView}"
                          ItemsSource="{Binding Files}"
                          SelectedItem="{Binding SelectedFile}"
@@ -118,6 +147,9 @@
                                                IsVisible="{Binding ThumbnailBitmap, Converter={x:Static ObjectConverters.IsNull}}"
                                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextSecondaryBrush}"/>
+                                    <CheckBox HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2"
+                                              IsChecked="{Binding IsChecked}"
+                                              IsVisible="{Binding #FilesGridBox.((vm:MainWindowViewModel)DataContext).IsCollageMode}"/>
                                 </Panel>
                             </Border>
                         </DataTemplate>
@@ -151,10 +183,69 @@
             </GridSplitter>
 
             <!-- Preview panel — image only; save lives in the settings sidebar now -->
-            <Grid Grid.Column="2" Margin="0,0,4,4">
+            <Grid Grid.Column="2" Margin="0,0,4,4" RowDefinitions="Auto,*">
 
-                <!-- Dual preview: 40% original / 60% result -->
-                <Grid ColumnDefinitions="2*,3*">
+                <!-- Collage tray — the shared "add/reorder/remove" strip; order doubles as
+                     both the row-packing order and (for the first item) the EXIF source.
+                     Sized generously (110px cells) since it's the primary way to review the
+                     tray — a cramped strip made it hard to tell photos apart at a glance. -->
+                <Border Grid.Row="0" IsVisible="{Binding IsCollageMode}" Margin="4,4,4,0"
+                        Background="{StaticResource SurfaceBrush}" CornerRadius="4" Padding="10">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="{Binding CollageItems.Count, StringFormat='Collage tray — {0} photo(s). Check photos on the left to add them.'}"
+                                   FontSize="12" Opacity="0.6"/>
+                        <ItemsControl x:Name="CollageTrayItems" ItemsSource="{Binding CollageItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:FileEntry">
+                                    <Border Width="110" Height="110" Margin="5" CornerRadius="4"
+                                            Background="{StaticResource BackgroundBrush}">
+                                        <Panel>
+                                            <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill"/>
+
+                                            <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="4"
+                                                    Background="#CC000000" CornerRadius="3" Padding="4,2"
+                                                    IsVisible="{Binding IsCollageExifSource}">
+                                                <TextBlock Text="EXIF" FontSize="10" Foreground="White"/>
+                                            </Border>
+
+                                            <Button Classes="tray-overlay" Width="24" Height="24"
+                                                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="4"
+                                                    ToolTip.Tip="Remove from collage"
+                                                    Command="{Binding #CollageTrayItems.((vm:MainWindowViewModel)DataContext).RemoveFromCollageCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <materialIcons:MaterialIcon Kind="Close" Width="13" Height="13"/>
+                                            </Button>
+
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                        Margin="4" Spacing="3">
+                                                <Button Classes="tray-overlay" Width="22" Height="22"
+                                                        ToolTip.Tip="Move earlier"
+                                                        Command="{Binding #CollageTrayItems.((vm:MainWindowViewModel)DataContext).MoveCollageItemUpCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <materialIcons:MaterialIcon Kind="ChevronLeft" Width="13" Height="13"/>
+                                                </Button>
+                                                <Button Classes="tray-overlay" Width="22" Height="22"
+                                                        ToolTip.Tip="Move later"
+                                                        Command="{Binding #CollageTrayItems.((vm:MainWindowViewModel)DataContext).MoveCollageItemDownCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <materialIcons:MaterialIcon Kind="ChevronRight" Width="13" Height="13"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Panel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Single mode: dual preview, 40% original / 60% result. -->
+                <Grid Grid.Row="1" ColumnDefinitions="2*,3*" IsVisible="{Binding !IsCollageMode}">
 
                     <Border Grid.Column="0" Margin="4" Background="{StaticResource SurfaceBrush}" CornerRadius="4">
                         <Panel>
@@ -164,7 +255,7 @@
                                 <materialIcons:MaterialIcon Kind="ImageOffOutline" Width="28" Height="28"
                                                              HorizontalAlignment="Center"
                                                              Foreground="{StaticResource TextMutedBrush}"/>
-                                <TextBlock Text="No photo selected" Classes="mono-data-small"
+                                <TextBlock Text="{Binding OriginalPanePlaceholderText}" Classes="mono-data-small"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Panel>
@@ -192,6 +283,33 @@
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
                                    Foreground="{StaticResource ErrorBrush}" Margin="8"/>
                     </Grid>
+                </Grid>
+
+                <!-- Collage mode: no "original" pane (the tray above already shows the
+                     sources) — the result takes the full width instead. Shows the real
+                     render once Generate/Regenerate has produced one, falling back to the
+                     live layout-only preview otherwise (DisplayedCollageBitmap). -->
+                <Grid Grid.Row="1" Margin="4" IsVisible="{Binding IsCollageMode}">
+                    <Border Background="{StaticResource SurfaceBrush}" CornerRadius="4">
+                        <Image Source="{Binding DisplayedCollageBitmap}" Stretch="Uniform"/>
+                    </Border>
+                    <StackPanel IsVisible="{Binding ShowResultPlaceholder}"
+                                HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                        <materialIcons:MaterialIcon Kind="ImageOffOutline" Width="28" Height="28"
+                                                     HorizontalAlignment="Center"
+                                                     Foreground="{StaticResource TextMutedBrush}"/>
+                        <TextBlock Text="No result yet" Classes="mono-data-small"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="Generating…"
+                               IsVisible="{Binding IsGenerating}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <TextBlock Text="{Binding ErrorMessage}"
+                               IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                               TextWrapping="Wrap"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{StaticResource ErrorBrush}" Margin="8"/>
                 </Grid>
             </Grid>
 
@@ -221,13 +339,19 @@
 
                         <!-- Settings/metadata changes never re-render on their own — this
                              button is the only thing that triggers it, so nothing surprising
-                             happens while the user is still adjusting things. -->
-                        <Button Classes="secondary" Height="34" IsVisible="{Binding IsRegenerateAvailable}"
+                             happens while the user is still adjusting things. In collage mode
+                             it also stands in for the tray's edits (no live auto-render there,
+                             see MainWindowViewModel), so it's highlighted primary/blue instead
+                             of the usual muted secondary — there's actually nothing rendered
+                             yet, not just a tweak to an existing result. -->
+                        <Button Height="34" IsVisible="{Binding IsRegenerateAvailable}"
+                                Classes.primary="{Binding IsCollageMode}"
+                                Classes.secondary="{Binding !IsCollageMode}"
                                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                 Command="{Binding RegenerateCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <materialIcons:MaterialIcon Kind="Refresh" Width="16" Height="16" VerticalAlignment="Center"/>
-                                <TextBlock Text="Regenerate" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding RegenerateButtonLabel}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 

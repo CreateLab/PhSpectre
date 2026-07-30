@@ -24,6 +24,17 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool           _showSwatches   = true;
     [ObservableProperty] private bool           _halfSize       = false;
     [ObservableProperty] private WorkingQuality _workingQuality = WorkingQuality.Fast;
+
+    // The actual pixel cap WorkingQuality maps to — shared by the single-photo mobile
+    // pipeline (MainViewModel.MaxWorkingDimension) and the collage source-photo decode cap
+    // (PaletteExportSettings.CollageSourceMaxDimension), so both respond to the same dial.
+    public int WorkingMaxDimension => WorkingQuality switch
+    {
+        WorkingQuality.Fast     => 2000,
+        WorkingQuality.Balanced => 3400,
+        WorkingQuality.Best     => 4800,
+        _                       => 3400
+    };
     [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Png;
     [ObservableProperty] private ExportPreset   _exportPreset   = ExportPreset.Original;
 
@@ -35,6 +46,14 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool           _useCustomBackground = false;
     [ObservableProperty] private string         _customBackgroundHex = "#FFFFFF";
     [ObservableProperty] private CompositionGuide _compositionGuide  = CompositionGuide.None;
+
+    // Collage-only settings — the panel row is only shown while the owning Main VM has
+    // switched into collage mode (ShowCollageOptions), but the value persists across mode
+    // toggles so it isn't lost when the user exits and re-enters collage mode. Gutter
+    // color isn't a separate setting — it's always the same as the card's background
+    // (Theme/CustomBackground below), so the gap between photos never seams against it.
+    [ObservableProperty] private bool _showCollageOptions = false;
+    [ObservableProperty] private int  _gutterThickness    = 8;
 
     // Editable subset of the photo's metadata strip (Camera/Lens/Focal/Aperture/Shutter/Iso/
     // Date) — the other 5 fields PhotoMetadata carries (FocalEq, ExposureBias, WhiteBalance,

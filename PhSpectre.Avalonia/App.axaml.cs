@@ -36,6 +36,14 @@ public partial class App : Application
             if (lightColors is IResourceProvider lightColorsResources)
                 Resources.MergedDictionaries.Add(lightColorsResources);
 
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+                AppLogger.LogError("Unhandled exception", e.ExceptionObject as Exception);
+            System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) =>
+            {
+                AppLogger.LogError("Unobserved task exception", e.Exception);
+                e.SetObserved();
+            };
+
             desktop.MainWindow = new MainWindow
             {
                 DataContext = new MainWindowViewModel()

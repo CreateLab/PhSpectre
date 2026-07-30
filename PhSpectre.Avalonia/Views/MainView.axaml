@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
              xmlns:views="using:PhSpectre.Avalonia.Views"
+             xmlns:models="using:PhSpectre.Avalonia.Models"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="800"
              x:Class="PhSpectre.Avalonia.Views.MainView"
@@ -28,12 +29,37 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                VerticalAlignment="Center"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                         <Button Classes="icon-toolbar"
-                                IsVisible="{Binding HasResult}"
+                                IsVisible="{Binding ShowPickPhotoToolbarButton}"
                                 Command="{Binding PickPhotoCommand}"
                                 ToolTip.Tip="Pick a new photo">
                             <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="18" Height="18"
                                                          Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Button>
+
+                        <!-- Collage mode entry/controls — a distinct button from the single-photo
+                             picker above, not a toggle, so entering/exiting is always explicit. -->
+                        <Button Classes="icon-toolbar"
+                                IsVisible="{Binding !IsCollageMode}"
+                                Command="{Binding CreateCollageCommand}"
+                                ToolTip.Tip="Create a collage">
+                            <materialIcons:MaterialIcon Kind="ViewGridPlusOutline" Width="18" Height="18"
+                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                        <Button Classes="icon-toolbar"
+                                IsVisible="{Binding IsCollageMode}"
+                                Command="{Binding AddPhotosToCollageCommand}"
+                                ToolTip.Tip="Add photos">
+                            <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="18" Height="18"
+                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+                        <Button Classes="icon-toolbar"
+                                IsVisible="{Binding IsCollageMode}"
+                                Command="{Binding ExitCollageModeCommand}"
+                                ToolTip.Tip="Exit collage">
+                            <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"
+                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </Button>
+
                         <Button Classes="icon-toolbar"
                                 Command="{Binding ToggleSettingsCommand}"
                                 ToolTip.Tip="Settings">
@@ -49,7 +75,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
 
                     <Button Classes="primary"
                             Command="{Binding PickPhotoCommand}"
-                            IsVisible="{Binding !HasResult}"
+                            IsVisible="{Binding ShowStartButtons}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
@@ -60,6 +86,22 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         </StackPanel>
                     </Button>
 
+                    <!-- Second, explicit entry point next to the single-photo picker — not a
+                         toggle, so it reads as "a different thing you can do" rather than a
+                         Single|Collage segmented switch. Hidden once collage mode is entered
+                         so it doesn't linger next to the tray. -->
+                    <Button Classes="secondary"
+                            Command="{Binding CreateCollageCommand}"
+                            IsVisible="{Binding ShowStartButtons}"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center">
+                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                            <materialIcons:MaterialIcon Kind="ViewGridPlusOutline" Width="18" Height="18"
+                                                         VerticalAlignment="Center"/>
+                            <TextBlock Text="Create Collage" Classes="button-label" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
                     <TextBlock Text="{Binding FileInfoText}"
                                IsVisible="{Binding FileInfoText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
                                Classes="mono-data-small"
@@ -67,11 +109,74 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                TextAlignment="Center"
                                HorizontalAlignment="Stretch"/>
 
+                    <!-- Collage tray — the shared "add/reorder/remove" strip; order doubles as
+                         both the row-packing order and (for the first item) the EXIF source. -->
+                    <Border IsVisible="{Binding IsCollageMode}"
+                            Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource CardBorderBrush}"
+                            BorderThickness="1" CornerRadius="10" Padding="10">
+                        <StackPanel Spacing="6">
+                            <TextBlock Text="{Binding CollageItems.Count, StringFormat='Collage tray — {0} photo(s)'}"
+                                       FontSize="11" Opacity="0.6"/>
+                            <ItemsControl x:Name="CollageTrayItems" ItemsSource="{Binding CollageItems}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:FileEntry">
+                                        <Border Width="72" Height="72" Margin="3" CornerRadius="4"
+                                                Background="{StaticResource BackgroundBrush}">
+                                            <Panel>
+                                                <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill"/>
+
+                                                <Border HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2"
+                                                        Background="#CC000000" CornerRadius="2" Padding="3,1"
+                                                        IsVisible="{Binding IsCollageExifSource}">
+                                                    <TextBlock Text="EXIF" FontSize="9" Foreground="White"/>
+                                                </Border>
+
+                                                <Button Classes="tray-overlay" Width="20" Height="20" Padding="0"
+                                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="2"
+                                                        Command="{Binding #CollageTrayItems.((vm:MainViewModel)DataContext).RemoveFromCollageCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
+                                                </Button>
+
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                            Margin="2" Spacing="1">
+                                                    <Button Classes="tray-overlay" Width="18" Height="18" Padding="0"
+                                                            Command="{Binding #CollageTrayItems.((vm:MainViewModel)DataContext).MoveCollageItemUpCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <materialIcons:MaterialIcon Kind="ChevronLeft" Width="12" Height="12"/>
+                                                    </Button>
+                                                    <Button Classes="tray-overlay" Width="18" Height="18" Padding="0"
+                                                            Command="{Binding #CollageTrayItems.((vm:MainViewModel)DataContext).MoveCollageItemDownCommand}"
+                                                            CommandParameter="{Binding}">
+                                                        <materialIcons:MaterialIcon Kind="ChevronRight" Width="12" Height="12"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Panel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding AddPhotosToCollageCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="14" Height="14" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Add photos" FontSize="13" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Result -->
                     <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource CardBorderBrush}"
                             BorderThickness="1" CornerRadius="12" ClipToBounds="True" MinHeight="280">
                         <Panel Margin="4">
-                            <Image Source="{Binding PaletteBitmap}" Stretch="Uniform"/>
+                            <Image Source="{Binding DisplayedCollageBitmap}" Stretch="Uniform"/>
 
                             <StackPanel IsVisible="{Binding IsGenerating}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -87,9 +192,10 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Foreground="{StaticResource ErrorBrush}" Margin="20" FontSize="13"/>
 
-                            <!-- Empty state: dashed box, whole zone opens the picker -->
+                            <!-- Empty state: dashed box, whole zone opens the relevant picker
+                                 (single photo or collage add, depending on the current mode) -->
                             <Button IsVisible="{Binding ShowPlaceholder}"
-                                    Command="{Binding PickPhotoCommand}"
+                                    Command="{Binding PickForEmptyStateCommand}"
                                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
                                     Background="Transparent" BorderThickness="0" Padding="0">
@@ -102,7 +208,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                         <materialIcons:MaterialIcon Kind="ImageOffOutline" Width="40" Height="40"
                                                                      HorizontalAlignment="Center"
                                                                      Foreground="{StaticResource TextMutedBrush}"/>
-                                        <TextBlock Text="No photo selected" Classes="mono-data-small"
+                                        <TextBlock Text="{Binding EmptyStateText}" Classes="mono-data-small"
                                                    HorizontalAlignment="Center"/>
                                     </StackPanel>
                                 </Panel>
@@ -118,7 +224,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                             Command="{Binding RegenerateCommand}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <materialIcons:MaterialIcon Kind="Refresh" Width="16" Height="16" VerticalAlignment="Center"/>
-                            <TextBlock Text="Regenerate" FontSize="13" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding RegenerateButtonLabel}" FontSize="13" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 

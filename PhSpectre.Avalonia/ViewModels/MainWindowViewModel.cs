@@ -15,6 +15,7 @@ using PhSpectre.Rendering;
 using PhSpectre.Services;
 using PhSpectre.Avalonia.Models;
 using PhSpectre.Avalonia.Services;
+using SixLabors.ImageSharp;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
@@ -34,6 +35,25 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string?    _fileInfoText;
     [ObservableProperty] private string?    _outputSizeText;
     [ObservableProperty] private bool       _isRegenerateAvailable;
+
+    // Collage mode — CollageItems is the tray: FileEntry.IsChecked (list/grid checkboxes)
+    // adds/removes entries, then reordering happens independently within the tray. Order
+    // matters twice over: it's both the row-packing order and (for the first item) the
+    // EXIF source, so there's no separate "main photo" control.
+    [ObservableProperty] private bool _isCollageMode;
+    [ObservableProperty] private ObservableCollection<FileEntry> _collageItems = [];
+
+    // Cheap "just the layout" preview (no palette/card) that updates live as the tray is
+    // edited — PaletteBitmap only ever holds a real, expensive full render, triggered
+    // explicitly via Generate/Regenerate. DisplayedCollageBitmap is what the view actually
+    // shows: the full render once one exists, falling back to the live preview otherwise.
+    [ObservableProperty] private Bitmap? _collagePreviewBitmap;
+    public Bitmap? DisplayedCollageBitmap => PaletteBitmap ?? CollagePreviewBitmap;
+
+    // The collage Regenerate button reads "Generate" until the first real render exists,
+    // then "Regenerate" from then on — it's a materially different action the first time
+    // (nothing has been produced yet) versus a settings/tray change touching a real result.
+    public string RegenerateButtonLabel => IsCollageMode && PaletteBitmap == null ? "Generate" : "Regenerate";
 
     // Batch export
     [ObservableProperty] private BatchExportState _batchState = BatchExportState.Idle;
@@ -66,19 +86,52 @@ public partial class MainWindowViewModel : ViewModelBase
         set => IsListView = !value;
     }
 
-    public bool ShowResultPlaceholder => !IsGenerating && PaletteBitmap == null && string.IsNullOrEmpty(ErrorMessage);
+    public bool ShowResultPlaceholder =>
+        !IsGenerating && string.IsNullOrEmpty(ErrorMessage) &&
+        (IsCollageMode ? DisplayedCollageBitmap == null : PaletteBitmap == null);
+
+    // Left preview pane has no single-photo equivalent in collage mode — it's hidden
+    // entirely there (the tray above already shows the sources) rather than shown with
+    // an explanatory placeholder.
+    public string OriginalPanePlaceholderText => "No photo selected";
 
     partial void OnIsGeneratingChanged(bool value)    { OnPropertyChanged(nameof(ShowResultPlaceholder)); RegenerateCommand.NotifyCanExecuteChanged(); }
-    partial void OnPaletteBitmapChanged(Bitmap? value) => OnPropertyChanged(nameof(ShowResultPlaceholder));
+    partial void OnPaletteBitmapChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(ShowResultPlaceholder));
+        OnPropertyChanged(nameof(DisplayedCollageBitmap));
+        OnPropertyChanged(nameof(RegenerateButtonLabel));
+    }
+    partial void OnCollagePreviewBitmapChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(ShowResultPlaceholder));
+        OnPropertyChanged(nameof(DisplayedCollageBitmap));
+    }
     partial void OnErrorMessageChanged(string? value)  => OnPropertyChanged(nameof(ShowResultPlaceholder));
     partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
 
-    private bool CanRegenerate() => IsRegenerateAvailable && SelectedFile != null && !IsBatchActive && !IsGenerating;
+    partial void OnIsCollageModeChanged(bool value)
+    {
+        OnPropertyChanged(nameof(ShowSaveAllButton));
+        OnPropertyChanged(nameof(OriginalPanePlaceholderText));
+        OnPropertyChanged(nameof(ShowResultPlaceholder));
+        OnPropertyChanged(nameof(RegenerateButtonLabel));
+        RegenerateCommand.NotifyCanExecuteChanged();
+        SaveAllCommand.NotifyCanExecuteChanged();
+        EnterCollageModeCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool HasActiveContent => IsCollageMode ? CollageItems.Count > 0 : SelectedFile != null;
+
+    private bool CanRegenerate() => IsRegenerateAvailable && HasActiveContent && !IsBatchActive && !IsGenerating;
 
     [RelayCommand(CanExecute = nameof(CanRegenerate))]
     private async Task Regenerate()
     {
-        await GeneratePaletteAsync(SelectedFile);
+        if (IsCollageMode)
+            await GenerateCollagePaletteAsync();
+        else
+            await GeneratePaletteAsync(SelectedFile);
         IsRegenerateAvailable = false;
     }
 
@@ -96,7 +149,9 @@ public partial class MainWindowViewModel : ViewModelBase
     // Batch computed state — the button labels/visibility/enablement all flow from
     // BatchState, never toggled directly from code-behind.
     public bool IsBatchActive     => BatchState is BatchExportState.Running or BatchExportState.Cancelling;
-    public bool ShowSaveAllButton => !IsBatchActive;
+    // Batch export stays single-photo only for v1 — collage mode hides it entirely rather
+    // than leaving a button that's always disabled.
+    public bool ShowSaveAllButton => !IsBatchActive && !IsCollageMode;
     public bool ShowBatchProgress => IsBatchActive;
     public bool ShowBatchResult   => BatchState is BatchExportState.Finished or BatchExportState.Cancelled;
     public bool BatchHasErrors    => BatchErrors.Count > 0;
@@ -128,6 +183,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private string?                  _lastTempPng;
     private string                   _lastExtension = ".png";
+    private string?                  _collageExifSourcePath;
     private CancellationTokenSource? _renderCts;
     private CancellationTokenSource? _thumbnailCts;
     private CancellationTokenSource? _batchCts;
@@ -150,11 +206,63 @@ public partial class MainWindowViewModel : ViewModelBase
         // needs its own subscription to actually track them.
         _batchErrors.CollectionChanged += (_, _) => OnPropertyChanged(nameof(BatchHasErrors));
 
+        // Editing the tray does update the on-screen collage instantly — but only the cheap
+        // layout preview (RenderCollagePreviewAsync: decode + arrange, no palette). The
+        // expensive part (pooled k-means over all sources) never runs automatically; it's
+        // gated behind Generate/Regenerate, same as any other settings change, since running
+        // it on every single checkbox click made the UI stutter/freeze while assembling a tray.
+        _collageItems.CollectionChanged += (_, _) =>
+        {
+            for (int i = 0; i < CollageItems.Count; i++)
+                CollageItems[i].IsCollageExifSource = i == 0;
+
+            RegenerateCommand.NotifyCanExecuteChanged();
+            if (!IsCollageMode) return;
+
+            // The first tray item's EXIF represents the whole collage and feeds the
+            // editable "Edit metadata" fields in Settings, same as selecting a single
+            // photo does — only reload when that first item's identity actually changes,
+            // so reordering the rest of the tray doesn't clobber an in-progress edit.
+            var newExifSource = CollageItems.Count > 0 ? CollageItems[0].FullPath : null;
+            if (newExifSource != _collageExifSourcePath)
+            {
+                _collageExifSourcePath = newExifSource;
+                Settings.LoadMetadataFields(newExifSource != null ? PaletteImageRenderer.ReadMetadata(newExifSource) : null);
+            }
+
+            // A previously-generated full render no longer reflects the tray as soon as it
+            // changes — clear it so DisplayedCollageBitmap falls back to the live preview.
+            PaletteBitmap  = null;
+            _lastTempPng   = null;
+            OutputSizeText = null;
+            SavePngAsync2Command.NotifyCanExecuteChanged();
+
+            if (CollageItems.Count == 0)
+            {
+                CollagePreviewBitmap = null;
+                FileInfoText = null;
+                IsRegenerateAvailable = false;
+            }
+            else
+            {
+                FileInfoText = $"Collage · {CollageItems.Count} photos";
+                IsRegenerateAvailable = true;
+                _ = RenderCollagePreviewAsync();
+            }
+        };
+
         // The settings sidebar is always visible and applies live, but changing a setting
         // never re-renders on its own — that's a forced/surprising cost the user explicitly
         // didn't want. Instead a settings change just surfaces the Regenerate button; the
         // actual re-render only happens when the user clicks it.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
+
+        SettingsStorage.Apply(Settings, SettingsStorage.Load());
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != null && SettingsStorage.IsPersistedProperty(e.PropertyName))
+                SettingsStorage.Save(SettingsStorage.Capture(Settings));
+        };
 
         AppUpdateService.Instance.PropertyChanged += (_, e) =>
         {
@@ -170,8 +278,10 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         // Settings.LoadMetadataFields (called when a new photo is selected) bulk-assigns the
         // metadata text fields, which would otherwise look like a user edit and pop up
-        // Regenerate for a photo that's already about to render fresh.
-        if (SelectedFile == null || IsBatchActive || Settings.IsBulkLoading) return;
+        // Regenerate for a photo that's already about to render fresh. Also guards against
+        // Settings.ShowCollageOptions itself (flipped by EnterCollageMode) falsely surfacing
+        // Regenerate before the tray has anything in it.
+        if (!HasActiveContent || IsBatchActive || Settings.IsBulkLoading) return;
         IsRegenerateAvailable = true;
     }
 
@@ -182,7 +292,9 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(FilePositionText));
         Settings.LoadMetadataFields(value != null ? PaletteImageRenderer.ReadMetadata(value.FullPath) : null);
         IsRegenerateAvailable = false; // the fresh render below is already current — nothing to regenerate yet
-        _ = GeneratePaletteAsync(value);
+        // In collage mode, clicking a row to check/inspect it shouldn't steal the big preview
+        // away from the collage — only the tray (CollageItems) drives collage rendering.
+        if (!IsCollageMode) _ = GeneratePaletteAsync(value);
     }
 
     [RelayCommand]
@@ -195,6 +307,10 @@ public partial class MainWindowViewModel : ViewModelBase
         var folder = await PickFolderAsync();
         if (folder == null) return;
 
+        // A different folder invalidates whatever's currently in the tray (it references
+        // FileEntry objects from the folder about to be cleared below).
+        if (IsCollageMode) ExitCollageMode();
+
         _thumbnailCts?.Cancel();
         Files.Clear();
 
@@ -203,11 +319,167 @@ public partial class MainWindowViewModel : ViewModelBase
                         p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p))
         {
-            Files.Add(new FileEntry(Path.GetFileName(path), path));
+            var entry = new FileEntry(Path.GetFileName(path), path);
+            entry.PropertyChanged += OnFileEntryPropertyChanged;
+            Files.Add(entry);
         }
 
         _thumbnailCts = new CancellationTokenSource();
         _ = LoadThumbnailsAsync(_thumbnailCts.Token);
+    }
+
+    private void OnFileEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(FileEntry.IsChecked) || sender is not FileEntry entry) return;
+
+        if (entry.IsChecked)
+        {
+            if (!CollageItems.Contains(entry)) CollageItems.Add(entry);
+        }
+        else
+        {
+            CollageItems.Remove(entry);
+        }
+    }
+
+    // ── Collage mode ─────────────────────────────────────────────────────────────
+
+    private bool CanEnterCollageMode() => !IsBatchActive && !IsCollageMode;
+
+    [RelayCommand(CanExecute = nameof(CanEnterCollageMode))]
+    private void EnterCollageMode()
+    {
+        IsCollageMode = true;
+        Settings.ShowCollageOptions = true;
+        OriginalBitmap = null;
+        PaletteBitmap  = null;
+        CollagePreviewBitmap = null;
+        FileInfoText   = null;
+        OutputSizeText = null;
+        _lastTempPng   = null;
+        _collageExifSourcePath = null;
+        IsRegenerateAvailable = false;
+        SavePngAsync2Command.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
+    private void ExitCollageMode()
+    {
+        IsCollageMode = false;
+        Settings.ShowCollageOptions = false;
+        foreach (var item in CollageItems.ToList()) item.IsChecked = false;
+        CollageItems.Clear();
+        IsRegenerateAvailable = false;
+        _ = GeneratePaletteAsync(SelectedFile); // restore the single-photo preview
+    }
+
+    [RelayCommand]
+    private void RemoveFromCollage(FileEntry entry) => entry.IsChecked = false; // → OnFileEntryPropertyChanged removes it
+
+    [RelayCommand]
+    private void MoveCollageItemUp(FileEntry entry)
+    {
+        int i = CollageItems.IndexOf(entry);
+        if (i > 0) CollageItems.Move(i, i - 1);
+    }
+
+    [RelayCommand]
+    private void MoveCollageItemDown(FileEntry entry)
+    {
+        int i = CollageItems.IndexOf(entry);
+        if (i >= 0 && i < CollageItems.Count - 1) CollageItems.Move(i, i + 1);
+    }
+
+    // Cheap "just the layout" preview — no palette extraction, no card, just decode +
+    // arrange with the gutter. Runs on every tray edit (see the CollectionChanged handler
+    // above) so the collage always looks assembled immediately; shares _renderCts with the
+    // full render so whichever starts most recently (a tray edit or a Generate click) wins.
+    private async Task RenderCollagePreviewAsync()
+    {
+        _renderCts?.Cancel();
+        _renderCts = new CancellationTokenSource();
+        var token = _renderCts.Token;
+
+        // Whatever this cancelled (a stale single-photo/full-collage render) leaves
+        // IsGenerating stuck true — its own finally block only clears it when its token
+        // *wasn't* cancelled, precisely to avoid a cancelled task clobbering a newer one's
+        // "Generating…" state. But this preview never sets IsGenerating itself, so nothing
+        // would ever clear it otherwise, and both the "Generating…" text and the
+        // Generate/Regenerate button (CanRegenerate requires !IsGenerating) would get stuck.
+        IsGenerating = false;
+
+        if (CollageItems.Count == 0) return;
+
+        try
+        {
+            var sourcePaths = CollageItems.Select(i => i.FullPath).ToList();
+            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+            using var composed = await PaletteExportService.ComposeCollagePreviewAsync(sourcePaths, exportSettings, token);
+
+            token.ThrowIfCancellationRequested();
+
+            using var ms = new MemoryStream();
+            composed.SaveAsPng(ms);
+            ms.Position = 0;
+            CollagePreviewBitmap = new Bitmap(ms);
+        }
+        catch (OperationCanceledException) { }
+        catch { /* best-effort live preview — Generate will surface a real error if something's actually wrong */ }
+    }
+
+    private async Task GenerateCollagePaletteAsync()
+    {
+        _renderCts?.Cancel();
+        _renderCts = new CancellationTokenSource();
+        var token = _renderCts.Token;
+
+        // Left preview pane (single-photo "original") has no single equivalent for a
+        // collage — the tray thumbnails already show the sources, so it's just left blank.
+        // PaletteBitmap/CollagePreviewBitmap are deliberately left alone here — clearing
+        // them would blank the preview for the whole duration of the render instead of
+        // just showing "Generating…" over whatever was already there.
+        OriginalBitmap = null;
+        ErrorMessage   = null;
+        _lastTempPng   = null;
+        SavePngAsync2Command.NotifyCanExecuteChanged();
+        RegenerateCommand.NotifyCanExecuteChanged();
+
+        if (CollageItems.Count == 0) return;
+
+        IsGenerating = true;
+        try
+        {
+            var sourcePaths = CollageItems.Select(i => i.FullPath).ToList();
+            FileInfoText = $"Collage · {sourcePaths.Count} photos";
+
+            _lastExtension = Settings.FileExtension;
+            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
+            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+            await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
+                metadataOverride: Settings.BuildMetadataOverride());
+
+            token.ThrowIfCancellationRequested();
+
+            _lastTempPng    = tmpOut;
+            var sizeBytes   = new FileInfo(tmpOut).Length;
+            var formatLabel = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
+            OutputSizeText  = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";
+            PaletteBitmap   = new Bitmap(tmpOut);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            AppLogger.LogError("Collage generation failed", ex);
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+            {
+                IsGenerating = false;
+                SavePngAsync2Command.NotifyCanExecuteChanged();
+            }
+        }
     }
 
     private bool CanOpenFolder() => !IsBatchActive;
@@ -248,9 +520,23 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSavePng))]
     private async Task SavePngAsync2()
     {
-        if (SavePngAsync == null || _lastTempPng == null || SelectedFile == null) return;
-        var suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + "_palette" + _lastExtension;
-        var dest = await SavePngAsync(suggested, Path.GetDirectoryName(SelectedFile.FullPath)!);
+        if (SavePngAsync == null || _lastTempPng == null) return;
+
+        string suggested, folder;
+        if (IsCollageMode)
+        {
+            if (CollageItems.Count == 0) return;
+            suggested = "collage_palette" + _lastExtension;
+            folder = Path.GetDirectoryName(CollageItems[0].FullPath)!;
+        }
+        else
+        {
+            if (SelectedFile == null) return;
+            suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + "_palette" + _lastExtension;
+            folder = Path.GetDirectoryName(SelectedFile.FullPath)!;
+        }
+
+        var dest = await SavePngAsync(suggested, folder);
         if (dest != null)
             File.Copy(_lastTempPng, dest, overwrite: true);
     }
@@ -306,6 +592,7 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+            AppLogger.LogError("Palette generation failed", ex);
         }
         finally
         {
@@ -337,7 +624,7 @@ public partial class MainWindowViewModel : ViewModelBase
         await RunBatchAsync(destFolder);
     }
 
-    private bool CanSaveAll() => Files.Count > 0 && !IsBatchActive;
+    private bool CanSaveAll() => Files.Count > 0 && !IsBatchActive && !IsCollageMode;
 
     [RelayCommand(CanExecute = nameof(CanCancelBatch))]
     private void CancelBatch()
@@ -411,11 +698,13 @@ public partial class MainWindowViewModel : ViewModelBase
                     Interlocked.Increment(ref failed);
                     diskFull = true;
                     _batchCts?.Cancel(); // stop starting further files
+                    AppLogger.LogError($"Batch export failed (disk full): {fileName}", ex);
                     await Dispatcher.UIThread.InvokeAsync(() => BatchErrors.Add(new BatchExportError(fileName, ex.Message)));
                 }
                 catch (Exception ex)
                 {
                     Interlocked.Increment(ref failed);
+                    AppLogger.LogError($"Batch export failed: {fileName}", ex);
                     await Dispatcher.UIThread.InvokeAsync(() => BatchErrors.Add(new BatchExportError(fileName, ex.Message)));
                 }
                 finally

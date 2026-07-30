@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -75,6 +76,23 @@ public static class FileDialogService
         var file = files[0];
         var stream = await file.OpenReadAsync();
         return (stream, file.Name);
+    }
+
+    // Collage mode's multi-pick — same content-URI-via-stream approach as PickImageAsync,
+    // just with AllowMultiple so a single picker trip fills the whole tray.
+    public static async Task<IReadOnlyList<(Stream Stream, string FileName)>> PickImagesAsync(TopLevel topLevel)
+    {
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select photos for the collage",
+            AllowMultiple = true,
+            FileTypeFilter = [new FilePickerFileType("Photos") { Patterns = ["*.jpg", "*.jpeg"], MimeTypes = ["image/jpeg"] }]
+        });
+
+        var result = new List<(Stream, string)>(files.Count);
+        foreach (var file in files)
+            result.Add((await file.OpenReadAsync(), file.Name));
+        return result;
     }
 
     public static Task<bool> SavePngFromFileAsync(TopLevel topLevel, string suggestedName, string sourcePath) =>
