@@ -2,10 +2,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <!--
-        Desktop-only palette. Merged into Application.Resources *after* Colors.axaml at
-        runtime (see App.axaml.cs) — same keys, so every StaticResource lookup that already
-        points at the dark tokens picks these up instead, with no XAML changes needed
-        elsewhere. Android keeps the base dark palette from Colors.axaml untouched.
+        Merged into Application.Resources *after* Colors.axaml at runtime (see
+        App.axaml.cs) — same keys, so every StaticResource lookup that already points at
+        the dark tokens picks these up instead, with no XAML changes needed elsewhere.
+        Desktop always merges this; mobile merges it only when the phone's system theme
+        is Light at startup (see PhSpectre.Android/Application.cs).
     -->
 
     <SolidColorBrush x:Key="BackgroundBrush"        Color="#FAFAFA"/>
