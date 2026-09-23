@@ -23,6 +23,15 @@ them (weighted by displayed area), with EXIF taken from the first photo:
   <img src="screens/collage-mobile.jpg" width="39%" alt="Mobile collage output — five photos, pooled palette, EXIF strip" />
 </p>
 
+Film Recipe mode — for Fujifilm JPEGs, auto-detects the in-camera film simulation recipe
+(white balance, dynamic range, tone curve, grain, color chrome, and more) straight from the
+MakerNote and renders it as its own exportable card:
+
+<p>
+  <img src="screens/recepiet_ui.jpg" width="59%" alt="Desktop Recipe export mode — auto-detected Fujifilm recipe panel" />
+  <img src="screens/photo_2026-09-23_23-17-17.jpg" width="39%" alt="Exported recipe card for a Fujifilm Provia/Standard shot" />
+</p>
+
 Generated palettes — portrait and landscape layouts, with and without hex labels:
 
 <p>
@@ -65,6 +74,19 @@ card from all of them: photos are laid out into a single image with a configurab
 and the palette is pooled across the source photos — weighted by how much area each one
 occupies — so the gutter itself never affects the result. EXIF metadata is read from the
 first photo in the tray.
+
+**Export Mode** (desktop and Android) picks what a photo (or collage) is rendered as: `Card`
+(photo + palette swatches), `InfoOnly` (photo + EXIF plate, no swatches), `Recipe` (single
+photo only — see below), or the collage equivalents `Collage`/`CollageInfoOnly`. Modes that
+don't need a color palette skip the k-means clustering step entirely, so `InfoOnly` and
+`CollageInfoOnly` render instantly even on large collages.
+
+**Film Recipe mode** auto-detects the in-camera film simulation recipe from a Fujifilm
+JPEG's MakerNote — film simulation, white balance (+ R/B shift), dynamic range, highlight/shadow
+tone, color, sharpness, noise reduction, clarity, grain effect, and color chrome/color chrome
+blue — and renders it as a standalone shareable card, badged `Auto · Fuji`. Manual entry
+(and a `Custom` badge) is available for non-Fuji photos or to override a detected recipe.
+Recipe detection currently supports Fujifilm cameras only.
 
 Self-contained — no .NET runtime required on the target machine.
 
