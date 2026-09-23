@@ -15,7 +15,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <Panel Background="{StaticResource BackgroundBrush}">
+    <Panel x:Name="RootPanel" Background="{StaticResource BackgroundBrush}">
 
         <!-- Main flow: pick a photo, see the palette, save it -->
         <Grid RowDefinitions="Auto,*" IsVisible="{Binding !IsSettingsOpen}">
@@ -36,15 +36,13 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                                          Foreground="{StaticResource TextSecondaryBrush}"/>
                         </Button>
 
-                        <!-- Collage mode entry/controls — a distinct button from the single-photo
-                             picker above, not a toggle, so entering/exiting is always explicit. -->
-                        <Button Classes="icon-toolbar"
-                                IsVisible="{Binding !IsCollageMode}"
-                                Command="{Binding CreateCollageCommand}"
-                                ToolTip.Tip="Create a collage">
-                            <materialIcons:MaterialIcon Kind="ViewGridPlusOutline" Width="18" Height="18"
-                                                         Foreground="{StaticResource TextSecondaryBrush}"/>
-                        </Button>
+                        <!-- Collage entry is the ExportMode chip row now, not a separate button
+                             (bugfix "одна кнопка выбора фото вместо двух" — structural fix,
+                             no more independent Create/Exit collage flow to keep in sync with
+                             the mode chips). Add/Exit here are just shortcuts once a tray
+                             already exists; exiting goes through the same ExportMode switch
+                             the chip row uses, so the single<->collage migration rule applies
+                             here too instead of a second, diverging code path. -->
                         <Button Classes="icon-toolbar"
                                 IsVisible="{Binding IsCollageMode}"
                                 Command="{Binding AddPhotosToCollageCommand}"
@@ -54,7 +52,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         </Button>
                         <Button Classes="icon-toolbar"
                                 IsVisible="{Binding IsCollageMode}"
-                                Command="{Binding ExitCollageModeCommand}"
+                                Command="{Binding ExitCollageCommand}"
                                 ToolTip.Tip="Exit collage">
                             <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"
                                                          Foreground="{StaticResource TextSecondaryBrush}"/>
@@ -73,32 +71,85 @@ to set the actual DataContext for runtime, set the DataContext property in code 
             <ScrollViewer Grid.Row="1">
                 <StackPanel Spacing="14" Margin="16,16,16,24">
 
+                    <!-- Export mode — horizontal chip row, always visible above the photo
+                         selection area so switching modes never requires opening Settings
+                         (bugfix "mobile Export Mode на главный экран" §1). Available chips
+                         follow SelectedPhotoCount: all 5 before any photo/tray exists, then
+                         single-photo or collage modes once one does. -->
+                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Settings.ExportModeChips}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ExportModeChip">
+                                    <Button Classes="mode-chip" Classes.selected="{Binding IsSelected}"
+                                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).Settings.SelectExportModeCommand}"
+                                            CommandParameter="{Binding Mode}">
+                                        <TextBlock Text="{Binding Label}" VerticalAlignment="Center"/>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <!-- Recent photos strip — stays available once a result is already
+                         showing, for quick switching without a full re-pick. Superseded by
+                         the empty-state browser grid below while there's nothing selected
+                         yet, so the two don't show the same thumbnails twice. -->
+                    <StackPanel Spacing="6" IsVisible="{Binding ShowRecentStrip}">
+                        <TextBlock Text="RECENT" Classes="mono-data-small" Opacity="0.55"/>
+                        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding RecentPhotos}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:FileEntry">
+                                        <Button Classes="tray-overlay" Padding="0" Width="64" Height="64"
+                                                Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectRecentPhotoCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Panel ClipToBounds="True">
+                                                <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill" Width="64" Height="64"/>
+                                            </Panel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+
+                    <!-- Single pick/add entry point (bugfix "одна кнопка выбора фото вместо
+                         двух, управляется ExportMode"): label and picker (single vs multi)
+                         both follow the current ExportMode chip, not a second explicit
+                         Create Collage button. -->
                     <Button Classes="primary"
-                            Command="{Binding PickPhotoCommand}"
-                            IsVisible="{Binding ShowStartButtons}"
+                            Command="{Binding PickMainPhotoCommand}"
+                            IsVisible="{Binding ShowFullWidthStartButtons}"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center">
                         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
                             <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="18" Height="18"
                                                          VerticalAlignment="Center"
                                                          Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="Pick a Photo" Classes="button-label" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding MainPhotoButtonLabel}" Classes="button-label" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
-                    <!-- Second, explicit entry point next to the single-photo picker — not a
-                         toggle, so it reads as "a different thing you can do" rather than a
-                         Single|Collage segmented switch. Hidden once collage mode is entered
-                         so it doesn't linger next to the tray. -->
+                    <!-- Compact variant of the same single entry point, once there's picking
+                         history and the browser grid below is the primary content instead
+                         (bugfix §2: "top action bar over the grid", not the reverse). -->
                     <Button Classes="secondary"
-                            Command="{Binding CreateCollageCommand}"
-                            IsVisible="{Binding ShowStartButtons}"
-                            HorizontalAlignment="Stretch"
+                            Command="{Binding PickMainPhotoCommand}"
+                            IsVisible="{Binding ShowCompactActionBar}"
                             HorizontalContentAlignment="Center">
-                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                            <materialIcons:MaterialIcon Kind="ViewGridPlusOutline" Width="18" Height="18"
-                                                         VerticalAlignment="Center"/>
-                            <TextBlock Text="Create Collage" Classes="button-label" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding MainPhotoButtonLabel}" FontSize="13" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -176,7 +227,17 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource CardBorderBrush}"
                             BorderThickness="1" CornerRadius="12" ClipToBounds="True" MinHeight="280">
                         <Panel Margin="4">
-                            <Image Source="{Binding DisplayedCollageBitmap}" Stretch="Uniform"/>
+                            <Image Source="{Binding DisplayedResultBitmap}" Stretch="Uniform"/>
+
+                            <Button Classes="tray-overlay" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8"
+                                    IsVisible="{Binding CanCompareToOriginal}"
+                                    Command="{Binding ToggleCompareToOriginalCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6" Margin="4,2">
+                                    <materialIcons:MaterialIcon Kind="CompareHorizontal" Width="14" Height="14"/>
+                                    <TextBlock Text="Compare" IsVisible="{Binding !IsComparingToOriginal}" FontSize="11"/>
+                                    <TextBlock Text="Original" IsVisible="{Binding IsComparingToOriginal}" FontSize="11"/>
+                                </StackPanel>
+                            </Button>
 
                             <StackPanel IsVisible="{Binding IsGenerating}"
                                         HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -192,9 +253,11 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Foreground="{StaticResource ErrorBrush}" Margin="20" FontSize="13"/>
 
-                            <!-- Empty state: dashed box, whole zone opens the relevant picker
-                                 (single photo or collage add, depending on the current mode) -->
-                            <Button IsVisible="{Binding ShowPlaceholder}"
+                            <!-- Empty state, first-ever use only: dashed box, whole zone opens
+                                 the relevant picker (single photo or collage add). Once there's
+                                 any picking history the browser grid below takes over instead
+                                 (bugfix §2). -->
+                            <Button IsVisible="{Binding ShowEmptyDashedPlaceholder}"
                                     Command="{Binding PickForEmptyStateCommand}"
                                     HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                     HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
@@ -213,6 +276,32 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                     </StackPanel>
                                 </Panel>
                             </Button>
+
+                            <!-- Empty-state browser grid: fills the same space once there's
+                                 picking history, instead of leaving it empty (bugfix §2). -->
+                            <ScrollViewer IsVisible="{Binding ShowEmptyBrowserGrid}" VerticalScrollBarVisibility="Auto">
+                                <StackPanel Spacing="8" Margin="10">
+                                    <TextBlock Text="RECENT PHOTOS" Classes="mono-data-small" Opacity="0.55"/>
+                                    <ItemsControl ItemsSource="{Binding RecentPhotos}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:FileEntry">
+                                                <Button Classes="tray-overlay" Padding="0" Width="92" Height="92" Margin="4" CornerRadius="8"
+                                                        Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).SelectRecentPhotoCommand}"
+                                                        CommandParameter="{Binding}">
+                                                    <Panel ClipToBounds="True">
+                                                        <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill" Width="92" Height="92"/>
+                                                    </Panel>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
                         </Panel>
                     </Border>
 
@@ -228,7 +317,8 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         </StackPanel>
                     </Button>
 
-                    <!-- Save bar -->
+                    <!-- Save bar — single unified button (bugfix §1): label/icon and the
+                         saved file both follow the current Export Mode. -->
                     <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding HasResult}">
                         <TextBlock Grid.Column="0"
                                    Text="{Binding OutputSizeText}"
@@ -249,7 +339,9 @@ to set the actual DataContext for runtime, set the DataContext property in code 
             </ScrollViewer>
         </Grid>
 
-        <!-- Settings — in-view panel, since Android is single-activity and can't open a second window -->
+        <!-- Settings — compact per-section summary cards; each opens a bottom sheet with
+             just that section, instead of one long scroll (base spec §6). In-view rather
+             than a second window since Android is single-activity. -->
         <Grid RowDefinitions="Auto,*" IsVisible="{Binding IsSettingsOpen}">
             <Border Grid.Row="0" Background="{StaticResource BackgroundBrush}"
                     BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="16,14">
@@ -265,9 +357,114 @@ to set the actual DataContext for runtime, set the DataContext property in code 
             <ScrollViewer Grid.Row="1" Padding="16,8,16,32"
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Disabled">
-                <views:SettingsPanel DataContext="{Binding Settings}" HorizontalAlignment="Stretch"/>
+                <StackPanel Spacing="8" DataContext="{Binding Settings}">
+                    <!-- Export mode moved to a chip row on the main screen (bugfix "mobile
+                         Export Mode на главный экран" §1) — no longer a Settings entry. -->
+                    <TextBlock Text="SECTIONS" Classes="mono-data-small" Opacity="0.55" Margin="4,4,0,4"/>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.Palette}" IsVisible="{Binding ComputeColors}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="PaletteOutline" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Palette" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.Swatches}" IsVisible="{Binding ComputeColors}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="ViewGridOutline" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Swatches" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.Collage}" IsVisible="{Binding ShowCollageOptions}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="ViewGridPlusOutline" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Collage" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.Metadata}" IsVisible="{Binding EffectiveShowCameraInfo}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="TextBoxOutline" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Metadata display" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.Output}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="ExportVariant" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Output" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.PhotoMetadata}" IsVisible="{Binding ShowPhotoMetadataSection}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="CameraOutline" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Photo metadata" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.FilmRecipe}" IsVisible="{Binding IsRecipeMode}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="FilmstripBoxMultiple" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Film recipe" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.About}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="InformationOutline" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="About" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
             </ScrollViewer>
         </Grid>
+
+        <!-- Bottom sheet — hosts the shared SettingsPanel with FocusedSection set, so it
+             shows exactly the one section the user tapped into. Scrim dismisses on tap,
+             same as the Done button / system back would.
+             Bugfix "bottom sheet секций обрезается, контент недоступен" — round 2: round 1
+             kept VerticalAlignment="Bottom" (sheet sizes to its own content, Auto height) and
+             capped it at a code-behind-computed MaxHeight. That's the wrong shape for a Grid
+             with a "*" scroll row: an Auto-height container only gives that row a definite,
+             non-zero size once something else (the MaxHeight) pins a finite height on the
+             whole subtree — fragile, and still wasn't enough room for long sections.
+             Fix: stretch the sheet to fill the full available height instead (opens from the
+             TOP down, not sized-to-content from the bottom), with just a Margin at the top
+             for a scrim-visible/tap-to-dismiss strip and to read as a sheet rather than a full
+             page. Height is now a plain, deterministic Stretch — no code-behind sizing at all
+             — so the Grid's "*" row always gets a real, finite height and the ScrollViewer
+             genuinely scrolls the rest, on any section, on any screen. Safe area is already
+             covered structurally: RootPanel.Margin (WireSafeArea below) insets the whole tree
+             the sheet lives in, this sheet included, not just the result screen. -->
+        <Panel IsVisible="{Binding Settings.IsSectionSheetOpen}">
+            <Button Background="#99000000" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    Command="{Binding Settings.CloseSectionCommand}"/>
+            <Border VerticalAlignment="Stretch" Margin="0,40,0,0" Background="{StaticResource BackgroundBrush}"
+                    BorderBrush="{StaticResource CardBorderBrush}" BorderThickness="0,1,0,0"
+                    CornerRadius="16,16,0,0">
+                <Grid RowDefinitions="Auto,Auto,*">
+                    <Border Grid.Row="0" Width="36" Height="4" CornerRadius="2" Margin="0,10,0,0"
+                            HorizontalAlignment="Center" Background="{StaticResource CardBorderBrush}"/>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="16,10,16,4">
+                        <TextBlock Grid.Column="0" Text="{Binding Settings.FocusedSectionTitle}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Content="Done" Classes="text" Command="{Binding Settings.CloseSectionCommand}"/>
+                    </Grid>
+                    <ScrollViewer Grid.Row="2" Padding="16,0,16,32" VerticalScrollBarVisibility="Auto">
+                        <views:SettingsPanel DataContext="{Binding Settings}" HorizontalAlignment="Stretch"/>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Panel>
 
     </Panel>
 </UserControl>

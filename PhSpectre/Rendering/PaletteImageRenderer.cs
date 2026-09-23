@@ -41,6 +41,12 @@ public static class PaletteImageRenderer
     public static Color GetBackgroundColor(Theme theme, Color? customBackground = null) =>
         GetThemeColors(theme, customBackground).Background;
 
+    // Text-color counterpart to GetBackgroundColor above, for callers (RecipeCardRenderer)
+    // that need to match the theme's text color without exposing the private ThemeColors
+    // record itself.
+    internal static Color GetTextColor(Theme theme, Color? customBackground = null) =>
+        GetThemeColors(theme, customBackground).Text;
+
     private static ThemeColors GetThemeColors(Theme theme, Color? customBackground = null)
     {
         if (customBackground is { } bg)
@@ -343,7 +349,10 @@ public static class PaletteImageRenderer
 
     // ── Strip helpers ───────────────────────────────────────────────────────
 
-    private static (string[] lines, int stripH, float fontSize, Font? font) PrepareStrip(
+    // Internal (not private): reused by RecipeCardRenderer to draw the same camera-info
+    // plate strip on the recipe card as the palette card uses, rather than duplicating the
+    // line-building/fitting/drawing logic.
+    internal static (string[] lines, int stripH, float fontSize, Font? font) PrepareStrip(
         PhotoMetadata? exif, MetaVerbosity verbosity, int photoWidth, float labelScale = 1.0f)
     {
         if (exif == null || verbosity == MetaVerbosity.Off)
@@ -420,7 +429,7 @@ public static class PaletteImageRenderer
         return text.Split(' ')[0];
     }
 
-    private static void DrawStrip(
+    internal static void DrawStrip(
         IImageProcessingContext ctx,
         string[] lines, int stripH, float fontSize, Font? font,
         MetaStyle style, Theme theme, int x, int y, int w,
@@ -543,7 +552,7 @@ public static class PaletteImageRenderer
 
     // No built-in rounded-rectangle primitive ships with this ImageSharp.Drawing version —
     // build one from 4 corner arcs joined by straight edges.
-    private static IPath RoundedRectPath(float x, float y, float w, float h, float r)
+    internal static IPath RoundedRectPath(float x, float y, float w, float h, float r)
     {
         var pb = new PathBuilder();
         pb.StartFigure();
@@ -769,7 +778,7 @@ public static class PaletteImageRenderer
         }
     }
 
-    private static Font ResolveMetaFont(float size)
+    internal static Font ResolveMetaFont(float size)
     {
         if (EmbeddedMonoFamily is { } embedded)
         {
@@ -831,7 +840,7 @@ public static class PaletteImageRenderer
         return 0.2126 * Ch(r) + 0.7152 * Ch(g) + 0.0722 * Ch(b);
     }
 
-    private static Color ContrastColor(byte r, byte g, byte b)
+    internal static Color ContrastColor(byte r, byte g, byte b)
         => RelativeLuminance(r, g, b) < 0.179 ? Color.White : Color.Black;
 
     // Standard RGB→hue conversion (0-360, undefined/0 for achromatic colors) — only the hue

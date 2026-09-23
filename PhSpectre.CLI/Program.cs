@@ -1,4 +1,6 @@
+using System.Text.Json;
 using PhSpectre;
+using PhSpectre.Recipes;
 using PhSpectre.Rendering;
 
 if (args.Length == 0)
@@ -9,6 +11,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("       [--theme dark|light]");
     Console.Error.WriteLine("       [--sort none|hue|luminance|percent] [--shape rect|rounded|circle] [--show-percent]");
     Console.Error.WriteLine("       [--guide none|thirds|golden|diagonal|cross]");
+    Console.Error.WriteLine("       [--recipe [--json]]");
     return 1;
 }
 
@@ -24,6 +27,8 @@ var sortOrder     = SortOrder.None;
 var swatchShape   = SwatchShape.Rectangle;
 bool showPercent  = false;
 var compositionGuide = CompositionGuide.None;
+bool showRecipe   = false;
+bool jsonOutput   = false;
 
 for (int i = 1; i < args.Length; i++)
 {
@@ -86,6 +91,8 @@ for (int i = 1; i < args.Length; i++)
         i++;
     }
     else if (args[i] == "--show-percent") { showPercent = true; }
+    else if (args[i] == "--recipe")       { showRecipe = true; }
+    else if (args[i] == "--json")         { jsonOutput = true; }
     else if (args[i] == "--guide" && i + 1 < args.Length)
     {
         compositionGuide = args[i + 1].ToLowerInvariant() switch
@@ -142,5 +149,39 @@ PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosi
 Console.WriteLine($"Saved: {outputPath}");
 foreach (var swatch in palette.Swatches)
     Console.WriteLine($"  {swatch.Hex}  {swatch.Percentage:P1}");
+
+if (showRecipe)
+{
+    var recipe = RecipeReader.Read(imagePath);
+    if (jsonOutput)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(recipe, new JsonSerializerOptions { WriteIndented = true }));
+    }
+    else if (recipe == null)
+    {
+        Console.WriteLine("Recipe: no recipe data (not a recognized Fuji photo, or no MakerNote found).");
+    }
+    else
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Recipe: {recipe.CameraMake} {recipe.CameraModel}");
+        Console.WriteLine($"  Source          : {recipe.Source}{(recipe.RecipeName is { } n ? $" ({n})" : "")}");
+        Console.WriteLine($"  Film Simulation : {recipe.FilmSimulation ?? "-"}");
+        Console.WriteLine($"  White Balance   : {recipe.WhiteBalance ?? "-"}");
+        if (recipe.WhiteBalanceShift is { } shift)
+            Console.WriteLine($"  WB Shift        : R{shift.Red:+0;-0;0} B{shift.Blue:+0;-0;0}");
+        Console.WriteLine($"  Dynamic Range   : {recipe.DynamicRange ?? "-"}");
+        Console.WriteLine($"  Highlight       : {recipe.HighlightTone?.ToString("+0;-0;0") ?? "-"}");
+        Console.WriteLine($"  Shadow          : {recipe.ShadowTone?.ToString("+0;-0;0") ?? "-"}");
+        Console.WriteLine($"  Color           : {recipe.Color?.ToString() ?? "-"}");
+        Console.WriteLine($"  Sharpness       : {recipe.Sharpness?.ToString("+0;-0;0") ?? "-"}");
+        Console.WriteLine($"  Noise Reduction : {recipe.NoiseReduction?.ToString("+0;-0;0") ?? "-"}");
+        Console.WriteLine($"  Clarity         : {recipe.Clarity?.ToString("+0.#;-0.#;0") ?? "-"}");
+        Console.WriteLine($"  Grain Effect    : {recipe.GrainEffect ?? "-"}");
+        Console.WriteLine($"  Color Chrome    : {recipe.ColorChromeEffect ?? "-"}");
+        Console.WriteLine($"  Color Chrome Blue: {recipe.ColorChromeFxBlue ?? "-"}");
+        Console.WriteLine($"  B&W Adjustment  : {recipe.BwAdjustment?.ToString("+0;-0;0") ?? "-"}");
+    }
+}
 
 return 0;
