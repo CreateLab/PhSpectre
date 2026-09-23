@@ -29,7 +29,8 @@ public sealed record CollageRenderSettings(
     CompositionGuide CompositionGuide,
     Color GutterColor,
     int GutterThickness,
-    int SourceMaxDimension = 2400)
+    int SourceMaxDimension = 2400,
+    bool ComputeColors = true)
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 }
@@ -66,12 +67,23 @@ public static class CollageService
 
             try
             {
-                var weightedPhotos = photos
-                    .Zip(composed.AreaWeights, (img, weight) => (Image: img, Weight: weight))
-                    .ToList();
+                Models.ColorPalette palette;
+                if (settings.ComputeColors)
+                {
+                    var weightedPhotos = photos
+                        .Zip(composed.AreaWeights, (img, weight) => (Image: img, Weight: weight))
+                        .ToList();
 
-                var palette = await new PaletteExtractor().ExtractWeightedAsync(
-                    weightedPhotos, settings.Colors, settings.SamplingMode, cancellationToken);
+                    palette = await new PaletteExtractor().ExtractWeightedAsync(
+                        weightedPhotos, settings.Colors, settings.SamplingMode, cancellationToken);
+                }
+                else
+                {
+                    // CollageInfoOnly — no k-means over the pooled photos at all (that's the
+                    // expensive step the mode exists to skip). showSwatches:false below means
+                    // this placeholder is never drawn.
+                    palette = new Models.ColorPalette([new Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
+                }
 
                 cancellationToken.ThrowIfCancellationRequested();
 

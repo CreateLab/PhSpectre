@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using PhSpectre.Avalonia.ViewModels;
+using PhSpectre.Models;
 using PhSpectre.Rendering;
 
 namespace PhSpectre.Avalonia.Services;
@@ -16,8 +17,13 @@ internal sealed class PersistedSettings
     public MetaVerbosity MetaVerbosity { get; set; } = MetaVerbosity.Default;
     public MetaStyle MetaStyle { get; set; } = MetaStyle.FilmStrip;
     public SamplingMode SamplingMode { get; set; } = SamplingMode.Vivid;
-    public bool ShowSwatches { get; set; } = true;
-    public bool HalfSize { get; set; }
+    // True only as the *fresh-install* default (no settings.json on disk yet, so this
+    // record's own field initializer is what SettingsStorage.Load() returns) — anyone who
+    // already has a settings.json gets their previously-saved value back unchanged, since
+    // deserialization overwrites this default. No forced migration for existing users.
+    public bool HalfSize { get; set; } = true;
+    public ExportMode ExportMode { get; set; } = ExportMode.Card;
+    public bool ShowCameraInfo { get; set; }
     public OutputFormat OutputFormat { get; set; } = OutputFormat.Png;
     public ExportPreset ExportPreset { get; set; } = ExportPreset.Original;
     public float LabelScale { get; set; } = 1.0f;
@@ -38,13 +44,14 @@ internal static class SettingsStorage
         nameof(SettingsViewModel.IsDarkTheme), nameof(SettingsViewModel.ColorCount),
         nameof(SettingsViewModel.ShowHex), nameof(SettingsViewModel.HexBelow),
         nameof(SettingsViewModel.MetaVerbosity), nameof(SettingsViewModel.MetaStyle),
-        nameof(SettingsViewModel.SamplingMode), nameof(SettingsViewModel.ShowSwatches),
+        nameof(SettingsViewModel.SamplingMode),
         nameof(SettingsViewModel.HalfSize), nameof(SettingsViewModel.OutputFormat),
         nameof(SettingsViewModel.ExportPreset), nameof(SettingsViewModel.LabelScale),
         nameof(SettingsViewModel.SwatchScale), nameof(SettingsViewModel.ShowPercent),
         nameof(SettingsViewModel.SwatchShape), nameof(SettingsViewModel.SortOrder),
         nameof(SettingsViewModel.UseCustomBackground), nameof(SettingsViewModel.CustomBackgroundHex),
         nameof(SettingsViewModel.CompositionGuide), nameof(SettingsViewModel.GutterThickness),
+        nameof(SettingsViewModel.ExportMode), nameof(SettingsViewModel.ShowCameraInfo),
     };
 
     public static bool IsPersistedProperty(string propertyName) => PersistedPropertyNames.Contains(propertyName);
@@ -58,8 +65,9 @@ internal static class SettingsStorage
         vm.MetaVerbosity         = s.MetaVerbosity;
         vm.MetaStyle             = s.MetaStyle;
         vm.SamplingMode          = s.SamplingMode;
-        vm.ShowSwatches          = s.ShowSwatches;
         vm.HalfSize              = s.HalfSize;
+        vm.ExportMode            = s.ExportMode;
+        vm.ShowCameraInfo        = s.ShowCameraInfo;
         vm.OutputFormat          = s.OutputFormat;
         vm.ExportPreset          = s.ExportPreset;
         vm.LabelScale            = s.LabelScale;
@@ -82,8 +90,9 @@ internal static class SettingsStorage
         MetaVerbosity       = vm.MetaVerbosity,
         MetaStyle           = vm.MetaStyle,
         SamplingMode        = vm.SamplingMode,
-        ShowSwatches        = vm.ShowSwatches,
         HalfSize            = vm.HalfSize,
+        ExportMode          = vm.ExportMode,
+        ShowCameraInfo      = vm.ShowCameraInfo,
         OutputFormat        = vm.OutputFormat,
         ExportPreset        = vm.ExportPreset,
         LabelScale          = vm.LabelScale,

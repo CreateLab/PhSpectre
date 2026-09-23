@@ -1,5 +1,7 @@
 using System;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Platform;
 using PhSpectre.Avalonia.Services;
 using PhSpectre.Avalonia.ViewModels;
 
@@ -11,7 +13,24 @@ public partial class MainView : UserControl
     {
         InitializeComponent();
         DataContextChanged += (_, _) => WireViewModel();
+        AttachedToVisualTree += (_, _) => WireSafeArea();
     }
+
+    // Android's status bar / gesture nav bar can overlap the toolbar and bottom save bar —
+    // pad the whole screen by the OS-reported safe area rather than a guessed fixed margin.
+    // No-op (and harmless) on platforms without an InsetsManager, e.g. desktop previewing
+    // this view, or a window manager that doesn't report insets.
+    private void WireSafeArea()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        var insets = topLevel?.InsetsManager;
+        if (insets == null) return;
+
+        ApplySafeArea(insets.SafeAreaPadding);
+        insets.SafeAreaChanged += (_, e) => ApplySafeArea(e.SafeAreaPadding);
+    }
+
+    private void ApplySafeArea(Thickness padding) => RootPanel.Margin = padding;
 
     private void WireViewModel()
     {

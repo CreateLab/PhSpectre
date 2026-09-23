@@ -13,13 +13,27 @@ namespace PhSpectre.Avalonia.Services;
 // drift apart in behavior.
 public static class PaletteExportService
 {
+    // Stand-in used whenever ComputeColors is false (InfoOnly/Recipe/CollageInfoOnly) —
+    // k-means never runs, so there's nothing real to put here; showSwatches:false on the
+    // Render call means it's never drawn. ColorPalette's constructor requires at least one
+    // swatch, so this is the minimal legal instance rather than an empty one.
+    private static readonly PhSpectre.Models.ColorPalette NoColorsPlaceholder =
+        new([new PhSpectre.Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
+
     public static async Task ExportAsync(
         string sourcePath, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
     {
         PhSpectre.Models.ColorPalette palette;
-        await using (var fs = System.IO.File.OpenRead(sourcePath))
+        if (settings.ComputeColors)
+        {
+            await using var fs = System.IO.File.OpenRead(sourcePath);
             palette = await new PaletteExtractor().ExtractAsync(fs, settings.Colors, settings.SamplingMode, cancellationToken);
+        }
+        else
+        {
+            palette = NoColorsPlaceholder;
+        }
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -78,7 +92,8 @@ public static class PaletteExportService
             CompositionGuide:  settings.CompositionGuide,
             GutterColor:       settings.GutterColor,
             GutterThickness:   settings.GutterThickness,
-            SourceMaxDimension: settings.CollageSourceMaxDimension);
+            SourceMaxDimension: settings.CollageSourceMaxDimension,
+            ComputeColors:     settings.ComputeColors);
 
         return Task.Run(
             () => CollageService.RenderCollageAsync(sourcePaths, destPath, collageSettings, cancellationToken, metadataOverride),

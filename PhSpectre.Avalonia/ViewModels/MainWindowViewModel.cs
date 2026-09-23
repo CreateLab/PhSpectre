@@ -11,6 +11,8 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhSpectre;
+using PhSpectre.Models;
+using PhSpectre.Recipes;
 using PhSpectre.Rendering;
 using PhSpectre.Services;
 using PhSpectre.Avalonia.Models;
@@ -30,6 +32,17 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private Bitmap?    _originalBitmap;
     [ObservableProperty] private Bitmap?    _paletteBitmap;
     [ObservableProperty] private bool       _isGenerating;
+    [ObservableProperty] private bool       _isComparingToOriginal;
+
+    // Single-photo preview now shows one frame, not two — this picks which bitmap it shows.
+    // Only meaningful outside collage mode (collage has no single "original" to compare to).
+    public Bitmap? DisplayedSingleBitmap => IsComparingToOriginal ? OriginalBitmap : PaletteBitmap;
+
+    partial void OnIsComparingToOriginalChanged(bool value) => OnPropertyChanged(nameof(DisplayedSingleBitmap));
+    partial void OnOriginalBitmapChanged(Bitmap? value)      => OnPropertyChanged(nameof(DisplayedSingleBitmap));
+
+    [RelayCommand]
+    private void ToggleCompareToOriginal() => IsComparingToOriginal = !IsComparingToOriginal;
     [ObservableProperty] private string?    _errorMessage;
     [ObservableProperty] private bool       _isListView = false;
     [ObservableProperty] private string?    _fileInfoText;
@@ -101,6 +114,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowResultPlaceholder));
         OnPropertyChanged(nameof(DisplayedCollageBitmap));
         OnPropertyChanged(nameof(RegenerateButtonLabel));
+        OnPropertyChanged(nameof(DisplayedSingleBitmap));
     }
     partial void OnCollagePreviewBitmapChanged(Bitmap? value)
     {
@@ -183,6 +197,16 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private string?                  _lastTempPng;
     private string                   _lastExtension = ".png";
+
+    // Single-slot memoization: if a Generate/Regenerate is triggered for the exact same
+    // (photo, settings — ExportMode included) combination as the last successful render,
+    // reuse that output instead of recomputing (skips k-means again on a no-op click). Only
+    // one slot is needed — the app always has exactly one active single-photo selection or
+    // collage tray at a time, never several to remember at once.
+    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe)? _lastSingleRenderKey;
+    private string?                                        _cachedSingleRenderOutput;
+    private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
+    private string?                                         _cachedCollageRenderOutput;
     private string?                  _collageExifSourcePath;
     private CancellationTokenSource? _renderCts;
     private CancellationTokenSource? _thumbnailCts;
@@ -219,6 +243,9 @@ public partial class MainWindowViewModel : ViewModelBase
             RegenerateCommand.NotifyCanExecuteChanged();
             if (!IsCollageMode) return;
 
+            Settings.SelectedPhotoCount = CollageItems.Count;
+            Settings.ExportMode = ExportModeRules.ClosestValidMode(Settings.ExportMode, CollageItems.Count);
+
             // The first tray item's EXIF represents the whole collage and feeds the
             // editable "Edit metadata" fields in Settings, same as selecting a single
             // photo does — only reload when that first item's identity actually changes,
@@ -227,7 +254,9 @@ public partial class MainWindowViewModel : ViewModelBase
             if (newExifSource != _collageExifSourcePath)
             {
                 _collageExifSourcePath = newExifSource;
-                Settings.LoadMetadataFields(newExifSource != null ? PaletteImageRenderer.ReadMetadata(newExifSource) : null);
+                Settings.LoadMetadataFields(
+                    newExifSource != null ? PaletteImageRenderer.ReadMetadata(newExifSource) : null,
+                    newExifSource != null ? RecipeReader.Read(newExifSource) : null);
             }
 
             // A previously-generated full render no longer reflects the tray as soon as it
@@ -276,12 +305,19 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // Settings.LoadMetadataFields (called when a new photo is selected) bulk-assigns the
-        // metadata text fields, which would otherwise look like a user edit and pop up
-        // Regenerate for a photo that's already about to render fresh. Also guards against
-        // Settings.ShowCollageOptions itself (flipped by EnterCollageMode) falsely surfacing
-        // Regenerate before the tray has anything in it.
         if (!HasActiveContent || IsBatchActive || Settings.IsBulkLoading) return;
+
+        // "Show camera info plate" bugfix §2: in Recipe mode the card render is cheap (no
+        // k-means, just RecipeCardRenderer), so unlike every other settings change — which
+        // only surfaces the Regenerate button — this toggle re-renders immediately and
+        // updates the preview/save button on its own, since the whole point of the fix is
+        // that flipping the checkbox visibly does something right away.
+        if (e.PropertyName == nameof(SettingsViewModel.ShowCameraInfo) && Settings.ExportMode == ExportMode.Recipe && !IsCollageMode)
+        {
+            _ = GeneratePaletteAsync(SelectedFile);
+            return;
+        }
+
         IsRegenerateAvailable = true;
     }
 
@@ -290,11 +326,18 @@ public partial class MainWindowViewModel : ViewModelBase
     partial void OnSelectedFileChanged(FileEntry? value)
     {
         OnPropertyChanged(nameof(FilePositionText));
-        Settings.LoadMetadataFields(value != null ? PaletteImageRenderer.ReadMetadata(value.FullPath) : null);
+        Settings.LoadMetadataFields(
+            value != null ? PaletteImageRenderer.ReadMetadata(value.FullPath) : null,
+            value != null ? RecipeReader.Read(value.FullPath) : null);
         IsRegenerateAvailable = false; // the fresh render below is already current — nothing to regenerate yet
         // In collage mode, clicking a row to check/inspect it shouldn't steal the big preview
         // away from the collage — only the tray (CollageItems) drives collage rendering.
-        if (!IsCollageMode) _ = GeneratePaletteAsync(value);
+        if (!IsCollageMode)
+        {
+            Settings.SelectedPhotoCount = value != null ? 1 : 0;
+            Settings.ExportMode = ExportModeRules.ClosestValidMode(Settings.ExportMode, value != null ? 1 : 0);
+            _ = GeneratePaletteAsync(value);
+        }
     }
 
     [RelayCommand]
@@ -453,14 +496,28 @@ public partial class MainWindowViewModel : ViewModelBase
             FileInfoText = $"Collage · {sourcePaths.Count} photos";
 
             _lastExtension = Settings.FileExtension;
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+            var cacheKey = (string.Join("", sourcePaths), exportSettings);
+
+            if (Equals(_lastCollageRenderKey, cacheKey) && _cachedCollageRenderOutput != null && File.Exists(_cachedCollageRenderOutput))
+            {
+                _lastTempPng   = _cachedCollageRenderOutput;
+                var cachedSize = new FileInfo(_lastTempPng).Length;
+                var cachedFmt  = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
+                OutputSizeText = $"{cachedSize / 1_048_576.0:F1} MB {cachedFmt}";
+                PaletteBitmap  = new Bitmap(_lastTempPng);
+                return;
+            }
+
+            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
                 metadataOverride: Settings.BuildMetadataOverride());
 
             token.ThrowIfCancellationRequested();
 
-            _lastTempPng    = tmpOut;
+            _lastTempPng               = tmpOut;
+            _lastCollageRenderKey      = cacheKey;
+            _cachedCollageRenderOutput = tmpOut;
             var sizeBytes   = new FileInfo(tmpOut).Length;
             var formatLabel = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
             OutputSizeText  = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";
@@ -517,6 +574,11 @@ public partial class MainWindowViewModel : ViewModelBase
         if (idx < Files.Count - 1) SelectedFile = Files[idx + 1];
     }
 
+    // Single unified save button (bugfix §1) — one command for Save PNG/JPEG and Save recipe
+    // card alike. _lastTempPng already holds whichever composite is currently on screen
+    // (RecipeCardRenderer's output in Recipe mode, PaletteImageRenderer's/CollageService's
+    // otherwise — see GeneratePaletteAsync/GenerateCollagePaletteAsync), so saving it verbatim
+    // guarantees the exported file always matches the preview, with no separate re-render.
     [RelayCommand(CanExecute = nameof(CanSavePng))]
     private async Task SavePngAsync2()
     {
@@ -532,7 +594,8 @@ public partial class MainWindowViewModel : ViewModelBase
         else
         {
             if (SelectedFile == null) return;
-            suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + "_palette" + _lastExtension;
+            var suffix = Settings.IsRecipeMode ? "_recipe" : "_palette";
+            suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + suffix + _lastExtension;
             folder = Path.GetDirectoryName(SelectedFile.FullPath)!;
         }
 
@@ -555,6 +618,7 @@ public partial class MainWindowViewModel : ViewModelBase
         FileInfoText    = null;
         OutputSizeText  = null;
         _lastTempPng    = null;
+        IsComparingToOriginal = false;
         SavePngAsync2Command.NotifyCanExecuteChanged();
         RegenerateCommand.NotifyCanExecuteChanged();
 
@@ -575,14 +639,47 @@ public partial class MainWindowViewModel : ViewModelBase
             FileInfoText = $"{entry.FileName}  ·  {ps.Width}×{ps.Height}  ·  {folder}";
 
             _lastExtension = Settings.FileExtension;
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            await PaletteExportService.ExportAsync(filePath, tmpOut, exportSettings, token,
-                metadataOverride: Settings.BuildMetadataOverride());
+            // Recipe mode's composite depends on the current recipe too (which can change
+            // independently via manual edit without touching any PaletteExportSettings
+            // field), so it has to be part of the cache key or an edit while staying on the
+            // same photo/settings would serve a stale render.
+            var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
+            var cacheKey = (filePath, exportSettings, recipeForRender);
+
+            if (Equals(_lastSingleRenderKey, cacheKey) && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
+            {
+                _lastTempPng   = _cachedSingleRenderOutput;
+                var cachedSize = new FileInfo(_lastTempPng).Length;
+                var cachedFmt  = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
+                OutputSizeText = $"{cachedSize / 1_048_576.0:F1} MB {cachedFmt}";
+                PaletteBitmap  = new Bitmap(_lastTempPng);
+                return;
+            }
+
+            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
+            if (recipeForRender != null)
+            {
+                // Recipe mode: the main preview must be the exact same composite Save recipe
+                // card would export — reuse RecipeCardRenderer directly rather than the
+                // palette pipeline. exportSettings.MetaVerbosity already reflects the "Show
+                // camera info plate" toggle (Off when unchecked — see PaletteExportSettings.
+                // SnapshotFrom), so the checkbox reaches the render params here (bugfix §2).
+                await Task.Run(() => RecipeCardRenderer.Render(filePath, recipeForRender, tmpOut,
+                    theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
+                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride()), token);
+            }
+            else
+            {
+                await PaletteExportService.ExportAsync(filePath, tmpOut, exportSettings, token,
+                    metadataOverride: Settings.BuildMetadataOverride());
+            }
 
             token.ThrowIfCancellationRequested();
 
-            _lastTempPng   = tmpOut;
+            _lastTempPng              = tmpOut;
+            _lastSingleRenderKey      = cacheKey;
+            _cachedSingleRenderOutput = tmpOut;
             var sizeBytes  = new FileInfo(tmpOut).Length;
             var formatLabel = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
             OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";

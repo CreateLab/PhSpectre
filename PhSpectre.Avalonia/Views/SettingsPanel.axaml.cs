@@ -1,6 +1,9 @@
+using System;
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
 using PhSpectre.Avalonia.ViewModels;
+using PhSpectre.Models;
 
 namespace PhSpectre.Avalonia.Views;
 
@@ -41,6 +44,12 @@ public partial class SettingsPanel : UserControl
         AddItem(OutputFormatBox, "JPEG", "Smaller file, lossy compression");
 
         AddItem(ExportPresetBox, "Original",     "Original size, no cropping or resizing");
+        // Half size only makes sense on desktop — mobile already has its own size-reduction
+        // control (Working size) and its render path never reads HalfSize, so showing this
+        // here on mobile would be a silent no-op. SettingsViewModel.ExportSizeIndex's index
+        // mapping matches this platform split exactly.
+        if (!OperatingSystem.IsAndroid())
+            AddItem(ExportPresetBox, "Half (2× downscale)", "Compress 2× — roughly 4× smaller file, same crop as Original");
         AddItem(ExportPresetBox, "Square",       "1080×1080 — Instagram/Telegram square post");
         AddItem(ExportPresetBox, "IG post",      "1080×1350 (4:5) — Instagram feed default");
         AddItem(ExportPresetBox, "Story",        "1080×1920 — Instagram & Telegram Stories");
@@ -61,6 +70,18 @@ public partial class SettingsPanel : UserControl
         AddItem(CompositionGuideBox, "Diagonal", "Diagonal method / golden triangles");
         AddItem(CompositionGuideBox, "Cross",    "Center cross");
 
+        // Export Mode's item list is rebuilt dynamically (see RebuildExportModeItems) —
+        // inapplicable modes for the current photo selection are removed entirely, not
+        // shown disabled, per the bugfix-pass spec ("disabled without explanation reads as
+        // a bug"). Wired up once the DataContext (the SettingsViewModel) actually arrives.
+        DataContextChanged += (_, _) =>
+        {
+            if (DataContext is not SettingsViewModel vm) return;
+            vm.PropertyChanged -= OnSettingsPropertyChangedForExportMode;
+            vm.PropertyChanged += OnSettingsPropertyChangedForExportMode;
+            RebuildExportModeItems(vm);
+        };
+
         SizeChanged += (_, e) => ApplyResponsiveLayout(e.NewSize.Width);
     }
 
@@ -69,11 +90,70 @@ public partial class SettingsPanel : UserControl
         if (DataContext is SettingsViewModel vm) vm.ToggleMetadataEditorCommand.Execute(null);
     }
 
-    private static void AddItem(ComboBox box, string shortText, string fullText)
+    private static readonly (ExportMode Mode, string Label, string Tip)[] ExportModeOptions =
+    [
+        (ExportMode.Card,           "Card",           "Photo + full color palette — slower, computes colors"),
+        (ExportMode.InfoOnly,       "Info only",      "Photo + camera info, no colors — fast"),
+        (ExportMode.Recipe,         "Recipe",         "Film recipe card, no colors — fast"),
+        (ExportMode.Collage,        "Collage",        "Combined photos + pooled palette — slower"),
+        (ExportMode.CollageInfoOnly,"Collage (fast)", "Combined photos, no colors — fast"),
+    ];
+
+    private void OnSettingsPropertyChangedForExportMode(object? sender, PropertyChangedEventArgs e)
+    {
+        if (sender is not SettingsViewModel vm) return;
+        if (e.PropertyName is nameof(SettingsViewModel.IsSingleModeAvailable) or nameof(SettingsViewModel.IsCollageModeAvailable))
+            RebuildExportModeItems(vm);
+        else if (e.PropertyName == nameof(SettingsViewModel.ExportMode))
+            SyncExportModeSelection(vm);
+    }
+
+    private void RebuildExportModeItems(SettingsViewModel vm)
+    {
+        ExportModeBox.SelectionChanged -= ExportModeBox_SelectionChanged;
+        ExportModeBox.Items.Clear();
+        foreach (var (mode, label, tip) in ExportModeOptions)
+        {
+            bool applicable = mode is ExportMode.Card or ExportMode.InfoOnly or ExportMode.Recipe
+                ? vm.IsSingleModeAvailable
+                : vm.IsCollageModeAvailable;
+            if (!applicable) continue;
+            var item = new ComboBoxItem { Content = label, Tag = mode };
+            ToolTip.SetTip(item, tip);
+            ExportModeBox.Items.Add(item);
+        }
+        SyncExportModeSelection(vm);
+        ExportModeBox.SelectionChanged += ExportModeBox_SelectionChanged;
+    }
+
+    // The VM is the source of truth (it auto-corrects ExportMode via ExportModeRules
+    // whenever the selection count changes) — this just reflects that choice onto whichever
+    // ComboBoxItem currently represents it, rather than the box driving VM state on rebuild.
+    private void SyncExportModeSelection(SettingsViewModel vm)
+    {
+        foreach (var obj in ExportModeBox.Items)
+        {
+            if (obj is ComboBoxItem item && item.Tag is ExportMode m && m == vm.ExportMode)
+            {
+                ExportModeBox.SelectedItem = item;
+                return;
+            }
+        }
+    }
+
+    private void ExportModeBox_SelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (DataContext is SettingsViewModel vm && ExportModeBox.SelectedItem is ComboBoxItem item &&
+            item.Tag is ExportMode mode && vm.ExportMode != mode)
+            vm.ExportMode = mode;
+    }
+
+    private static ComboBoxItem AddItem(ComboBox box, string shortText, string fullText)
     {
         var item = new ComboBoxItem { Content = shortText };
         ToolTip.SetTip(item, fullText);
         box.Items.Add(item);
+        return item;
     }
 
     // Container-query stand-in: Avalonia has no width-based style triggers, so each
