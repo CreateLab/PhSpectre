@@ -102,6 +102,55 @@
         <ComboBox x:Name="ExportModeBox" HorizontalAlignment="Stretch"/>
         </StackPanel>
 
+        <!-- ── Background (theme / custom color / blurred photo) ──────────────
+             Always visible, unlike Palette/Swatches (ComputeColors-gated) and Film Recipe
+             (Recipe-mode-gated) — Theme/Background affects every export mode's card,
+             including InfoOnly, which previously had no UI to control it at all. -->
+        <StackPanel IsVisible="{Binding ShowBackgroundSectionUI}">
+        <Border Classes="section-sep"/>
+        <TextBlock Text="BACKGROUND" Classes="section-header"/>
+        <StackPanel Spacing="10">
+
+            <Grid x:Name="BackgroundThemeRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <!-- Controls the exported image's background/text theme, not the app's own
+                     UI (that's fixed — dark on Android, always-light on Desktop). Labeled
+                     "Card theme" so it doesn't read as a dead app-theme toggle. Also picks
+                     which of the two Blurred-photo variants renders (darkened vs lightened). -->
+                <TextBlock Grid.Column="0" Text="Card theme" Classes="row-label"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
+                    <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
+                                                  Converter={x:Static BoolConverters.Not}}"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="BackgroundModeRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Background" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="BackgroundModeBox"
+                          SelectedIndex="{Binding BackgroundModeIndex}"/>
+            </Grid>
+
+            <TextBox Text="{Binding CustomBackgroundHex}" IsEnabled="{Binding IsCustomBackgroundMode}"
+                      PlaceholderText="#RRGGBB"/>
+        </StackPanel>
+        </StackPanel>
+
         <!-- ── Palette ───────────────────────────────────────────── -->
         <StackPanel IsVisible="{Binding ShowPaletteSectionUI}">
         <Border Classes="section-sep"/>
@@ -134,26 +183,6 @@
                 <TextBlock Grid.Column="0" Text="Colors" Classes="row-label"/>
                 <ComboBox Grid.Column="1" x:Name="ColorCountBox"
                           SelectedIndex="{Binding ColorCountIndex}"/>
-            </Grid>
-
-            <Grid x:Name="ExportThemeRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <!-- Controls the exported image's background/text theme, not the app's own
-                     UI (that's fixed — dark on Android, always-light on Desktop). Labeled
-                     "Export theme" (not "Theme") so it doesn't read as a dead app-theme toggle. -->
-                <TextBlock Grid.Column="0" Text="Export theme" Classes="row-label"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
-                    <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
-                                                  Converter={x:Static BoolConverters.Not}}"/>
-                </StackPanel>
             </Grid>
 
             <Grid x:Name="GuideRow" Classes="settings-row">
@@ -266,12 +295,6 @@
                 <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}"
                            Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
             </Grid>
-
-            <CheckBox IsChecked="{Binding UseCustomBackground}">
-                <TextBlock Text="Custom background color" TextWrapping="Wrap"/>
-            </CheckBox>
-            <TextBox Text="{Binding CustomBackgroundHex}" IsEnabled="{Binding UseCustomBackground}"
-                      PlaceholderText="#RRGGBB"/>
         </StackPanel>
         </StackPanel>
 
@@ -500,6 +523,26 @@
         <StackPanel IsVisible="{Binding ShowFilmRecipeSectionUI}">
         <Border Classes="section-sep"/>
         <TextBlock Text="FILM RECIPE" Classes="section-header"/>
+
+        <!-- Text size — Card theme and Background (color/custom/blurred photo) are now
+             handled globally by the BACKGROUND section above; this is the only
+             recipe-card-specific appearance control left here. Reuses the same LabelScale
+             setting as the Swatches section's "Label size" dial. -->
+        <StackPanel Spacing="10" Margin="0,0,0,4">
+            <Grid x:Name="RecipeLabelScaleRow" Classes="settings-row">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Text size" Classes="row-label"/>
+                <Slider Grid.Column="1" Value="{Binding LabelScaleIndex}"
+                        Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
+                        TickPlacement="BottomRight"/>
+                <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}"
+                           Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
+            </Grid>
+        </StackPanel>
 
         <StackPanel Spacing="10" IsVisible="{Binding !HasRecipe}">
             <TextBlock Text="Film recipe detection currently works for Fujifilm cameras only."

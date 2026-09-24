@@ -19,6 +19,10 @@ public partial class SettingsPanel : UserControl
         // the explanation on hover, touch users on Android just see the short label (there's
         // no hover to trigger a tooltip there, which is an acceptable trade for not having
         // every ComboBox row overflow a 300px-wide panel or a phone screen).
+        AddItem(BackgroundModeBox, "Theme color",   "Flat background matching the card theme above");
+        AddItem(BackgroundModeBox, "Custom color",  "Flat background using the custom hex color below");
+        AddItem(BackgroundModeBox, "Blurred photo", "Blurred, brightness-adjusted backdrop built from the source photo (not used for Collage)");
+
         AddItem(SamplingModeBox, "Vivid",    "Saturated colors stand out");
         AddItem(SamplingModeBox, "Standard", "Most frequent colors by area");
         AddItem(SamplingModeBox, "Contrast", "Vivid mid-lightness colors");
@@ -168,7 +172,7 @@ public partial class SettingsPanel : UserControl
 
         foreach (var row in new[]
                  {
-                     SamplingRow, ColorCountRow, ExportThemeRow, GuideRow, VerbosityRow,
+                     SamplingRow, ColorCountRow, BackgroundThemeRow, BackgroundModeRow, GuideRow, VerbosityRow,
                      StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow,
                      ShapeRow, SortRow,
                      MetaCameraRow, MetaLensRow, MetaFocalRow, MetaApertureRow,

@@ -8,7 +8,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("Usage: phspectre <image.jpg> [--colors <n>] [--no-hex] [--hex-below]");
     Console.Error.WriteLine("       [--mode vivid|standard|contrast]");
     Console.Error.WriteLine("       [--no-meta] [--meta-short] [--meta-detail] [--meta-full] [--meta-overlay]");
-    Console.Error.WriteLine("       [--theme dark|light]");
+    Console.Error.WriteLine("       [--theme dark|light] [--bg-blur]");
     Console.Error.WriteLine("       [--sort none|hue|luminance|percent] [--shape rect|rounded|circle] [--show-percent]");
     Console.Error.WriteLine("       [--guide none|thirds|golden|diagonal|cross]");
     Console.Error.WriteLine("       [--recipe [--json]]");
@@ -29,6 +29,7 @@ bool showPercent  = false;
 var compositionGuide = CompositionGuide.None;
 bool showRecipe   = false;
 bool jsonOutput   = false;
+bool bgBlur       = false;
 
 for (int i = 1; i < args.Length; i++)
 {
@@ -67,6 +68,7 @@ for (int i = 1; i < args.Length; i++)
         else { Console.Error.WriteLine($"Unknown theme '{args[i + 1]}'. Use 'dark' or 'light'."); return 1; }
         i++;
     }
+    else if (args[i] == "--bg-blur")     { bgBlur = true; }
     else if (args[i] == "--sort" && i + 1 < args.Length)
     {
         sortOrder = args[i + 1].ToLowerInvariant() switch
@@ -144,7 +146,8 @@ string outputPath = Path.Combine(
     Path.GetFileNameWithoutExtension(imagePath) + "_palette.png");
 
 PaletteImageRenderer.Render(imagePath, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow,
-    sortOrder: sortOrder, swatchShape: swatchShape, showPercent: showPercent, compositionGuide: compositionGuide);
+    sortOrder: sortOrder, swatchShape: swatchShape, showPercent: showPercent, compositionGuide: compositionGuide,
+    useBlurredBackground: bgBlur);
 
 Console.WriteLine($"Saved: {outputPath}");
 foreach (var swatch in palette.Swatches)

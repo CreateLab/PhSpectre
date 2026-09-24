@@ -30,6 +30,7 @@ public sealed record PaletteExportSettings(
     CompositionGuide CompositionGuide,
     Color GutterColor,
     int GutterThickness,
+    BackgroundMode BackgroundMode = BackgroundMode.Theme,
     int CollageSourceMaxDimension = 2400,
     ExportMode Mode = ExportMode.Card)
 {
@@ -41,9 +42,16 @@ public sealed record PaletteExportSettings(
     // back-reference to Settings.
     public bool ComputeColors => Mode is ExportMode.Card or ExportMode.Collage;
 
+    // Collage is deliberately excluded from the blurred-photo background for now — the
+    // composed grid isn't "one photo" a blurred backdrop reads well against, and this is the
+    // single choke point that guarantees a stray true never reaches CollageService/
+    // CollageComposer regardless of what BackgroundMode the settings panel has selected.
+    public bool UseBlurredBackground =>
+        BackgroundMode == BackgroundMode.BlurredPhoto && Mode is not (ExportMode.Collage or ExportMode.CollageInfoOnly);
+
     public static PaletteExportSettings SnapshotFrom(SettingsViewModel s)
     {
-        var customBackground = s.UseCustomBackground ? ParseHexOrNull(s.CustomBackgroundHex) : null;
+        var customBackground = s.BackgroundMode == BackgroundMode.Custom ? ParseHexOrNull(s.CustomBackgroundHex) : null;
         // The camera-info plate only actually draws when EffectiveShowCameraInfo is true
         // (the manual toggle, or forced on for InfoOnly/CollageInfoOnly) — otherwise force
         // MetaVerbosity.Off regardless of what the (now-hidden) Metadata section last had,
@@ -59,6 +67,7 @@ public sealed record PaletteExportSettings(
             // visibly seams against the card behind it. Not a user-facing choice anymore.
             GutterColor: PaletteImageRenderer.GetBackgroundColor(s.Theme, customBackground),
             GutterThickness: s.GutterThickness,
+            BackgroundMode: s.BackgroundMode,
             // Mobile-only: desktop never surfaces WorkingQuality and stays at the fixed
             // 2400 default it always had — this is purely to make mobile's "Working size"
             // dial actually control collage speed/output size, same as it already does for

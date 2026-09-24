@@ -27,11 +27,13 @@ public static class RecipeCardRenderer
         OutputFormat format = OutputFormat.Png,
         Color? customBackground = null,
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
+        float labelScale = 1f,
+        bool useBlurredBackground = false)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
         Save(canvas, outputPath, format);
     }
 
@@ -45,9 +47,11 @@ public static class RecipeCardRenderer
         OutputFormat format = OutputFormat.Png,
         Color? customBackground = null,
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
+        float labelScale = 1f,
+        bool useBlurredBackground = false)
     {
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
         Save(canvas, outputPath, format);
     }
 
@@ -60,8 +64,10 @@ public static class RecipeCardRenderer
         Theme theme = Theme.Dark,
         Color? customBackground = null,
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
-        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride);
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
+        float labelScale = 1f,
+        bool useBlurredBackground = false)
+        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
 
     private static void Save(Image<Rgb24> canvas, string outputPath, OutputFormat format)
     {
@@ -103,7 +109,9 @@ public static class RecipeCardRenderer
         Image<Rgb24> original, FilmRecipe recipe,
         Theme theme, Color? customBackground,
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
+        float labelScale = 1f,
+        bool useBlurredBackground = false)
     {
         var rows = BuildRows(recipe);
 
@@ -117,16 +125,26 @@ public static class RecipeCardRenderer
         var (metaLines, metaStripH, metaFs, metaFont) = exif != null
             ? PaletteImageRenderer.PrepareStrip(exif, metaVerbosity, CardWidth)
             : ([], 0, 0f, null);
-        var bg = PaletteImageRenderer.GetBackgroundColor(theme, customBackground);
         var text = PaletteImageRenderer.GetTextColor(theme, customBackground);
         var plateFill = theme == Theme.Light ? Color.ParseHex("EAEAEA") : Color.ParseHex("222222");
+        // Over a blurred-photo backdrop, a fully opaque plate reads as a harsh, out-of-place
+        // cutout — letting some of the backdrop show through (frosted-glass style) keeps the
+        // parameter plates from looking glaringly sharp against the softened background. Stays
+        // the plain opaque color here; the opacity below is applied via DrawImage
+        // (ctx.Fill(color, path) with a translucent color replaces pixels outright instead of
+        // blending in this ImageSharp version, so it can't be used directly for this).
+        const float platesOpacityOnBlur = 0.4f;
 
         int margin = CardWidth / 30;
         int photoH = Math.Max(1, (int)Math.Round(CardWidth * (double)original.Height / original.Width));
         float photoRadius = CardWidth * 0.02f;
 
         string title = string.IsNullOrEmpty(recipe.FilmSimulation) ? "Custom Recipe" : recipe.FilmSimulation!;
-        float titleFs = CardWidth / 22f;
+        // labelScale drives the title/plate-label/plate-value fonts together — plateH,
+        // titleH and the plate grid below are all derived from titleFs, so scaling just
+        // this one value cascades through the whole card layout (same "Label size" dial
+        // as the Swatches section's LabelScale, reused here for card appearance).
+        float titleFs = CardWidth / 22f * Math.Clamp(labelScale, 0.5f, 2f);
         var titleFont = PaletteImageRenderer.ResolveMetaFont(titleFs);
         int titleH = (int)(titleFs * 1.8f);
 
@@ -156,7 +174,7 @@ public static class RecipeCardRenderer
         var canvas = new Image<Rgb24>(CardWidth, canvasH);
         canvas.Mutate(ctx =>
         {
-            ctx.Fill(bg);
+            PaletteImageRenderer.FillCardBackground(ctx, original, CardWidth, canvasH, theme, customBackground, useBlurredBackground);
 
             using var roundedPhoto = ApplyRoundedCorners(original, CardWidth, photoH, photoRadius);
             ctx.DrawImage(roundedPhoto, new Point(0, 0), 1f);
@@ -178,7 +196,20 @@ public static class RecipeCardRenderer
                 int x = margin + col * (plateW + gap);
                 int y = gridY + row * (plateH + gap);
 
-                ctx.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(x, y, plateW, plateH, plateH * 0.12f));
+                if (useBlurredBackground)
+                {
+                    // Paint the plate at full opacity onto its own small transparent canvas,
+                    // then composite that onto the card via DrawImage's opacity parameter —
+                    // the one blending path in this ImageSharp version that's actually proven
+                    // to alpha-composite correctly (see ApplyRoundedCorners below).
+                    using var plateImg = new Image<Rgba32>(plateW, plateH);
+                    plateImg.Mutate(pc => pc.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(0, 0, plateW, plateH, plateH * 0.12f)));
+                    ctx.DrawImage(plateImg, new Point(x, y), platesOpacityOnBlur);
+                }
+                else
+                {
+                    ctx.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(x, y, plateW, plateH, plateH * 0.12f));
+                }
 
                 var (label, value) = rows[i];
                 float cx = x + plateW / 2f;

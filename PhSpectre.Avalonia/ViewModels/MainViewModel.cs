@@ -829,7 +829,8 @@ public partial class MainViewModel : ViewModelBase
                 // toggle (Off when unchecked — see PaletteExportSettings.SnapshotFrom).
                 await Task.Run(() => RecipeCardRenderer.Render(working, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
-                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride()), token);
+                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride(),
+                    labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground), token);
             }
             else
             {
@@ -867,7 +868,8 @@ public partial class MainViewModel : ViewModelBase
                     swatchShape:      exportSettings.SwatchShape,
                     sortOrder:        exportSettings.SortOrder,
                     customBackground: exportSettings.CustomBackground,
-                    compositionGuide: exportSettings.CompositionGuide), token);
+                    compositionGuide: exportSettings.CompositionGuide,
+                    useBlurredBackground: exportSettings.UseBlurredBackground), token);
             }
 
             token.ThrowIfCancellationRequested();

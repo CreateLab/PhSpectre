@@ -31,8 +31,14 @@ internal sealed class PersistedSettings
     public bool ShowPercent { get; set; }
     public SwatchShape SwatchShape { get; set; } = SwatchShape.Rectangle;
     public SortOrder SortOrder { get; set; } = SortOrder.None;
+    // Legacy field, kept only so Apply() can migrate a pre-BackgroundMode settings.json
+    // (one with no BackgroundMode key at all) into the right BackgroundMode on first load —
+    // no longer written to directly, always derived from BackgroundMode in Capture().
     public bool UseCustomBackground { get; set; }
     public string CustomBackgroundHex { get; set; } = "#FFFFFF";
+    // Nullable so a missing key (older settings.json) is distinguishable from an explicit
+    // Theme choice — Apply() falls back to UseCustomBackground above only when this is null.
+    public BackgroundMode? BackgroundMode { get; set; }
     public CompositionGuide CompositionGuide { get; set; } = CompositionGuide.None;
     public int GutterThickness { get; set; } = 8;
 }
@@ -49,7 +55,7 @@ internal static class SettingsStorage
         nameof(SettingsViewModel.ExportPreset), nameof(SettingsViewModel.LabelScale),
         nameof(SettingsViewModel.SwatchScale), nameof(SettingsViewModel.ShowPercent),
         nameof(SettingsViewModel.SwatchShape), nameof(SettingsViewModel.SortOrder),
-        nameof(SettingsViewModel.UseCustomBackground), nameof(SettingsViewModel.CustomBackgroundHex),
+        nameof(SettingsViewModel.BackgroundMode), nameof(SettingsViewModel.CustomBackgroundHex),
         nameof(SettingsViewModel.CompositionGuide), nameof(SettingsViewModel.GutterThickness),
         nameof(SettingsViewModel.ExportMode), nameof(SettingsViewModel.ShowCameraInfo),
     };
@@ -75,7 +81,7 @@ internal static class SettingsStorage
         vm.ShowPercent           = s.ShowPercent;
         vm.SwatchShape           = s.SwatchShape;
         vm.SortOrder             = s.SortOrder;
-        vm.UseCustomBackground   = s.UseCustomBackground;
+        vm.BackgroundMode        = s.BackgroundMode ?? (s.UseCustomBackground ? BackgroundMode.Custom : BackgroundMode.Theme);
         vm.CustomBackgroundHex   = s.CustomBackgroundHex;
         vm.CompositionGuide      = s.CompositionGuide;
         vm.GutterThickness       = s.GutterThickness;
@@ -100,7 +106,8 @@ internal static class SettingsStorage
         ShowPercent         = vm.ShowPercent,
         SwatchShape         = vm.SwatchShape,
         SortOrder           = vm.SortOrder,
-        UseCustomBackground = vm.UseCustomBackground,
+        BackgroundMode      = vm.BackgroundMode,
+        UseCustomBackground = vm.BackgroundMode == BackgroundMode.Custom,
         CustomBackgroundHex = vm.CustomBackgroundHex,
         CompositionGuide    = vm.CompositionGuide,
         GutterThickness     = vm.GutterThickness,

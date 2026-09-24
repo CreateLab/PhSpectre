@@ -667,7 +667,8 @@ public partial class MainWindowViewModel : ViewModelBase
                 // SnapshotFrom), so the checkbox reaches the render params here (bugfix §2).
                 await Task.Run(() => RecipeCardRenderer.Render(filePath, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
-                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride()), token);
+                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride(),
+                    labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground), token);
             }
             else
             {

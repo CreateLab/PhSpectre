@@ -59,6 +59,62 @@ public static class PaletteImageRenderer
             : new ThemeColors(Color.ParseHex("111111"), Color.White);
     }
 
+    // Shared "paint the card background" step behind BuildLandscapeCanvas/BuildPortraitCanvas
+    // and RecipeCardRenderer.BuildCanvas — either today's flat theme/custom fill, or (when
+    // useBlurredBackground) a blurred cover-crop of the source photo with a translucent
+    // black/white scrim on top (Spotify/Apple-Music-style blurred backdrop). Callers pass
+    // customBackground: null alongside useBlurredBackground: true (enforced at the settings
+    // layer, see PaletteExportSettings.UseBlurredBackground) so text color still resolves from
+    // the Dark/Light theme rather than contrasting against a single (here nonexistent) color.
+    // Blurring is done on a small downscaled copy and resized back up — blur output is
+    // low-frequency so the upscale is visually free, and this keeps the op's cost roughly
+    // constant regardless of export resolution (multi-thousand-px photos otherwise make this
+    // needlessly slow, especially on Android).
+    //
+    // A scrim (not a multiplicative Brightness pass) is what actually makes this legible: the
+    // photo region that ends up behind a recipe card's plates/title is often already dark
+    // (shadow, ground, foliage), and Brightness is multiplicative — it can't lift a near-black
+    // pixel toward white (0 * anything is still 0), so a Light-theme card over a dark corner of
+    // the photo came out just as dark as Dark theme, indistinguishable from a flat fill.
+    // Compositing translucent black/white on top guarantees the intended tone regardless of
+    // what's locally in the photo, while still leaving blurred color/texture showing through.
+    internal static void FillCardBackground(
+        IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int w, int h,
+        Theme theme, Color? customBackground, bool useBlurredBackground)
+    {
+        if (!useBlurredBackground)
+        {
+            ctx.Fill(GetBackgroundColor(theme, customBackground));
+            return;
+        }
+
+        const int blurWorkWidth = 640;
+        int workW = Math.Min(blurWorkWidth, w);
+        int workH = Math.Max(1, (int)Math.Round(h * (workW / (double)w)));
+        // Eased off by 1/3 from the initial pass — the original sigma read as too strong/soft
+        // in practice, losing too much of the source photo's character.
+        float sigma = Math.Max(8f, workW * 0.05f * (2f / 3f));
+        Color scrimColor = theme == Theme.Dark ? Color.Black : Color.White;
+        const float scrimOpacity = 0.6f;
+
+        using var backdrop = sourcePhoto.Clone(c => c.Resize(new ResizeOptions
+        {
+            Size = new Size(workW, workH),
+            Mode = ResizeMode.Crop,
+        }));
+        backdrop.Mutate(c => c.GaussianBlur(sigma));
+
+        // ctx.Fill(translucentColor) (no region) does a straight replace rather than an
+        // alpha blend in this ImageSharp version — DrawImage's opacity parameter is the
+        // proven blend path already used elsewhere in this file (e.g. the rounded-photo
+        // overlay below), so the scrim goes through that instead of Fill.
+        using (var scrim = new Image<Rgb24>(workW, workH, scrimColor.ToPixel<Rgb24>()))
+            backdrop.Mutate(c => c.DrawImage(scrim, Point.Empty, scrimOpacity));
+
+        backdrop.Mutate(c => c.Resize(w, h));
+        ctx.DrawImage(backdrop, Point.Empty, 1f);
+    }
+
     // 12 display-formatted metadata fields drawn into the strip/overlay. Camera, Lens, Focal,
     // Aperture, Shutter, Iso, and Date are user-editable in the settings UI; the rest
     // (FocalEq, ExposureBias, WhiteBalance, ExpProgram, Serial) are always auto-read from EXIF.
@@ -89,12 +145,13 @@ public static class PaletteImageRenderer
         SwatchShape swatchShape = SwatchShape.Rectangle,
         SortOrder sortOrder = SortOrder.None,
         Color? customBackground = null,
-        CompositionGuide compositionGuide = CompositionGuide.None)
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        bool useBlurredBackground = false)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
         RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
-            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide);
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground);
     }
 
     // Renders from an already-decoded image (caller owns disposal) — skips a redundant
@@ -120,9 +177,10 @@ public static class PaletteImageRenderer
         SwatchShape swatchShape = SwatchShape.Rectangle,
         SortOrder sortOrder = SortOrder.None,
         Color? customBackground = null,
-        CompositionGuide compositionGuide = CompositionGuide.None)
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        bool useBlurredBackground = false)
         => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
-            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide);
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground);
 
     private static void RenderCore(
         Image<Rgb24> original,
@@ -144,7 +202,8 @@ public static class PaletteImageRenderer
         SwatchShape swatchShape = SwatchShape.Rectangle,
         SortOrder sortOrder = SortOrder.None,
         Color? customBackground = null,
-        CompositionGuide compositionGuide = CompositionGuide.None)
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        bool useBlurredBackground = false)
     {
         labelScale = Math.Clamp(labelScale, 0.5f, 2.0f);
         swatchScale = Math.Clamp(swatchScale, 0.5f, 2.0f);
@@ -157,8 +216,8 @@ public static class PaletteImageRenderer
 
         bool landscape = original.Width >= original.Height;
         var canvas = landscape
-            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide)
-            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide);
+            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide, useBlurredBackground)
+            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide, useBlurredBackground);
 
         if (downscale > 1)
             canvas.Mutate(ctx => ctx.Resize(canvas.Width / downscale, canvas.Height / downscale));
@@ -224,7 +283,8 @@ public static class PaletteImageRenderer
         bool showSwatches = true,
         float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null,
-        CompositionGuide compositionGuide = CompositionGuide.None)
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        bool useBlurredBackground = false)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
@@ -260,7 +320,7 @@ public static class PaletteImageRenderer
         var canvas = new Image<Rgb24>(original.Width, canvasH);
         canvas.Mutate(ctx =>
         {
-            ctx.Fill(tc.Background);
+            FillCardBackground(ctx, original, canvas.Width, canvas.Height, theme, customBackground, useBlurredBackground);
             ctx.DrawImage(original, new Point(0, 0), 1f);
             DrawCompositionGuide(ctx, compositionGuide, 0, 0, original.Width, original.Height);
 
@@ -282,7 +342,8 @@ public static class PaletteImageRenderer
         bool showSwatches = true,
         float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null,
-        CompositionGuide compositionGuide = CompositionGuide.None)
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        bool useBlurredBackground = false)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
@@ -319,7 +380,7 @@ public static class PaletteImageRenderer
         var canvas = new Image<Rgb24>(canvasW, canvasH);
         canvas.Mutate(ctx =>
         {
-            ctx.Fill(tc.Background);
+            FillCardBackground(ctx, original, canvas.Width, canvas.Height, theme, customBackground, useBlurredBackground);
             ctx.DrawImage(original, new Point(0, 0), 1f);
             DrawCompositionGuide(ctx, compositionGuide, 0, 0, original.Width, original.Height);
 

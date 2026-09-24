@@ -55,7 +55,8 @@ public static class PaletteExportService
             swatchShape:      settings.SwatchShape,
             sortOrder:        settings.SortOrder,
             customBackground: settings.CustomBackground,
-            compositionGuide: settings.CompositionGuide), cancellationToken);
+            compositionGuide: settings.CompositionGuide,
+            useBlurredBackground: settings.UseBlurredBackground), cancellationToken);
     }
 
     // Collage twin of ExportAsync — several source photos become one composed collage

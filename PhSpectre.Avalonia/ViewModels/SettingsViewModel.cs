@@ -18,7 +18,13 @@ public enum WorkingQuality { Fast, Balanced, Best }
 
 // Mobile's bottom-sheet section focus (see SettingsViewModel.FocusedSection) — top-level so
 // XAML's {x:Static} can reference individual values without nested-type syntax headaches.
-public enum SettingsSection { ExportMode, Palette, Collage, Swatches, Metadata, Output, PhotoMetadata, FilmRecipe, About }
+public enum SettingsSection { ExportMode, Background, Palette, Collage, Swatches, Metadata, Output, PhotoMetadata, FilmRecipe, About }
+
+// How the exported card's background is painted — a flat color (from the Dark/Light theme, or
+// a user-picked custom hex) or a blurred/brightened backdrop built from the source photo
+// itself. Collage exports never use BlurredPhoto regardless of this setting — see
+// PaletteExportSettings.UseBlurredBackground.
+public enum BackgroundMode { Theme, Custom, BlurredPhoto }
 
 // A named type rather than a (string Label, string Value) tuple deliberately — Avalonia's
 // binding engine resolves real CLR properties, not compile-time-only tuple element names, so
@@ -128,6 +134,10 @@ public partial class SettingsViewModel : ViewModelBase
     private bool IsSectionVisible(SettingsSection section) => FocusedSection is null || FocusedSection == section;
 
     public bool ShowExportModeSectionUI    => IsSectionVisible(SettingsSection.ExportMode);
+    // Unlike Palette/Swatches (gated on ComputeColors) and Film Recipe (gated on IsRecipeMode),
+    // Background is always shown — Theme/CustomBackground/BlurredPhoto affect every export
+    // mode's card, including InfoOnly, which previously had no UI for them at all.
+    public bool ShowBackgroundSectionUI    => IsSectionVisible(SettingsSection.Background);
     public bool ShowPaletteSectionUI       => ComputeColors && IsSectionVisible(SettingsSection.Palette);
     public bool ShowCollageSectionUI       => ShowCollageOptions && IsSectionVisible(SettingsSection.Collage);
     public bool ShowSwatchesSectionUI      => ComputeColors && IsSectionVisible(SettingsSection.Swatches);
@@ -142,6 +152,7 @@ public partial class SettingsViewModel : ViewModelBase
     public string FocusedSectionTitle => FocusedSection switch
     {
         SettingsSection.ExportMode => "Export mode",
+        SettingsSection.Background => "Background",
         SettingsSection.Palette => "Palette",
         SettingsSection.Collage => "Collage",
         SettingsSection.Swatches => "Swatches",
@@ -169,6 +180,7 @@ public partial class SettingsViewModel : ViewModelBase
     private void RaiseSectionVisibilityChanged()
     {
         OnPropertyChanged(nameof(ShowExportModeSectionUI));
+        OnPropertyChanged(nameof(ShowBackgroundSectionUI));
         OnPropertyChanged(nameof(ShowPaletteSectionUI));
         OnPropertyChanged(nameof(ShowCollageSectionUI));
         OnPropertyChanged(nameof(ShowSwatchesSectionUI));
@@ -244,7 +256,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool           _showPercent         = false;
     [ObservableProperty] private SwatchShape    _swatchShape         = SwatchShape.Rectangle;
     [ObservableProperty] private SortOrder      _sortOrder           = SortOrder.None;
-    [ObservableProperty] private bool           _useCustomBackground = false;
+    [ObservableProperty] private BackgroundMode _backgroundMode      = BackgroundMode.Theme;
     [ObservableProperty] private string         _customBackgroundHex = "#FFFFFF";
     [ObservableProperty] private CompositionGuide _compositionGuide  = CompositionGuide.None;
 
@@ -634,6 +646,14 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
+    public int BackgroundModeIndex
+    {
+        get => (int)BackgroundMode;
+        set => BackgroundMode = (BackgroundMode)value;
+    }
+
+    public bool IsCustomBackgroundMode => BackgroundMode == BackgroundMode.Custom;
+
     public int SwatchShapeIndex
     {
         get => (int)SwatchShape;
@@ -685,6 +705,11 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnOutputFormatChanged(OutputFormat value)     { OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension)); OnPropertyChanged(nameof(SaveButtonLabel)); }
     partial void OnExportPresetChanged(ExportPreset value)     { OnPropertyChanged(nameof(ExportPresetIndex)); OnPropertyChanged(nameof(ExportSizeIndex)); }
     partial void OnHalfSizeChanged(bool value)                 => OnPropertyChanged(nameof(ExportSizeIndex));
+    partial void OnBackgroundModeChanged(BackgroundMode value)
+    {
+        OnPropertyChanged(nameof(BackgroundModeIndex));
+        OnPropertyChanged(nameof(IsCustomBackgroundMode));
+    }
     partial void OnSwatchShapeChanged(SwatchShape value)       => OnPropertyChanged(nameof(SwatchShapeIndex));
     partial void OnSortOrderChanged(SortOrder value)           => OnPropertyChanged(nameof(SortOrderIndex));
     partial void OnCompositionGuideChanged(CompositionGuide value) => OnPropertyChanged(nameof(CompositionGuideIndex));
