@@ -5,6 +5,7 @@ using Avalonia;
 using Avalonia.Android;
 using PhSpectre.Avalonia;
 using PhSpectre.Avalonia.Services;
+using PhSpectre.Services;
 
 namespace PhSpectre.Android
 {
@@ -18,6 +19,7 @@ namespace PhSpectre.Android
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
             FileDialogService.GallerySaver = GallerySaver.SaveAsync;
+            ImageLoader.FastWorkingCopyDecoder = NativeImageDecoder.TryDecodeWorkingCopy;
 
             // Read the OS's own dark/light setting directly instead of through
             // Avalonia's PlatformSettings, which isn't reliable for this on Android.

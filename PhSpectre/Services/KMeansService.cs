@@ -18,9 +18,20 @@ internal sealed class KMeansService
         // Weighted sample (same size via weighted-with-replacement) for centroid discovery.
         // Original hsl is used for final assignments and accurate percentages.
         var sample = mode == SamplingMode.Standard ? hsl : BuildWeightedSample(hsl, mode);
-        int k = colorCount ?? FindElbowK(sample, cancellationToken);
+        // Every sample pixel's hue never changes across k-means iterations, or across the
+        // several candidate k's the "Auto" (elbow) path below tries — only its cluster
+        // assignment does. Precomputing sin/cos once here and threading it through instead
+        // of recomputing it every iteration (RecomputeCentroids needs it to average the
+        // circular hue channel) turns what used to be up to ~100 iterations × 6 candidate
+        // k's worth of Math.Sin/Math.Cos calls per pixel into exactly one.
+        var (sinH, cosH) = PrecomputeHueTrig(sample);
         cancellationToken.ThrowIfCancellationRequested();
-        float[][] centroids = RunKMeans(sample, k, cancellationToken);
+        float[][] centroids = colorCount is int cc
+            ? RunKMeans(sample, cc, sinH, cosH, cancellationToken)
+            // FindElbowCentroids already ran k-means for the winning k as one of its
+            // candidates — reusing those centroids instead of re-running RunKMeans for that
+            // k a second time (the previous behavior) skips an entirely redundant k-means pass.
+            : FindElbowCentroids(sample, sinH, cosH, cancellationToken);
         return BuildPalette(hsl, centroids);
     }
 
@@ -131,7 +142,9 @@ internal sealed class KMeansService
         return indices[Math.Clamp(idx, 0, indices.Count - 1)];
     }
 
-    private static float[][] RunKMeans(float[][] pixels, int k, CancellationToken cancellationToken = default)
+    private static float[][] RunKMeans(
+        float[][] pixels, int k, double[] pixelSinH, double[] pixelCosH,
+        CancellationToken cancellationToken = default)
     {
         var rng = new Random(42);
         float[][] centroids = InitializeCentroids(pixels, k, rng);
@@ -142,10 +155,25 @@ internal sealed class KMeansService
             cancellationToken.ThrowIfCancellationRequested();
             bool changed = AssignPixels(pixels, centroids, assignments);
             if (!changed) break;
-            RecomputeCentroids(pixels, assignments, centroids, k);
+            RecomputeCentroids(pixels, assignments, centroids, k, pixelSinH, pixelCosH);
         }
 
         return centroids;
+    }
+
+    // Precomputes each sample pixel's hue angle as (sin, cos) once — see the call site in
+    // Cluster for why this matters.
+    private static (double[] SinH, double[] CosH) PrecomputeHueTrig(float[][] pixels)
+    {
+        var sinH = new double[pixels.Length];
+        var cosH = new double[pixels.Length];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            double rad = pixels[i][0] * Math.PI / 180.0;
+            sinH[i] = Math.Sin(rad);
+            cosH[i] = Math.Cos(rad);
+        }
+        return (sinH, cosH);
     }
 
     private static float[][] InitializeCentroids(float[][] pixels, int k, Random rng)
@@ -207,7 +235,9 @@ internal sealed class KMeansService
         return changed;
     }
 
-    private static void RecomputeCentroids(float[][] pixels, int[] assignments, float[][] centroids, int k)
+    private static void RecomputeCentroids(
+        float[][] pixels, int[] assignments, float[][] centroids, int k,
+        double[] pixelSinH, double[] pixelCosH)
     {
         var sinH   = new double[k];
         var cosH   = new double[k];
@@ -218,9 +248,8 @@ internal sealed class KMeansService
         for (int i = 0; i < pixels.Length; i++)
         {
             int j = assignments[i];
-            double rad = pixels[i][0] * Math.PI / 180.0;
-            sinH[j] += Math.Sin(rad);
-            cosH[j] += Math.Cos(rad);
+            sinH[j] += pixelSinH[i];
+            cosH[j] += pixelCosH[i];
             sumS[j] += pixels[i][1];
             sumL[j] += pixels[i][2];
             counts[j]++;
@@ -237,23 +266,30 @@ internal sealed class KMeansService
         }
     }
 
-    private int FindElbowK(float[][] pixels, CancellationToken cancellationToken = default)
+    // Tries k = ElbowKMin..ElbowKMax, picks the "elbow" via max second-derivative of WCSS, and
+    // returns that candidate's centroids directly — it already ran k-means for every candidate
+    // including the winner, so there's no need for the caller to re-run k-means once more just
+    // to get the same (deterministically-seeded, hence identical) result a second time.
+    private static float[][] FindElbowCentroids(
+        float[][] pixels, double[] pixelSinH, double[] pixelCosH, CancellationToken cancellationToken = default)
     {
         int range = ElbowKMax - ElbowKMin + 1;
         var wcss = new double[range];
+        var candidates = new float[range][][];
 
         for (int ki = 0; ki < range; ki++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             int k = ElbowKMin + ki;
-            float[][] centroids = RunKMeans(pixels, k, cancellationToken);
+            float[][] centroids = RunKMeans(pixels, k, pixelSinH, pixelCosH, cancellationToken);
             int[] assignments = new int[pixels.Length];
             AssignPixels(pixels, centroids, assignments);
             wcss[ki] = ComputeWcss(pixels, assignments, centroids);
+            candidates[ki] = centroids;
         }
 
         int d2Len = range - 2;
-        if (d2Len < 1) return ElbowKMin;
+        if (d2Len < 1) return candidates[0];
 
         var d1 = new double[range - 1];
         for (int i = 0; i < d1.Length; i++)
@@ -271,7 +307,7 @@ internal sealed class KMeansService
             if (val > maxVal) { maxVal = val; maxIdx = i; }
         }
 
-        return ElbowKMin + maxIdx + 1;
+        return candidates[maxIdx + 1];
     }
 
     private static double ComputeWcss(float[][] pixels, int[] assignments, float[][] centroids)

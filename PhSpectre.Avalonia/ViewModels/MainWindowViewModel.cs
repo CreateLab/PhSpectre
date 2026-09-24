@@ -18,6 +18,8 @@ using PhSpectre.Services;
 using PhSpectre.Avalonia.Models;
 using PhSpectre.Avalonia.Services;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
@@ -625,14 +627,24 @@ public partial class MainWindowViewModel : ViewModelBase
         if (entry == null) return;
 
         IsGenerating = true;
+        Image<Rgb24>? working = null;
         try
         {
             var filePath = entry.FullPath;
 
-            using var previewMs = await Task.Run(
-                () => ImageLoader.LoadAutoOriented(filePath), token);
+            // Decoded once and reused below for the render (Recipe or the normal palette
+            // pipeline) instead of handing those a path and letting each re-decode the same
+            // full-resolution file from disk again — see PaletteExportService.ExportAsync's
+            // matching comment for why that redundant decode is worth avoiding.
+            working = await Task.Run(() =>
+            {
+                var img = Image.Load<Rgb24>(filePath);
+                img.Mutate(ctx => ctx.AutoOrient());
+                return img;
+            }, token);
             token.ThrowIfCancellationRequested();
-            OriginalBitmap = new Bitmap(previewMs);
+            using (var previewMs = ImageLoader.ToJpegStream(working))
+                OriginalBitmap = new Bitmap(previewMs);
 
             var ps = OriginalBitmap.PixelSize;
             var folder = Path.GetDirectoryName(filePath) ?? "";
@@ -665,14 +677,14 @@ public partial class MainWindowViewModel : ViewModelBase
                 // palette pipeline. exportSettings.MetaVerbosity already reflects the "Show
                 // camera info plate" toggle (Off when unchecked — see PaletteExportSettings.
                 // SnapshotFrom), so the checkbox reaches the render params here (bugfix §2).
-                await Task.Run(() => RecipeCardRenderer.Render(filePath, recipeForRender, tmpOut,
+                await Task.Run(() => RecipeCardRenderer.Render(working, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
                     metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride(),
                     labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground), token);
             }
             else
             {
-                await PaletteExportService.ExportAsync(filePath, tmpOut, exportSettings, token,
+                await PaletteExportService.ExportAsync(working, tmpOut, exportSettings, token,
                     metadataOverride: Settings.BuildMetadataOverride());
             }
 
@@ -694,6 +706,7 @@ public partial class MainWindowViewModel : ViewModelBase
         }
         finally
         {
+            working?.Dispose();
             if (!token.IsCancellationRequested)
             {
                 IsGenerating = false;

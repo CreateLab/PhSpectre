@@ -78,9 +78,15 @@ public static class PaletteImageRenderer
     // the photo came out just as dark as Dark theme, indistinguishable from a flat fill.
     // Compositing translucent black/white on top guarantees the intended tone regardless of
     // what's locally in the photo, while still leaving blurred color/texture showing through.
+    // photoBoxHeight: when the caller draws a sharp foreground photo with alpha-blended
+    // rounded corners on top (RecipeCardRenderer), it crops that photo to fit a (w, photoBoxHeight)
+    // box. Left null (PaletteImageRenderer's canvases), the whole (w, h) area gets one cover-crop
+    // as before — safe there because the sharp photo it draws is either pixel-exact (no crop) or
+    // has hard, opaque edges, so there's no alpha blend that could expose a mismatched crop.
     internal static void FillCardBackground(
         IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int w, int h,
-        Theme theme, Color? customBackground, bool useBlurredBackground)
+        Theme theme, Color? customBackground, bool useBlurredBackground,
+        int? photoBoxHeight = null)
     {
         if (!useBlurredBackground)
         {
@@ -88,14 +94,51 @@ public static class PaletteImageRenderer
             return;
         }
 
+        Color scrimColor = theme == Theme.Dark ? Color.Black : Color.White;
+
+        // Split into two independently cover-cropped bands rather than one crop across the
+        // whole (w, h) canvas: a single crop's aspect ratio is w:h, which is nothing like the
+        // photo's own w:photoBoxHeight box, so the backdrop showing through the photo's rounded
+        // corners was a differently-zoomed/cropped slice of the same source photo than the sharp
+        // copy drawn on top of it — visible as a seam right at the corners. Cropping the top band
+        // to the exact same (w, photoBoxHeight) box the photo itself is cropped to keeps the two
+        // pixel-consistent there; the bottom band (behind title/plates, no sharp photo edge to
+        // clash with) can crop independently with no visible seam risk.
+        if (photoBoxHeight is int boxH && boxH > 0 && boxH < h)
+        {
+            DrawBlurredBackdropBand(ctx, sourcePhoto, 0, w, boxH, scrimColor);
+            DrawBlurredBackdropBand(ctx, sourcePhoto, boxH, w, h - boxH, scrimColor);
+        }
+        else
+        {
+            DrawBlurredBackdropBand(ctx, sourcePhoto, 0, w, h, scrimColor);
+        }
+    }
+
+    // Blurring is done on a small downscaled copy and resized back up — blur output is
+    // low-frequency so the upscale is visually free, and this keeps the op's cost roughly
+    // constant regardless of export resolution (multi-thousand-px photos otherwise make this
+    // needlessly slow, especially on Android).
+    //
+    // A scrim (not a multiplicative Brightness pass) is what actually makes this legible: the
+    // photo region that ends up behind a recipe card's plates/title is often already dark
+    // (shadow, ground, foliage), and Brightness is multiplicative — it can't lift a near-black
+    // pixel toward white (0 * anything is still 0), so a Light-theme card over a dark corner of
+    // the photo came out just as dark as Dark theme, indistinguishable from a flat fill.
+    // Compositing translucent black/white on top guarantees the intended tone regardless of
+    // what's locally in the photo, while still leaving blurred color/texture showing through.
+    private static void DrawBlurredBackdropBand(
+        IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int y, int w, int bandH, Color scrimColor)
+    {
+        if (bandH <= 0) return;
+
         const int blurWorkWidth = 640;
+        const float scrimOpacity = 0.6f;
         int workW = Math.Min(blurWorkWidth, w);
-        int workH = Math.Max(1, (int)Math.Round(h * (workW / (double)w)));
+        int workH = Math.Max(1, (int)Math.Round(bandH * (workW / (double)w)));
         // Eased off by 1/3 from the initial pass — the original sigma read as too strong/soft
         // in practice, losing too much of the source photo's character.
         float sigma = Math.Max(8f, workW * 0.05f * (2f / 3f));
-        Color scrimColor = theme == Theme.Dark ? Color.Black : Color.White;
-        const float scrimOpacity = 0.6f;
 
         using var backdrop = sourcePhoto.Clone(c => c.Resize(new ResizeOptions
         {
@@ -111,8 +154,8 @@ public static class PaletteImageRenderer
         using (var scrim = new Image<Rgb24>(workW, workH, scrimColor.ToPixel<Rgb24>()))
             backdrop.Mutate(c => c.DrawImage(scrim, Point.Empty, scrimOpacity));
 
-        backdrop.Mutate(c => c.Resize(w, h));
-        ctx.DrawImage(backdrop, Point.Empty, 1f);
+        backdrop.Mutate(c => c.Resize(w, bandH));
+        ctx.DrawImage(backdrop, new Point(0, y), 1f);
     }
 
     // 12 display-formatted metadata fields drawn into the strip/overlay. Camera, Lens, Focal,
@@ -329,7 +372,8 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: stripY,
-                w: original.Width, overlayTextColor: overlayTextColor, customBackground: customBackground);
+                w: original.Width, overlayTextColor: overlayTextColor, customBackground: customBackground,
+                useBlurredBackground: useBlurredBackground);
         });
         return canvas;
     }
@@ -386,7 +430,8 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
-                w: canvasW, overlayTextColor: overlayTextColor, customBackground: customBackground);
+                w: canvasW, overlayTextColor: overlayTextColor, customBackground: customBackground,
+                useBlurredBackground: useBlurredBackground);
 
             if (showSwatches)
             for (int i = 0; i < n; i++)
@@ -494,7 +539,8 @@ public static class PaletteImageRenderer
         IImageProcessingContext ctx,
         string[] lines, int stripH, float fontSize, Font? font,
         MetaStyle style, Theme theme, int x, int y, int w,
-        Color? overlayTextColor = null, Color? customBackground = null)
+        Color? overlayTextColor = null, Color? customBackground = null,
+        bool useBlurredBackground = false)
     {
         if (lines.Length == 0 || font == null || stripH == 0) return;
 
@@ -514,7 +560,11 @@ public static class PaletteImageRenderer
         }
         else
         {
-            ctx.Fill(tc.Background, new RectangleF(x, y, w, stripH));
+            // FillCardBackground already painted the blurred backdrop (with its scrim) across
+            // the whole canvas, strip band included — flat-filling here would just paint over
+            // it and silently defeat the blurred-photo option for this region.
+            if (!useBlurredBackground)
+                ctx.Fill(tc.Background, new RectangleF(x, y, w, stripH));
             for (int i = 0; i < lines.Length; i++)
                 ctx.DrawText(new RichTextOptions(font)
                 {

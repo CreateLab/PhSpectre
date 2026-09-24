@@ -146,6 +146,12 @@
                           SelectedIndex="{Binding BackgroundModeIndex}"/>
             </Grid>
 
+            <!-- Same caveat as the ComboBox item's ToolTip, but always visible — touch/Android
+                 users have no hover to trigger that tooltip (see SettingsPanel.axaml.cs). -->
+            <TextBlock Text="Ignored for Collage — falls back to the card theme"
+                       IsVisible="{Binding ShowBlurredIgnoredForCollageHint}"
+                       Classes="mono-data-small" Opacity="0.6" TextWrapping="Wrap"/>
+
             <TextBox Text="{Binding CustomBackgroundHex}" IsEnabled="{Binding IsCustomBackgroundMode}"
                       PlaceholderText="#RRGGBB"/>
         </StackPanel>

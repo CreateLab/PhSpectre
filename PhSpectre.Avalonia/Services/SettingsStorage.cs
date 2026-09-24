@@ -24,7 +24,11 @@ internal sealed class PersistedSettings
     public bool HalfSize { get; set; } = true;
     public ExportMode ExportMode { get; set; } = ExportMode.Card;
     public bool ShowCameraInfo { get; set; }
-    public OutputFormat OutputFormat { get; set; } = OutputFormat.Png;
+    // Fresh-install default only (see HalfSize above) — matches SettingsViewModel's own
+    // default. JPEG: these cards are made for sharing to social apps, not print, and PNG's
+    // lossless encode at native photo resolution is by far the biggest cost in the whole
+    // render pipeline, regardless of export mode.
+    public OutputFormat OutputFormat { get; set; } = OutputFormat.Jpeg;
     public ExportPreset ExportPreset { get; set; } = ExportPreset.Original;
     public float LabelScale { get; set; } = 1.0f;
     public float SwatchScale { get; set; } = 1.0f;

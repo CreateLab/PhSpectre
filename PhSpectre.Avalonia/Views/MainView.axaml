@@ -362,6 +362,14 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                          Export Mode на главный экран" §1) — no longer a Settings entry. -->
                     <TextBlock Text="SECTIONS" Classes="mono-data-small" Opacity="0.55" Margin="4,4,0,4"/>
                     <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.Background}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="Blur" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="Background" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
                             CommandParameter="{x:Static vm:SettingsSection.Palette}" IsVisible="{Binding ComputeColors}">
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <materialIcons:MaterialIcon Grid.Column="0" Kind="PaletteOutline" Width="18" Height="18"/>
@@ -465,6 +473,26 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                 </Grid>
             </Border>
         </Panel>
+
+        <!-- Temporary on-screen perf overlay for the "why is mobile still slow" investigation
+             (see MainViewModel.DebugPerfText) — same stage timings AppLogger writes to
+             app.log, just visible directly on the device instead of needing adb. Remove once
+             that's resolved. MaxHeight + ScrollViewer: sub-renderer stage breakdowns (e.g.
+             RecipeCardRenderer's) can add up to more lines than fit on a phone screen — without
+             a scroll region this Border (anchored Bottom, growing upward with content) just
+             pushes the earliest lines up past the top of the screen with nothing to scroll them
+             back into view, silently hiding them instead of clipping visibly. Hit-test visible
+             on purpose (needed to actually scroll it) — an acceptable trade for a debug-only
+             overlay that's only up while/after a render, not part of normal picking flow. -->
+        <Border IsVisible="{Binding ShowDebugPerfOverlay}"
+                VerticalAlignment="Bottom" HorizontalAlignment="Stretch"
+                MaxHeight="320"
+                Background="#EE000000" Padding="10">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <TextBlock Text="{Binding DebugPerfText}" Foreground="#7CFC7C" FontFamily="monospace" FontSize="11"
+                           TextWrapping="Wrap"/>
+            </ScrollViewer>
+        </Border>
 
     </Panel>
 </UserControl>

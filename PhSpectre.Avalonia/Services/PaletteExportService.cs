@@ -5,6 +5,7 @@ using PhSpectre;
 using PhSpectre.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Avalonia.Services;
 
@@ -24,11 +25,35 @@ public static class PaletteExportService
         string sourcePath, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
     {
+        // Decoded once and reused for both palette extraction and the final render (see the
+        // Image<Rgb24> overload below). Previously extraction opened its own FileStream (a full
+        // decode) and the render separately passed sourcePath straight to
+        // PaletteImageRenderer.Render, which decodes the same file a second time — for a
+        // full-resolution camera photo, that's a real decode paid twice on every single export,
+        // in every mode (it doesn't depend on ComputeColors/k-means at all).
+        using var original = await Task.Run(() =>
+        {
+            using var fs = System.IO.File.OpenRead(sourcePath);
+            var img = Image.Load<Rgb24>(fs);
+            img.Mutate(ctx => ctx.AutoOrient());
+            return img;
+        }, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        await ExportAsync(original, destPath, settings, cancellationToken, metadataOverride);
+    }
+
+    // In-memory twin of ExportAsync above — for a caller (the desktop live-preview VM) that
+    // already holds a decoded, auto-oriented working copy of the photo for its own on-screen
+    // preview and would otherwise force a second full decode just to hand this method a path.
+    public static async Task ExportAsync(
+        Image<Rgb24> original, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+    {
         PhSpectre.Models.ColorPalette palette;
         if (settings.ComputeColors)
         {
-            await using var fs = System.IO.File.OpenRead(sourcePath);
-            palette = await new PaletteExtractor().ExtractAsync(fs, settings.Colors, settings.SamplingMode, cancellationToken);
+            palette = await new PaletteExtractor().ExtractAsync(original, settings.Colors, settings.SamplingMode, cancellationToken);
         }
         else
         {
@@ -38,7 +63,7 @@ public static class PaletteExportService
         cancellationToken.ThrowIfCancellationRequested();
 
         await Task.Run(() => PaletteImageRenderer.Render(
-            sourcePath, palette, destPath,
+            original, palette, destPath,
             showHex:          settings.ShowHex,
             metaVerbosity:    settings.MetaVerbosity,
             metaStyle:        settings.MetaStyle,

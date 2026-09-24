@@ -93,11 +93,17 @@ public partial class SettingsViewModel : ViewModelBase
     {
         get
         {
-            var single = new[] { ExportMode.Card, ExportMode.InfoOnly, ExportMode.Recipe };
+            // At exactly 1 photo, both single-photo modes AND the collage ones stay visible —
+            // unlike Desktop (which builds a collage by multi-selecting files in its browser,
+            // so it only ever needs the collage chips once SelectedPhotoCount is already 2+),
+            // mobile's *only* way to start a collage is tapping the Collage chip while a single
+            // photo is already picked (MainViewModel.SyncCollageModeWithExportModeAsync migrates
+            // it into the tray as the first item). Hiding those chips at count==1 — as if this
+            // matched Desktop's count>=2 case — left no control on screen able to enter collage
+            // mode at all once a single photo (and mode) had been picked.
             var applicable = SelectedPhotoCount switch
             {
-                0 => (IReadOnlyCollection<ExportMode>)ExportModeLabels.Select(x => x.Mode).ToArray(),
-                1 => single,
+                0 or 1 => (IReadOnlyCollection<ExportMode>)ExportModeLabels.Select(x => x.Mode).ToArray(),
                 _ => new[] { ExportMode.Collage, ExportMode.CollageInfoOnly }
             };
             return ExportModeLabels
@@ -218,7 +224,13 @@ public partial class SettingsViewModel : ViewModelBase
         WorkingQuality.Best     => 4800,
         _                       => 3400
     };
-    [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Png;
+    // JPEG default, not PNG: these cards are made for sharing to social apps, not print, and
+    // PNG's lossless encode is the single biggest cost in the whole render pipeline at native
+    // photo resolution — several seconds on desktop, much more on mobile — regardless of
+    // export mode, since it's paid on encode, not on whether k-means/color extraction ran.
+    // Quality 92 (same as RecipeCardRenderer's own JpegEncoder) keeps the overlaid metadata
+    // text/hex labels' sharp edges reading clean.
+    [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Jpeg;
     [ObservableProperty] private ExportPreset   _exportPreset   = ExportPreset.Original;
 
     // Discrete stops the "Plate size" / "Label size" sliders snap to, shown as S/M/L/XL/XXL
@@ -268,7 +280,11 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool _showCollageOptions = false;
     [ObservableProperty] private int  _gutterThickness    = 8;
 
-    partial void OnShowCollageOptionsChanged(bool value) => RaiseSectionVisibilityChanged();
+    partial void OnShowCollageOptionsChanged(bool value)
+    {
+        RaiseSectionVisibilityChanged();
+        OnPropertyChanged(nameof(ShowBlurredIgnoredForCollageHint));
+    }
 
     // Editable subset of the photo's metadata strip (Camera/Lens/Focal/Aperture/Shutter/Iso/
     // Date) — the other 5 fields PhotoMetadata carries (FocalEq, ExposureBias, WhiteBalance,
@@ -654,6 +670,12 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool IsCustomBackgroundMode => BackgroundMode == BackgroundMode.Custom;
 
+    // Surfaces the "Blurred photo is ignored for Collage" caveat as visible inline text
+    // instead of only a hover ToolTip on the ComboBox item — touch/Android users have no
+    // hover to trigger that tooltip, so without this they'd have no on-screen indication
+    // PaletteExportSettings.UseBlurredBackground is silently forcing the setting off.
+    public bool ShowBlurredIgnoredForCollageHint => ShowCollageOptions && BackgroundMode == BackgroundMode.BlurredPhoto;
+
     public int SwatchShapeIndex
     {
         get => (int)SwatchShape;
@@ -709,6 +731,7 @@ public partial class SettingsViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(BackgroundModeIndex));
         OnPropertyChanged(nameof(IsCustomBackgroundMode));
+        OnPropertyChanged(nameof(ShowBlurredIgnoredForCollageHint));
     }
     partial void OnSwatchShapeChanged(SwatchShape value)       => OnPropertyChanged(nameof(SwatchShapeIndex));
     partial void OnSortOrderChanged(SortOrder value)           => OnPropertyChanged(nameof(SortOrderIndex));

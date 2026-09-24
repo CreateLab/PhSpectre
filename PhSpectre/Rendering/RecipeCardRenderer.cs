@@ -51,8 +51,12 @@ public static class RecipeCardRenderer
         float labelScale = 1f,
         bool useBlurredBackground = false)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
         using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
+        RenderPerfLog.OnStage?.Invoke("BuildCanvas total", sw.ElapsedMilliseconds);
+        sw.Restart();
         Save(canvas, outputPath, format);
+        RenderPerfLog.OnStage?.Invoke("Save/encode", sw.ElapsedMilliseconds);
     }
 
     // In-memory variant — used by the app's live preview so what's shown on screen for
@@ -113,6 +117,7 @@ public static class RecipeCardRenderer
         float labelScale = 1f,
         bool useBlurredBackground = false)
     {
+        var prepSw = System.Diagnostics.Stopwatch.StartNew();
         var rows = BuildRows(recipe);
 
         // Camera info plate (bugfix §2): only actually drawn when metaVerbosity isn't Off —
@@ -171,13 +176,19 @@ public static class RecipeCardRenderer
         int gridH = gridRows == 0 ? 0 : gridRows * plateH + (gridRows - 1) * gap;
 
         int canvasH = photoH + margin + titleH + (gridH > 0 ? margin / 2 + gridH : 0) + margin + metaStripH;
+        RenderPerfLog.OnStage?.Invoke("rows+metadata+layout prep", prepSw.ElapsedMilliseconds);
         var canvas = new Image<Rgb24>(CardWidth, canvasH);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        void Stage(string name) { RenderPerfLog.OnStage?.Invoke(name, sw.ElapsedMilliseconds); sw.Restart(); }
         canvas.Mutate(ctx =>
         {
-            PaletteImageRenderer.FillCardBackground(ctx, original, CardWidth, canvasH, theme, customBackground, useBlurredBackground);
+            PaletteImageRenderer.FillCardBackground(ctx, original, CardWidth, canvasH, theme, customBackground, useBlurredBackground,
+                photoBoxHeight: photoH);
+            Stage("FillCardBackground");
 
             using var roundedPhoto = ApplyRoundedCorners(original, CardWidth, photoH, photoRadius);
             ctx.DrawImage(roundedPhoto, new Point(0, 0), 1f);
+            Stage("ApplyRoundedCorners+DrawImage");
 
             int titleY = photoH + margin;
             ctx.DrawText(new RichTextOptions(titleFont)
@@ -185,6 +196,7 @@ public static class RecipeCardRenderer
                 Origin = new PointF(margin, titleY),
                 HorizontalAlignment = HorizontalAlignment.Left,
             }, title, text);
+            Stage("title DrawText");
 
             int gridY = titleY + titleH + margin / 2;
             var labelFont = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.34f);
@@ -230,13 +242,16 @@ public static class RecipeCardRenderer
                     TextAlignment = TextAlignment.Center,
                 }, value, text);
             }
+            Stage($"plates grid ({rows.Count} rows)");
 
             if (metaStripH > 0)
             {
                 int stripY = canvasH - metaStripH;
                 PaletteImageRenderer.DrawStrip(ctx, metaLines, metaStripH, metaFs, metaFont,
-                    MetaStyle.FilmStrip, theme, x: 0, y: stripY, w: CardWidth, customBackground: customBackground);
+                    MetaStyle.FilmStrip, theme, x: 0, y: stripY, w: CardWidth, customBackground: customBackground,
+                    useBlurredBackground: useBlurredBackground);
             }
+            Stage("DrawStrip");
         });
 
         return canvas;
@@ -250,18 +265,28 @@ public static class RecipeCardRenderer
     // through when composited onto it.
     private static Image<Rgba32> ApplyRoundedCorners(Image<Rgb24> source, int w, int h, float radius)
     {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        // No Sampler specified here used to mean ImageSharp's default (Bicubic) — measured at
+        // ~2s on-device for this ~1.67x crop-to-fill downscale (working-size photo -> CardWidth),
+        // dwarfing every other stage of the card render combined. At a ratio this small, Box
+        // (already the choice for the same kind of small trim in ImageLoader.LoadWorkingCopy's
+        // native-decode path) is visually indistinguishable but dramatically cheaper.
         using var resized = source.Clone(ctx => ctx.Resize(new ResizeOptions
         {
-            Size = new Size(w, h),
-            Mode = ResizeMode.Crop,
+            Size    = new Size(w, h),
+            Mode    = ResizeMode.Crop,
+            Sampler = KnownResamplers.Box
         }));
+        RenderPerfLog.OnStage?.Invoke($"  ApplyRoundedCorners: Resize to {w}x{h}", sw.ElapsedMilliseconds);
+        sw.Restart();
 
         var rounded = new Image<Rgba32>(w, h);
         rounded.Mutate(ctx =>
         {
             var path = PaletteImageRenderer.RoundedRectPath(0, 0, w, h, radius);
-            ctx.Fill(new ImageBrush(resized), path);
+            ctx.Clip(path, c => c.DrawImage(resized, Point.Empty, 1f));
         });
+        RenderPerfLog.OnStage?.Invoke("  ApplyRoundedCorners: Clip+DrawImage", sw.ElapsedMilliseconds);
         return rounded;
     }
 }

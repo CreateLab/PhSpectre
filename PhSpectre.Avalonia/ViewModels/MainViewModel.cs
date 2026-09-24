@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -41,6 +42,16 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool    _isSettingsOpen;
     [ObservableProperty] private bool    _isSaved;
     [ObservableProperty] private bool    _isRegenerateAvailable;
+
+    // Temporary on-screen perf overlay for the "why is mobile still slow" investigation —
+    // same stage timings as the AppLogger [perf] lines, just shown directly instead of
+    // requiring adb to pull app.log off the device. Hidden (not removed) now that the
+    // investigation's done — flip this back to true to bring the on-screen panel back; all
+    // the underlying stage timing/logging keeps running either way.
+    private const bool DebugPerfOverlayEnabled = false;
+    [ObservableProperty] private string? _debugPerfText;
+    public bool ShowDebugPerfOverlay => DebugPerfOverlayEnabled && !string.IsNullOrEmpty(DebugPerfText);
+    partial void OnDebugPerfTextChanged(string? value) => OnPropertyChanged(nameof(ShowDebugPerfOverlay));
 
     // Collage mode — CollageItems is the tray: each picked photo is copied to a stable temp
     // path (same technique as _currentSourcePath below) and wrapped in a FileEntry, the same
@@ -103,6 +114,17 @@ public partial class MainViewModel : ViewModelBase
     private string? _currentSourcePath;
     private string? _collageExifSourcePath;
     private bool     _suspendTrayNotifications;
+
+    // Guards SyncCollageModeWithExportModeAsync against overlapping runs — it awaits
+    // (BuildCollageEntryAsync's thumbnail decode) partway through a migration, and on
+    // mobile that's plenty of time for a second chip tap to land before IsCollageMode has
+    // flipped. Without this, that second tap's run would see IsCollageMode still at its
+    // pre-migration value, conclude "already matches, nothing to do", and silently drop the
+    // tap — leaving ExportMode and IsCollageMode out of sync with no chip left on screen to
+    // fix it from (SelectedPhotoCount jumping to 2+ hides the single-photo chips). See the
+    // bugfix "коллаж/карта переключение туда-обратно" for the repro.
+    private bool _isSyncingCollageMode;
+    private bool _collageSyncPending;
 
     public MainViewModel()
     {
@@ -463,6 +485,33 @@ public partial class MainViewModel : ViewModelBase
     // alone never opens a separate screen" rule.
     private async Task SyncCollageModeWithExportModeAsync()
     {
+        // Reentrancy guard: if a run is already migrating state, don't start a second one
+        // (that's what let a tap during the first run's await get silently dropped) — just
+        // flag that ExportMode moved again, and the in-flight run's loop below will re-check
+        // and finish the job once it's done with its current step.
+        if (_isSyncingCollageMode)
+        {
+            _collageSyncPending = true;
+            return;
+        }
+
+        _isSyncingCollageMode = true;
+        try
+        {
+            do
+            {
+                _collageSyncPending = false;
+                await SyncCollageModeStepAsync();
+            } while (_collageSyncPending);
+        }
+        finally
+        {
+            _isSyncingCollageMode = false;
+        }
+    }
+
+    private async Task SyncCollageModeStepAsync()
+    {
         bool wantsCollage = IsCollageExportMode;
 
         if (wantsCollage && !IsCollageMode && _currentSourcePath != null && File.Exists(_currentSourcePath))
@@ -742,9 +791,14 @@ public partial class MainViewModel : ViewModelBase
             }
         }
 
+        var metaSw = Stopwatch.StartNew();
         Settings.LoadMetadataFields(
             PaletteImageRenderer.ReadMetadata(_currentSourcePath),
             RecipeReader.Read(_currentSourcePath));
+        // Temporary diagnostics for the "why is even InfoOnly slow on mobile" investigation —
+        // stage timings land in AppLogger's app.log so a slow device's actual bottleneck can be
+        // read back after the fact instead of guessed at from a desktop benchmark.
+        AppLogger.LogInfo($"[perf] EXIF/recipe metadata read: {metaSw.ElapsedMilliseconds} ms ({fileName})");
         IsRegenerateAvailable = false; // the render below is already current — nothing to regenerate yet
         Settings.SelectedPhotoCount = 1;
         Settings.ExportMode = ExportModeRules.ClosestValidMode(Settings.ExportMode, 1);
@@ -788,16 +842,48 @@ public partial class MainViewModel : ViewModelBase
 
         IsGenerating = true;
         Image<Rgb24>? working = null;
+        var stageSw = Stopwatch.StartNew();
+        var totalSw = Stopwatch.StartNew();
+        var perfLog = new System.Text.StringBuilder();
+        DebugPerfText = null;
+        void LogStage(string stage)
+        {
+            var ms = stageSw.ElapsedMilliseconds;
+            AppLogger.LogInfo($"[perf] {stage}: {ms} ms");
+            perfLog.AppendLine($"{stage}: {ms} ms");
+            DebugPerfText = perfLog.ToString();
+            stageSw.Restart();
+        }
+        // Renderers (currently RecipeCardRenderer) report their own internal sub-stage
+        // timings through this hook — fires from whatever thread Task.Run below uses, so the
+        // overlay/log update is marshalled back to the UI thread. Cleared in finally, but only
+        // if it's still THIS render's own subscription: _renderCts.Cancel() above doesn't stop
+        // a prior in-flight render synchronously, so its finally can still run (and null this
+        // out) after a newer render has already installed its own hook — silently losing every
+        // sub-stage line for that newer render. The reference check below is what a naive
+        // `OnStage = null` was missing.
+        Action<string, long> perfHook = (label, ms) =>
+        {
+            AppLogger.LogInfo($"[perf] {label}: {ms} ms");
+            Dispatcher.UIThread.Post(() =>
+            {
+                perfLog.AppendLine($"{label}: {ms} ms");
+                DebugPerfText = perfLog.ToString();
+            });
+        };
+        PhSpectre.Rendering.RenderPerfLog.OnStage = perfHook;
         try
         {
             // Re-decoded from disk every time (not cached across renders) so a Working size
             // change picks up its new cap immediately instead of reusing an old downscale.
             working = await Task.Run(() => ImageLoader.LoadWorkingCopy(sourcePath, MaxWorkingDimension), token);
             token.ThrowIfCancellationRequested();
+            LogStage($"decode+downscale to {MaxWorkingDimension}px cap ({working.Width}x{working.Height})");
 
             using var previewMs = await Task.Run(() => ImageLoader.ToJpegStream(working), token);
             token.ThrowIfCancellationRequested();
             OriginalBitmap = new Bitmap(previewMs);
+            LogStage("preview JPEG re-encode + Avalonia Bitmap decode");
 
             var ps = OriginalBitmap.PixelSize;
             FileInfoText = $"{_lastFileName}  ·  {ps.Width}×{ps.Height}";
@@ -821,6 +907,7 @@ public partial class MainViewModel : ViewModelBase
 
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
 
+            stageSw.Restart();
             if (recipeForRender != null)
             {
                 // Recipe mode: main preview = the exact same composite Save recipe card
@@ -831,6 +918,7 @@ public partial class MainViewModel : ViewModelBase
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
                     metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride(),
                     labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground), token);
+                LogStage($"RecipeCardRenderer.Render ({exportSettings.Format})");
             }
             else
             {
@@ -843,6 +931,7 @@ public partial class MainViewModel : ViewModelBase
                 {
                     palette = await new PaletteExtractor().ExtractAsync(working, Settings.Colors, Settings.SamplingMode, token);
                     token.ThrowIfCancellationRequested();
+                    LogStage("PaletteExtractor.ExtractAsync (k-means)");
                 }
                 else
                 {
@@ -870,6 +959,7 @@ public partial class MainViewModel : ViewModelBase
                     customBackground: exportSettings.CustomBackground,
                     compositionGuide: exportSettings.CompositionGuide,
                     useBlurredBackground: exportSettings.UseBlurredBackground), token);
+                LogStage($"PaletteImageRenderer.Render ({exportSettings.Format})");
             }
 
             token.ThrowIfCancellationRequested();
@@ -881,6 +971,11 @@ public partial class MainViewModel : ViewModelBase
             var formatLabel = exportSettings.Format == OutputFormat.Jpeg ? "JPG" : "PNG";
             OutputSizeText = $"{sizeBytes / 1_048_576.0:F1} MB {formatLabel}";
             PaletteBitmap  = new Bitmap(tmpOut);
+            LogStage("output Bitmap decode for display");
+            var totalLine = $"TOTAL ({Settings.ExportMode}): {totalSw.ElapsedMilliseconds} ms, output={sizeBytes / 1024.0:F0} KB";
+            AppLogger.LogInfo($"[perf] {totalLine}");
+            perfLog.AppendLine(totalLine);
+            DebugPerfText = perfLog.ToString();
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -889,6 +984,8 @@ public partial class MainViewModel : ViewModelBase
         }
         finally
         {
+            if (ReferenceEquals(PhSpectre.Rendering.RenderPerfLog.OnStage, perfHook))
+                PhSpectre.Rendering.RenderPerfLog.OnStage = null;
             working?.Dispose();
             if (!token.IsCancellationRequested)
             {
