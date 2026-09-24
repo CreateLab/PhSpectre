@@ -262,9 +262,21 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
 
     // DynamicRange (0x1402, the more specific Auto/Manual/percentage setting) takes priority;
     // falls back to the coarser Standard/Wide tag (0x1400) when 0x1402 is absent.
+    //
+    // 0x1402 == "Manual" by itself is not a value a photographer actually picked — it just
+    // flags that a fixed percentage was chosen instead of Auto, with the number living in a
+    // separate tag, 0x1403 (DevelopmentDynamicRange, a plain int16u: 100/200/400 — exiftool
+    // documents the tag's existence but not its value semantics, confirmed instead against a
+    // real X-T5 file). Without this, every manually-set body reports the recipe's Dynamic
+    // Range as the bare word "Manual" with no percentage at all.
     private static string? DecodeDynamicRange(Dictionary<ushort, byte[]> entries)
     {
         var fine = DecodeEnumOrNull(entries, 0x1402, DynamicRangeSettingMap);
+        if (fine == "Manual")
+        {
+            var dev = ReadRawNumber(entries, 0x1403);
+            if (dev is int d) return $"DR{d}%";
+        }
         return fine ?? DecodeEnumOrNull(entries, 0x1400, DynamicRangeMap);
     }
 
@@ -336,8 +348,8 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
 
     private static readonly IReadOnlyDictionary<int, string> DynamicRangeSettingMap = new Dictionary<int, string>
     {
-        [0x0] = "Auto", [0x1] = "Manual",
-        [0x100] = "Standard (100%)", [0x200] = "Wide1 (230%)", [0x201] = "Wide2 (400%)",
+        [0x0] = "Auto", [0x1] = "Manual", // "Manual" alone is resolved further in DecodeDynamicRange
+        [0x100] = "DR100%", [0x200] = "DR200%", [0x201] = "DR400%",
         [0x8000] = "Film Simulation",
     };
 

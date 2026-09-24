@@ -108,7 +108,7 @@ public class FujiRecipeExtractorTests
             (0x1401, 3, 1, U16Bytes(0x0000)),      // FilmSimulation -> Provia/Standard
             (0x1002, 3, 1, U16Bytes(0x0000)),      // WhiteBalance -> Auto
             (0x100a, 9, 2, [.. S32(40), .. S32(-60)]), // WhiteBalanceShift raw (40, -60) -> /20 -> (2, -3)
-            (0x1402, 3, 1, U16Bytes(0x0100)),      // DynamicRange (fine) -> Standard (100%)
+            (0x1402, 3, 1, U16Bytes(0x0100)),      // DynamicRange (fine, resolved code) -> DR100%
             (0x1041, 9, 1, S32(-32)),              // HighlightTone raw -32 -> dial +2
             (0x1040, 9, 1, S32(16)),               // ShadowTone raw 16 -> dial -1
             (0x1003, 3, 1, U16Bytes(0x80)),        // Color raw 0x80 -> dial +1
@@ -132,7 +132,7 @@ public class FujiRecipeExtractorTests
         Assert.Equal("Provia/Standard", recipe.FilmSimulation);
         Assert.Equal("Auto", recipe.WhiteBalance);
         Assert.Equal((2, -3), recipe.WhiteBalanceShift);
-        Assert.Equal("Standard (100%)", recipe.DynamicRange);
+        Assert.Equal("DR100%", recipe.DynamicRange);
         Assert.Equal(2m, recipe.HighlightTone);
         Assert.Equal(-1m, recipe.ShadowTone);
         Assert.Equal(1, recipe.Color);
@@ -143,6 +143,39 @@ public class FujiRecipeExtractorTests
         Assert.Equal("Strong", recipe.ColorChromeEffect);
         Assert.Equal("Off", recipe.ColorChromeFxBlue);
         Assert.Equal(-5, recipe.BwAdjustment);
+    }
+
+    // Bugfix "dynamic range показывает Manual без значения": bodies that report 0x1402 as the
+    // bare "Manual" flag (rather than resolving straight to one of its own Standard/Wide1/Wide2
+    // codes) put the actual chosen percentage in a separate tag, 0x1403 — without decoding it,
+    // every manually-set shot showed the recipe's Dynamic Range as just the word "Manual".
+    [Theory]
+    [InlineData(100, "DR100%")]
+    [InlineData(200, "DR200%")]
+    [InlineData(400, "DR400%")]
+    public void Extract_ManualDynamicRange_ResolvesPercentFromDevelopmentDynamicRangeTag(int devRaw, string expected)
+    {
+        var mn = BuildMakerNote(
+            (0x1402, 3, 1, U16Bytes(0x0001)),       // DynamicRangeSetting -> Manual
+            (0x1403, 3, 1, U16Bytes((ushort)devRaw))); // DevelopmentDynamicRange -> the actual %
+        var profile = BuildProfile("FUJIFILM", mn);
+
+        var recipe = Extractor.Extract(profile);
+
+        Assert.NotNull(recipe);
+        Assert.Equal(expected, recipe!.DynamicRange);
+    }
+
+    [Fact]
+    public void Extract_ManualDynamicRange_NoDevelopmentTag_FallsBackToBareManual()
+    {
+        var mn = BuildMakerNote((0x1402, 3, 1, U16Bytes(0x0001))); // Manual, no 0x1403 present
+        var profile = BuildProfile("FUJIFILM", mn);
+
+        var recipe = Extractor.Extract(profile);
+
+        Assert.NotNull(recipe);
+        Assert.Equal("Manual", recipe!.DynamicRange);
     }
 
     [Theory]
