@@ -85,8 +85,8 @@ public static class RecipeCardRenderer
         Add("White Balance", r.WhiteBalance);
         if (r.WhiteBalanceShift is { } shift) Add("WB Shift", $"R{shift.Red:+0;-0;0} B{shift.Blue:+0;-0;0}");
         Add("Dynamic Range", r.DynamicRange);
-        if (r.HighlightTone is { } hi) Add("Highlight", hi.ToString("+0;-0;0"));
-        if (r.ShadowTone is { } sh) Add("Shadow", sh.ToString("+0;-0;0"));
+        if (r.HighlightTone is { } hi) Add("Highlight", hi.ToString("+0.#;-0.#;0"));
+        if (r.ShadowTone is { } sh) Add("Shadow", sh.ToString("+0.#;-0.#;0"));
         if (r.Color is { } col) Add("Color", col.ToString());
         if (r.Sharpness is { } sharp) Add("Sharpness", sharp.ToString("+0;-0;0"));
         if (r.NoiseReduction is { } nr) Add("Noise Reduction", nr.ToString("+0;-0;0"));

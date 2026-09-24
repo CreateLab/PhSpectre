@@ -169,8 +169,47 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return map.TryGetValue(r, out var v) ? v : r;
     }
 
-    // ShadowTone/HighlightTone share one (inverted) raw->dial-position table.
-    private static int? DecodeTone(Dictionary<ushort, byte[]> entries, ushort tag) => DecodeLevel(entries, tag, ToneMap);
+    // ShadowTone/HighlightTone raw values encode the on-screen dial position as
+    // raw = -dial * 16 — confirmed against ExifTool's FujiFilm.pm, whose PrintConv for these
+    // two tags is a small label table (covering just the historical whole-step -2..+4 range)
+    // backed by an OTHER fallback that applies this same "-raw/16" formula, unrounded, to
+    // every other raw value. ExifTool defines this identically for every Fuji model — there is
+    // no per-generation variant of the scale.
+    //
+    // Firmware that supports Reala ACE also reports *half*-step dial positions (raw a multiple
+    // of 8 but not 16, e.g. raw 24 -> dial -1.5) — confirmed against a real X-T5 (firmware
+    // Ver4.31) file shot in Reala ACE, whose raw HighlightTone was exactly 24. The field must
+    // therefore be decimal, not int: rounding/truncating -24/16 down to an int (or, as the old
+    // code did, failing to recognize 24 as a tone value at all and returning it unconverted)
+    // is what produced a reported "+24" instead of the real "-1.5". This also matches ExifTool
+    // changelog 12.68 (Jan 2023), "decimal values" support for these two tags.
+    private const int ToneScale = 16;
+    private const int ToneGranularity = 8; // finest step width confirmed in real MakerNote data
+    private const decimal ToneMin = -10m; // generous bound around the documented -2..+4 dial range
+    private const decimal ToneMax = 10m;
+
+    private static decimal? DecodeTone(Dictionary<ushort, byte[]> entries, ushort tag)
+    {
+        var raw = ReadRawNumber(entries, tag);
+        if (raw is not int r) return null;
+
+        if (r % ToneGranularity != 0)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                $"[PhSpectre.Recipes] Tone raw value {r} (tag 0x{tag:X4}) is not divisible by {ToneGranularity} — showing raw value as-is.");
+            return r;
+        }
+
+        decimal dial = -(r / (decimal)ToneScale);
+        if (dial < ToneMin || dial > ToneMax)
+        {
+            System.Diagnostics.Trace.TraceWarning(
+                $"[PhSpectre.Recipes] Tone raw value {r} (tag 0x{tag:X4}) -> dial {dial} is outside the expected [{ToneMin},{ToneMax}] range — showing raw value as-is.");
+            return r;
+        }
+
+        return dial;
+    }
 
     // WhiteBalanceShift's raw MakerNote value is the on-screen shift × 20 (confirmed against
     // exiftool's own FujiFilm.pm, which applies the same /20). A raw value that isn't exactly
@@ -319,12 +358,5 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
     {
         [0x0] = 0, [0x100] = 2, [0x180] = 1, [0x1c0] = 3, [0x1e0] = 4,
         [0x200] = -2, [0x280] = -1, [0x2c0] = -3, [0x2e0] = -4,
-    };
-
-    // ShadowTone/HighlightTone share this raw(int32)->dial-position table; the raw values
-    // count *down* as the dial position counts *up* (e.g. raw 16 == dial -1).
-    private static readonly IReadOnlyDictionary<int, int> ToneMap = new Dictionary<int, int>
-    {
-        [-64] = 4, [-48] = 3, [-32] = 2, [-16] = 1, [0] = 0, [16] = -1, [32] = -2,
     };
 }

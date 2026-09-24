@@ -133,8 +133,8 @@ public class FujiRecipeExtractorTests
         Assert.Equal("Auto", recipe.WhiteBalance);
         Assert.Equal((2, -3), recipe.WhiteBalanceShift);
         Assert.Equal("Standard (100%)", recipe.DynamicRange);
-        Assert.Equal(2, recipe.HighlightTone);
-        Assert.Equal(-1, recipe.ShadowTone);
+        Assert.Equal(2m, recipe.HighlightTone);
+        Assert.Equal(-1m, recipe.ShadowTone);
         Assert.Equal(1, recipe.Color);
         Assert.Equal(-2, recipe.Sharpness);
         Assert.Equal(2, recipe.NoiseReduction);
@@ -185,6 +185,78 @@ public class FujiRecipeExtractorTests
 
         Assert.NotNull(recipe);
         Assert.Equal((400, 0), recipe!.WhiteBalanceShift);
+    }
+
+    // Regression, byte-for-byte from a real file: an X-T5 (firmware Ver4.31) JPEG shot in Reala
+    // ACE with a custom recipe reported ShadowTone raw 32 (-> dial -2, already correct under the
+    // old code since 32 is a whole multiple of 16) but HighlightTone raw 24 — not a multiple of
+    // 16 at all, only of 8. The old code's DecodeLevel fell back to returning that raw MakerNote
+    // number completely unconverted, so the app displayed "+24" for what ExifTool's own "-raw/16"
+    // formula (applied without rounding, matching its 12.68 "decimal values" support for exactly
+    // these two tags) resolves to the real, in-range dial position -1.5.
+    [Fact]
+    public void Extract_RealRealaAceFile_HighlightToneHalfStep_DecodesAsMinusOnePointFive()
+    {
+        var mn = BuildMakerNote(
+            (0x1401, 3, 1, U16Bytes(0x0b00)), // FilmSimulation -> Reala ACE
+            (0x1041, 9, 1, S32(24)),          // HighlightTone raw 24 -> dial -1.5
+            (0x1040, 9, 1, S32(32)));         // ShadowTone raw 32 -> dial -2
+        var profile = BuildProfile("FUJIFILM", mn, model: "X-T5");
+
+        var recipe = Extractor.Extract(profile);
+
+        Assert.NotNull(recipe);
+        Assert.Equal("Reala ACE", recipe!.FilmSimulation);
+        Assert.Equal(-1.5m, recipe.HighlightTone);
+        Assert.Equal(-2m, recipe.ShadowTone);
+    }
+
+    // Beyond the confirmed real half-step case above: any other raw value outside the old
+    // hardcoded -64..32 table (e.g. a wider whole-step tone-dial range on newer bodies) must
+    // still be divided by 16, not returned as the untouched raw MakerNote number.
+    [Theory]
+    [InlineData(-80, 5)]   // beyond the old table's +4 ceiling
+    [InlineData(-96, 6)]
+    [InlineData(48, -3)]   // beyond the old table's -2 floor
+    [InlineData(64, -4)]
+    public void Extract_ToneRawValueOutsideOldTable_StillDividesBySixteen(int raw, decimal expectedDial)
+    {
+        var mn = BuildMakerNote((0x1041, 9, 1, S32(raw)), (0x1040, 9, 1, S32(raw)));
+        var profile = BuildProfile("FUJIFILM", mn);
+
+        var recipe = Extractor.Extract(profile);
+
+        Assert.NotNull(recipe);
+        Assert.Equal(expectedDial, recipe!.HighlightTone);
+        Assert.Equal(expectedDial, recipe.ShadowTone);
+    }
+
+    [Fact]
+    public void Extract_ToneRawValueNotDivisibleByEight_ShowsRawValueAsIs()
+    {
+        // 10 isn't a multiple of 8 — the finest granularity confirmed in real MakerNote data —
+        // so it must come through unchanged rather than being coerced into a dial value.
+        var mn = BuildMakerNote((0x1041, 9, 1, S32(-10)));
+        var profile = BuildProfile("FUJIFILM", mn);
+
+        var recipe = Extractor.Extract(profile);
+
+        Assert.NotNull(recipe);
+        Assert.Equal(-10m, recipe!.HighlightTone);
+    }
+
+    [Fact]
+    public void Extract_ToneRawValueDividedResultOutOfRange_ShowsRawValueAsIs()
+    {
+        // -384/16 = 24, outside the sane ±10 dial range — must come through as the raw -384,
+        // not a wildly implausible +24 dial position.
+        var mn = BuildMakerNote((0x1041, 9, 1, S32(-384)));
+        var profile = BuildProfile("FUJIFILM", mn);
+
+        var recipe = Extractor.Extract(profile);
+
+        Assert.NotNull(recipe);
+        Assert.Equal(-384m, recipe!.HighlightTone);
     }
 
     [Theory]

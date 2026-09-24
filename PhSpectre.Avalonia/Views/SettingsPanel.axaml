@@ -569,11 +569,11 @@
             <Grid Classes="settings-row" ColumnDefinitions="*,*">
                 <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
                     <TextBlock Text="Highlight tone" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditHighlightTone}" Minimum="-2" Maximum="4" Increment="1"/>
+                    <NumericUpDown Value="{Binding EditHighlightTone}" Minimum="-2" Maximum="4" Increment="0.5"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
                     <TextBlock Text="Shadow tone" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditShadowTone}" Minimum="-2" Maximum="4" Increment="1"/>
+                    <NumericUpDown Value="{Binding EditShadowTone}" Minimum="-2" Maximum="4" Increment="0.5"/>
                 </StackPanel>
             </Grid>
 

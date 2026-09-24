@@ -171,8 +171,8 @@ if (showRecipe)
         if (recipe.WhiteBalanceShift is { } shift)
             Console.WriteLine($"  WB Shift        : R{shift.Red:+0;-0;0} B{shift.Blue:+0;-0;0}");
         Console.WriteLine($"  Dynamic Range   : {recipe.DynamicRange ?? "-"}");
-        Console.WriteLine($"  Highlight       : {recipe.HighlightTone?.ToString("+0;-0;0") ?? "-"}");
-        Console.WriteLine($"  Shadow          : {recipe.ShadowTone?.ToString("+0;-0;0") ?? "-"}");
+        Console.WriteLine($"  Highlight       : {recipe.HighlightTone?.ToString("+0.#;-0.#;0") ?? "-"}");
+        Console.WriteLine($"  Shadow          : {recipe.ShadowTone?.ToString("+0.#;-0.#;0") ?? "-"}");
         Console.WriteLine($"  Color           : {recipe.Color?.ToString() ?? "-"}");
         Console.WriteLine($"  Sharpness       : {recipe.Sharpness?.ToString("+0;-0;0") ?? "-"}");
         Console.WriteLine($"  Noise Reduction : {recipe.NoiseReduction?.ToString("+0;-0;0") ?? "-"}");

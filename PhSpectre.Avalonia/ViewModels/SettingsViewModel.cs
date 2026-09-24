@@ -411,8 +411,8 @@ public partial class SettingsViewModel : ViewModelBase
             Add("White Balance", r.WhiteBalance);
             if (r.WhiteBalanceShift is { } shift) Add("WB Shift", $"R{shift.Red:+0;-0;0} B{shift.Blue:+0;-0;0}");
             Add("Dynamic Range", r.DynamicRange);
-            if (r.HighlightTone is { } hi) Add("Highlight", hi.ToString("+0;-0;0"));
-            if (r.ShadowTone is { } sh) Add("Shadow", sh.ToString("+0;-0;0"));
+            if (r.HighlightTone is { } hi) Add("Highlight", hi.ToString("+0.#;-0.#;0"));
+            if (r.ShadowTone is { } sh) Add("Shadow", sh.ToString("+0.#;-0.#;0"));
             if (r.Color is { } col) Add("Color", col.ToString());
             if (r.Sharpness is { } sharp) Add("Sharpness", sharp.ToString("+0;-0;0"));
             if (r.NoiseReduction is { } nr) Add("Noise Reduction", nr.ToString("+0;-0;0"));
@@ -435,8 +435,8 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string  _editRecipeName          = "";
     [ObservableProperty] private string  _editWhiteBalance        = "";
     [ObservableProperty] private string  _editDynamicRange        = "";
-    [ObservableProperty] private int     _editHighlightTone;
-    [ObservableProperty] private int     _editShadowTone;
+    [ObservableProperty] private decimal _editHighlightTone;
+    [ObservableProperty] private decimal _editShadowTone;
     [ObservableProperty] private int     _editColor;
     [ObservableProperty] private int     _editSharpness;
     [ObservableProperty] private int     _editNoiseReduction;
