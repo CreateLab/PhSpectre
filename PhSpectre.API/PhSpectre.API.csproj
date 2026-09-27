@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\PhSpectre\PhSpectre.csproj" />
+        <ProjectReference Include="..\PhSpectre.Heif\PhSpectre.Heif.csproj" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.15"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
     </ItemGroup>

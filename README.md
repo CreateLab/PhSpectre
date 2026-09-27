@@ -1,6 +1,6 @@
 # PhSpectre
 
-Extracts a dominant color palette from a JPEG photo and renders it as a PNG — original image alongside color swatches and optional EXIF metadata.
+Extracts a dominant color palette from a JPEG or HEIF/HEIC photo and renders it as a PNG — original image alongside color swatches and optional EXIF metadata.
 
 **Download:** [latest release](https://github.com/CreateLab/PhSpectre/releases/latest) (Windows x64, Linux x64, macOS arm64, Android APK)
 
@@ -23,9 +23,9 @@ them (weighted by displayed area), with EXIF taken from the first photo:
   <img src="screens/collage-mobile.jpg" width="39%" alt="Mobile collage output — five photos, pooled palette, EXIF strip" />
 </p>
 
-Film Recipe mode — for Fujifilm JPEGs, auto-detects the in-camera film simulation recipe
-(white balance, dynamic range, tone curve, grain, color chrome, and more) straight from the
-MakerNote and renders it as its own exportable card:
+Film Recipe mode — for Fujifilm JPEG or HEIF/HEIC photos, auto-detects the in-camera film
+simulation recipe (white balance, dynamic range, tone curve, grain, color chrome, and more)
+straight from the MakerNote and renders it as its own exportable card:
 
 <p>
   <img src="screens/recepiet_ui.jpg" width="59%" alt="Desktop Recipe export mode — auto-detected Fujifilm recipe panel" />
@@ -82,11 +82,11 @@ don't need a color palette skip the k-means clustering step entirely, so `InfoOn
 `CollageInfoOnly` render instantly even on large collages.
 
 **Film Recipe mode** auto-detects the in-camera film simulation recipe from a Fujifilm
-JPEG's MakerNote — film simulation, white balance (+ R/B shift), dynamic range, highlight/shadow
-tone, color, sharpness, noise reduction, clarity, grain effect, and color chrome/color chrome
-blue — and renders it as a standalone shareable card, badged `Auto · Fuji`. Manual entry
-(and a `Custom` badge) is available for non-Fuji photos or to override a detected recipe.
-Recipe detection currently supports Fujifilm cameras only.
+JPEG or HEIF/HEIC photo's MakerNote — film simulation, white balance (+ R/B shift), dynamic
+range, highlight/shadow tone, color, sharpness, noise reduction, clarity, grain effect, and
+color chrome/color chrome blue — and renders it as a standalone shareable card, badged
+`Auto · Fuji`. Manual entry (and a `Custom` badge) is available for non-Fuji photos or to
+override a detected recipe. Recipe detection currently supports Fujifilm cameras only.
 
 Self-contained — no .NET runtime required on the target machine.
 
@@ -158,7 +158,7 @@ Content-Type: multipart/form-data
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `file` | JPEG file | yes | Source photo (`.jpg` / `.jpeg`) |
+| `file` | JPEG or HEIF/HEIC file | yes | Source photo (`.jpg` / `.jpeg` / `.heif` / `.heic` / `.hif`) |
 | `colors` | int | no | Palette size 1–32. Omit for auto. |
 | `theme` | `dark` \| `light` | no | Panel background. Default: `dark`. |
 
@@ -189,4 +189,6 @@ curl -X POST http://localhost:8080/api/palette \
 
 - .NET 8
 - Docker (optional, for containerised API)
-- Supports JPEG input only (`.jpg` / `.jpeg`)
+- Supports JPEG (`.jpg` / `.jpeg`) and HEIF/HEIC (`.heif` / `.heic` / `.hif`) input on Desktop,
+  CLI, and API. Android currently accepts JPEG only — on-device HEIF decoding wasn't reliable
+  enough to enable yet.

@@ -1,7 +1,10 @@
 using System.Text.Json;
 using PhSpectre;
+using PhSpectre.Heif;
 using PhSpectre.Recipes;
 using PhSpectre.Rendering;
+
+HeifDesktopSupport.Register();
 
 if (args.Length == 0)
 {
@@ -122,9 +125,9 @@ if (!File.Exists(imagePath))
 }
 
 string ext = Path.GetExtension(imagePath).ToLowerInvariant();
-if (ext != ".jpg" && ext != ".jpeg")
+if (ext is not (".jpg" or ".jpeg" or ".heif" or ".heic" or ".hif"))
 {
-    Console.Error.WriteLine("Only JPEG files (.jpg, .jpeg) are supported.");
+    Console.Error.WriteLine("Only JPEG or HEIF/HEIC files (.jpg, .jpeg, .heif, .heic, .hif) are supported.");
     return 1;
 }
 

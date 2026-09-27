@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!--
+      Deliberately its own project, separate from the shared PhSpectre core project, so that
+      the native libheif dependency below is never pulled into PhSpectre.Android's build (see
+      HeifPixelDecoder.cs's header comment for why): only PhSpectre.Desktop, PhSpectre.CLI and
+      PhSpectre.API reference this project.
+    -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\PhSpectre\PhSpectre.csproj" />
+        <PackageReference Include="LibHeifSharp" Version="3.0.0" />
+        <PackageReference Include="LibHeif.Native" Version="1.15.1" />
+    </ItemGroup>
+
+</Project>

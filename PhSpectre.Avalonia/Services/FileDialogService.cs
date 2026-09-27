@@ -63,13 +63,29 @@ public static class FileDialogService
     // Mobile pickers (e.g. Android SAF) hand back content-URI files with no local
     // filesystem path, so picking/saving there has to go through streams instead.
 
+    // HEIC/HEIF is offered on Desktop (PhSpectre.Heif gives it a real, verified-correct pixel
+    // decoder there) but deliberately withheld on Android: real-device testing found
+    // BitmapFactory does not actually decode these files there (contrary to the API-28+
+    // assumption HeifPixelDecoder.cs/NativeImageDecoder.cs were built on), so surfacing them in
+    // Android's picker would let a photo be selected that silently fails to load. Re-enable the
+    // commented-out patterns/mime types once Android-side HEIF decoding is actually fixed.
+    private static FilePickerFileType PhotoPickerFileType() => new("Photos")
+    {
+        Patterns = OperatingSystem.IsAndroid()
+            ? ["*.jpg", "*.jpeg"]
+            : ["*.jpg", "*.jpeg", "*.heif", "*.heic", "*.hif"],
+        MimeTypes = OperatingSystem.IsAndroid()
+            ? ["image/jpeg"]
+            : ["image/jpeg", "image/heif", "image/heic"]
+    };
+
     public static async Task<(Stream Stream, string FileName)?> PickImageAsync(TopLevel topLevel)
     {
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Select a photo",
             AllowMultiple = false,
-            FileTypeFilter = [new FilePickerFileType("Photos") { Patterns = ["*.jpg", "*.jpeg"], MimeTypes = ["image/jpeg"] }]
+            FileTypeFilter = [PhotoPickerFileType()]
         });
         if (files.Count == 0) return null;
 
@@ -86,7 +102,7 @@ public static class FileDialogService
         {
             Title = "Select photos for the collage",
             AllowMultiple = true,
-            FileTypeFilter = [new FilePickerFileType("Photos") { Patterns = ["*.jpg", "*.jpeg"], MimeTypes = ["image/jpeg"] }]
+            FileTypeFilter = [PhotoPickerFileType()]
         });
 
         var result = new List<(Stream, string)>(files.Count);

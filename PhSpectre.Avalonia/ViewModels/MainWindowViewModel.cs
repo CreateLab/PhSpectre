@@ -361,7 +361,10 @@ public partial class MainWindowViewModel : ViewModelBase
 
         foreach (var path in Directory.EnumerateFiles(folder)
             .Where(p => p.EndsWith(".jpg",  StringComparison.OrdinalIgnoreCase) ||
-                        p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                        p.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                        p.EndsWith(".heif", StringComparison.OrdinalIgnoreCase) ||
+                        p.EndsWith(".heic", StringComparison.OrdinalIgnoreCase) ||
+                        p.EndsWith(".hif",  StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p))
         {
             var entry = new FileEntry(Path.GetFileName(path), path);

@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.OpenApi.Models;
 using PhSpectre;
+using PhSpectre.Heif;
 using PhSpectre.Models;
 using PhSpectre.Recipes;
 using PhSpectre.Rendering;
+
+HeifDesktopSupport.Register();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,8 +47,8 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
         return Results.Json(new { error = "file is required" }, statusCode: 400);
 
     var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-    if (ext != ".jpg" && ext != ".jpeg")
-        return Results.Json(new { error = "Only JPEG files (.jpg/.jpeg) are supported" }, statusCode: 400);
+    if (ext is not (".jpg" or ".jpeg" or ".heif" or ".heic" or ".hif"))
+        return Results.Json(new { error = "Only JPEG or HEIF/HEIC files (.jpg/.jpeg/.heif/.heic/.hif) are supported" }, statusCode: 400);
 
     Theme parsedTheme = Theme.Dark;
     if (!string.IsNullOrEmpty(theme))
