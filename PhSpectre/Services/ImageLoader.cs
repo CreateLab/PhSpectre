@@ -2,6 +2,7 @@ using System.IO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 
@@ -69,7 +70,7 @@ public static class ImageLoader
             // it, so it has no orientation to apply. Attach the file's own profile (a cheap
             // header-only read, not a re-decode) and let ImageSharp's own AutoOrient do the
             // same rotation/flip it would have applied via the managed path below.
-            fast.Metadata.ExifProfile = Image.Identify(path)?.Metadata.ExifProfile;
+            fast.Metadata.ExifProfile = ReadExifProfileForOrientation(path);
             fast.Mutate(ctx => ctx.AutoOrient());
             img = fast;
             usedFastPath = true;
@@ -115,6 +116,17 @@ public static class ImageLoader
 
         return img;
     }
+
+    // Only used to attach EXIF (for AutoOrient) to pixels the fast native decoder already
+    // produced. HEIC is sniffed by magic bytes and read via the dependency-free
+    // HeifContainerReader instead of Image.Identify, since Android — the only platform that
+    // sets FastWorkingCopyDecoder — deliberately has no ImageSharp HEIF decoder registered
+    // (see PhSpectre.Heif's header comments for why): Image.Identify would throw for a HEIC
+    // path there and discard pixels the native decoder already successfully produced.
+    private static ExifProfile? ReadExifProfileForOrientation(string path) =>
+        HeifContainerReader.IsHeifFile(path)
+            ? HeifContainerReader.TryReadExifProfile(path)
+            : Image.Identify(path)?.Metadata.ExifProfile;
 
     // Encodes an already-decoded image straight to a JPEG stream (e.g. for an Avalonia
     // Bitmap) without touching disk or re-decoding.

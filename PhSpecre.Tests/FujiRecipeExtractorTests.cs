@@ -14,7 +14,7 @@ public class FujiRecipeExtractorTests
     // an offset relative to the MakerNote block's own start (byte 0) — the scheme confirmed
     // in FujiRecipeExtractor.cs's header comment, both against 3 real Fuji JPEGs and against
     // ExifTool's own source.
-    private static byte[] BuildMakerNote(params (ushort Tag, ushort Type, uint Count, byte[] Value)[] entries)
+    internal static byte[] BuildMakerNote(params (ushort Tag, ushort Type, uint Count, byte[] Value)[] entries)
     {
         const int headerSize = 12;
         int entryTableSize = 2 + entries.Length * 12;
