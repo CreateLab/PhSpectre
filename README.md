@@ -1,13 +1,34 @@
 # PhSpectre
 
-Extracts a dominant color palette from a JPEG or HEIF/HEIC photo and renders it as a PNG — original image alongside color swatches and optional EXIF metadata.
+Point it at a photo and get back its color story: a dominant palette, EXIF, or — for
+Fujifilm shooters — the exact in-camera film recipe that made it look that way, all
+rendered as a shareable card. Add a QR code and the card can stay clean on the surface
+while carrying the full data underneath, one scan away.
 
-**Download:** [latest release](https://github.com/CreateLab/PhSpectre/releases/latest) (Windows x64, Linux x64, macOS arm64, Android APK)
+**[Download the latest release](https://github.com/CreateLab/PhSpectre/releases/latest)** — Windows x64, Linux x64, macOS arm64, Android APK.
 
 [![Build — Windows](https://github.com/CreateLab/PhSpectre/actions/workflows/build-windows.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-windows.yml)
 [![Build — Linux](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-linux.yml)
 [![Build — macOS](https://github.com/CreateLab/PhSpectre/actions/workflows/build-macos.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-macos.yml)
 [![Test](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml)
+
+## What it does
+
+- **Palette** — dominant colors from any JPEG or HEIF/HEIC photo, k-means++ in HSL space, auto or fixed color count.
+- **Recipe** — auto-detects a Fujifilm JPEG/HEIF's in-camera film simulation recipe straight from the MakerNote (white balance + shift, dynamic range, tone curve, sharpness, grain, color chrome, all of it) and renders it as its own card.
+- **Collage** — combine several photos into one card with a single palette pooled across all of them, weighted by area.
+- **QR code** — drop a compact QR on any export linking to a page with the shot's camera, lens, exposure and recipe. The card's own text (camera name, lens, or nothing at all) and what the QR encodes are independent — keep the card minimal and let the scan carry the detail.
+- One rendering engine, four ways in: Desktop (Windows/Linux/macOS), Android, CLI, and a REST API.
+
+## Recipe card, minimal — with a QR carrying the rest
+
+Recipe mode with the text plates turned off and just a QR code below the photo: camera
+and lens as a two-line caption, the full recipe one scan away.
+
+<p>
+  <img src="screens/DSCF6601_recipe.jpg" width="49%" alt="Recipe export, text plates off, QR code with camera and lens caption" />
+  <img src="screens/DSCF6964_recipe.jpg" width="49%" alt="Recipe export, text plates off, QR code with camera and lens caption, second example" />
+</p>
 
 ## Screenshots
 
@@ -23,9 +44,7 @@ them (weighted by displayed area), with EXIF taken from the first photo:
   <img src="screens/collage-mobile.jpg" width="39%" alt="Mobile collage output — five photos, pooled palette, EXIF strip" />
 </p>
 
-Film Recipe mode — for Fujifilm JPEG or HEIF/HEIC photos, auto-detects the in-camera film
-simulation recipe (white balance, dynamic range, tone curve, grain, color chrome, and more)
-straight from the MakerNote and renders it as its own exportable card:
+Film Recipe mode with the full text card — parameter grid alongside the auto-detected recipe:
 
 <p>
   <img src="screens/recepiet_ui.jpg" width="59%" alt="Desktop Recipe export mode — auto-detected Fujifilm recipe panel" />
@@ -67,7 +86,8 @@ versions, and publishes the release automatically.
 
 ## Desktop App
 
-Cross-platform GUI built with Avalonia. Open a folder, browse photos, preview the generated palette side-by-side and save it as PNG.
+Cross-platform GUI built with Avalonia. Open a folder, browse photos, preview the generated
+palette side-by-side and save it as PNG or JPEG.
 
 **Collage mode** (desktop and Android) checks several photos into a tray and renders one
 card from all of them: photos are laid out into a single image with a configurable gutter,
@@ -86,7 +106,22 @@ JPEG or HEIF/HEIC photo's MakerNote — film simulation, white balance (+ R/B sh
 range, highlight/shadow tone, color, sharpness, noise reduction, clarity, grain effect, and
 color chrome/color chrome blue — and renders it as a standalone shareable card, badged
 `Auto · Fuji`. Manual entry (and a `Custom` badge) is available for non-Fuji photos or to
-override a detected recipe. Recipe detection currently supports Fujifilm cameras only.
+override a detected recipe. Recipe detection currently supports Fujifilm cameras only. The
+recipe card itself can be hidden (`Show recipe card`) independently of the QR code below —
+useful once the QR is doing the job of carrying the data instead.
+
+**QR code** (desktop and Android) adds a QR block right under the photo, before any text
+plates, on any export mode. Three settings, each independent of the others:
+
+- **Caption** — what's printed beside the QR itself: nothing, camera name only, or camera
+  + lens as two lines. Doesn't change what's encoded inside the code.
+- **Content source** — a generated link to a data-viewer page carrying the shot's info at
+  one of five presets (from `Recipe only` up to `Camera + Lens + Photo info + Recipe`), or
+  a custom URL of your own (a Telegram post, a portfolio page, anything).
+- **Include note** — layers a short free-text note onto whichever preset is selected.
+
+The payload is bit-packed (not JSON) so even the fullest preset stays a version 6–7 QR at
+error-correction level M — legible at normal export sizes without dominating the card.
 
 Self-contained — no .NET runtime required on the target machine.
 
@@ -183,7 +218,7 @@ curl -X POST http://localhost:8080/api/palette \
 
 1. **Sampling** — resizes the image to 150×150 for fast processing
 2. **Clustering** — k-means++ in HSL space with circular hue distance; automatic k via the elbow method if `--colors` is not set
-3. **Rendering** — composites the original photo (full resolution, auto-oriented) with the palette panel using SixLabors.ImageSharp
+3. **Rendering** — composites the original photo (full resolution, auto-oriented) with the palette panel, recipe card, and/or QR block using SixLabors.ImageSharp
 
 ## Requirements
 
