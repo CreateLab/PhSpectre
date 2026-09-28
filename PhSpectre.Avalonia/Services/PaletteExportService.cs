@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using PhSpectre;
+using PhSpectre.Models;
 using PhSpectre.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -23,7 +24,7 @@ public static class PaletteExportService
 
     public static async Task ExportAsync(
         string sourcePath, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
     {
         // Decoded once and reused for both palette extraction and the final render (see the
         // Image<Rgb24> overload below). Previously extraction opened its own FileStream (a full
@@ -40,7 +41,13 @@ public static class PaletteExportService
         }, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
 
-        await ExportAsync(original, destPath, settings, cancellationToken, metadataOverride);
+        // Auto-detect the film recipe from the decoded image's own EXIF when the caller
+        // didn't already resolve one (e.g. batch export, one photo at a time) — same
+        // "auto-read unless overridden" convention as PhotoMetadata, and cheap since the
+        // profile is already in memory, no extra disk read.
+        recipe ??= PhSpectre.Recipes.RecipeReader.Read(original);
+
+        await ExportAsync(original, destPath, settings, cancellationToken, metadataOverride, recipe);
     }
 
     // In-memory twin of ExportAsync above — for a caller (the desktop live-preview VM) that
@@ -48,7 +55,7 @@ public static class PaletteExportService
     // preview and would otherwise force a second full decode just to hand this method a path.
     public static async Task ExportAsync(
         Image<Rgb24> original, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
     {
         PhSpectre.Models.ColorPalette palette;
         if (settings.ComputeColors)
@@ -61,6 +68,12 @@ public static class PaletteExportService
         }
 
         cancellationToken.ThrowIfCancellationRequested();
+
+        // A QR content preset can include Recipe/PhotoInfo regardless of ExportMode (a Card
+        // export can still carry a QR pointing at recipe data even though it draws no plate
+        // grid itself) — resolve the same PhotoMetadata the renderer itself would use so the
+        // QR's "Camera + Lens" fields agree with what's actually printed on the card.
+        var qr = settings.BuildQrRenderOptions(metadataOverride ?? PaletteImageRenderer.ReadMetadata(original), recipe);
 
         await Task.Run(() => PaletteImageRenderer.Render(
             original, palette, destPath,
@@ -81,7 +94,8 @@ public static class PaletteExportService
             sortOrder:        settings.SortOrder,
             customBackground: settings.CustomBackground,
             compositionGuide: settings.CompositionGuide,
-            useBlurredBackground: settings.UseBlurredBackground), cancellationToken);
+            useBlurredBackground: settings.UseBlurredBackground,
+            qr:               qr), cancellationToken);
     }
 
     // Collage twin of ExportAsync — several source photos become one composed collage
@@ -96,8 +110,14 @@ public static class PaletteExportService
     public static Task ExportCollageAsync(
         IReadOnlyList<string> sourcePaths, string destPath, PaletteExportSettings settings,
         CancellationToken cancellationToken,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
     {
+        // Collage's EXIF source is always the first tray photo (CollageService.RenderCollageAsync
+        // re-derives it the same way when metadataOverride is null) — good enough for the QR's
+        // Camera/Lens fields too; a QR-specific re-read isn't worth a second EXIF decode here.
+        var qrMetadata = metadataOverride ?? PaletteImageRenderer.ReadMetadata(sourcePaths[0]);
+        var qr = settings.BuildQrRenderOptions(qrMetadata, recipe);
+
         var collageSettings = new CollageRenderSettings(
             Colors:            settings.Colors,
             SamplingMode:      settings.SamplingMode,
@@ -119,7 +139,8 @@ public static class PaletteExportService
             GutterColor:       settings.GutterColor,
             GutterThickness:   settings.GutterThickness,
             SourceMaxDimension: settings.CollageSourceMaxDimension,
-            ComputeColors:     settings.ComputeColors);
+            ComputeColors:     settings.ComputeColors,
+            Qr:                qr);
 
         return Task.Run(
             () => CollageService.RenderCollageAsync(sourcePaths, destPath, collageSettings, cancellationToken, metadataOverride),

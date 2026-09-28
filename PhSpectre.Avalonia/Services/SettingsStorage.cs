@@ -45,6 +45,15 @@ internal sealed class PersistedSettings
     public BackgroundMode? BackgroundMode { get; set; }
     public CompositionGuide CompositionGuide { get; set; } = CompositionGuide.None;
     public int GutterThickness { get; set; } = 8;
+    public bool ShowQrCode { get; set; }
+    public QrPlacement QrPlacement { get; set; } = QrPlacement.Below;
+    public QrCaption QrCaption { get; set; } = QrCaption.None;
+    public QrContentSource QrContentSource { get; set; } = QrContentSource.GeneratedLink;
+    public QrContentPreset QrContentPreset { get; set; } = QrContentPreset.CameraLensPhotoInfoAndRecipe;
+    public string QrCustomUrl { get; set; } = "";
+    public bool QrIncludeNote { get; set; }
+    public string QrNoteText { get; set; } = "";
+    public bool ShowRecipeCard { get; set; } = true;
 }
 
 internal static class SettingsStorage
@@ -62,6 +71,11 @@ internal static class SettingsStorage
         nameof(SettingsViewModel.BackgroundMode), nameof(SettingsViewModel.CustomBackgroundHex),
         nameof(SettingsViewModel.CompositionGuide), nameof(SettingsViewModel.GutterThickness),
         nameof(SettingsViewModel.ExportMode), nameof(SettingsViewModel.ShowCameraInfo),
+        nameof(SettingsViewModel.ShowQrCode), nameof(SettingsViewModel.QrPlacement),
+        nameof(SettingsViewModel.QrCaption),
+        nameof(SettingsViewModel.QrContentSource), nameof(SettingsViewModel.QrContentPreset),
+        nameof(SettingsViewModel.QrCustomUrl), nameof(SettingsViewModel.QrIncludeNote),
+        nameof(SettingsViewModel.QrNoteText), nameof(SettingsViewModel.ShowRecipeCard),
     };
 
     public static bool IsPersistedProperty(string propertyName) => PersistedPropertyNames.Contains(propertyName);
@@ -89,6 +103,15 @@ internal static class SettingsStorage
         vm.CustomBackgroundHex   = s.CustomBackgroundHex;
         vm.CompositionGuide      = s.CompositionGuide;
         vm.GutterThickness       = s.GutterThickness;
+        vm.ShowQrCode            = s.ShowQrCode;
+        vm.QrPlacement           = s.QrPlacement;
+        vm.QrCaption             = s.QrCaption;
+        vm.QrContentSource       = s.QrContentSource;
+        vm.QrContentPreset       = s.QrContentPreset;
+        vm.QrCustomUrl           = s.QrCustomUrl;
+        vm.QrIncludeNote         = s.QrIncludeNote;
+        vm.QrNoteText            = s.QrNoteText;
+        vm.ShowRecipeCard        = s.ShowRecipeCard;
     }
 
     public static PersistedSettings Capture(SettingsViewModel vm) => new()
@@ -115,6 +138,15 @@ internal static class SettingsStorage
         CustomBackgroundHex = vm.CustomBackgroundHex,
         CompositionGuide    = vm.CompositionGuide,
         GutterThickness     = vm.GutterThickness,
+        ShowQrCode          = vm.ShowQrCode,
+        QrPlacement         = vm.QrPlacement,
+        QrCaption           = vm.QrCaption,
+        QrContentSource     = vm.QrContentSource,
+        QrContentPreset     = vm.QrContentPreset,
+        QrCustomUrl         = vm.QrCustomUrl,
+        QrIncludeNote       = vm.QrIncludeNote,
+        QrNoteText          = vm.QrNoteText,
+        ShowRecipeCard      = vm.ShowRecipeCard,
     };
 
     private static string FilePath => Path.Combine(

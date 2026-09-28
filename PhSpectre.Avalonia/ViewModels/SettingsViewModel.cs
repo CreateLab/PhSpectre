@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhSpectre.Avalonia.Services;
 using PhSpectre.Models;
+using PhSpectre.Qr;
 using PhSpectre.Recipes;
 using PhSpectre.Rendering;
 using PhotoMetadata = PhSpectre.Rendering.PaletteImageRenderer.PhotoMetadata;
@@ -18,7 +19,7 @@ public enum WorkingQuality { Fast, Balanced, Best }
 
 // Mobile's bottom-sheet section focus (see SettingsViewModel.FocusedSection) — top-level so
 // XAML's {x:Static} can reference individual values without nested-type syntax headaches.
-public enum SettingsSection { ExportMode, Background, Palette, Collage, Swatches, Metadata, Output, PhotoMetadata, FilmRecipe, About }
+public enum SettingsSection { ExportMode, Background, Palette, Collage, Swatches, Metadata, Output, PhotoMetadata, FilmRecipe, QrCode, About }
 
 // How the exported card's background is painted — a flat color (from the Dark/Light theme, or
 // a user-picked custom hex) or a blurred/brightened backdrop built from the source photo
@@ -72,6 +73,19 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowPhotoMetadataSection));
         OnPropertyChanged(nameof(SaveButtonLabel));
         OnPropertyChanged(nameof(ExportModeChips));
+
+        // Re-point the QR content preset at this mode's recommendation (v2 spec §2) — but only
+        // while the user hasn't picked a preset of their own; the moment they do (tracked via
+        // OnQrContentPresetChanged), this stops touching it so a deliberate choice never gets
+        // silently overwritten by a later Export Mode switch.
+        if (_qrPresetIsAutoRecommended)
+        {
+            _settingQrPresetAutomatically = true;
+            QrContentPreset = QrModeGuidance.RecommendedPreset(value);
+            _settingQrPresetAutomatically = false;
+        }
+        OnPropertyChanged(nameof(ShowQrDuplicateHint));
+
         RaiseSectionVisibilityChanged();
     }
 
@@ -151,6 +165,10 @@ public partial class SettingsViewModel : ViewModelBase
     public bool ShowOutputSectionUI        => IsSectionVisible(SettingsSection.Output);
     public bool ShowPhotoMetadataSectionUI => ShowPhotoMetadataSection && IsSectionVisible(SettingsSection.PhotoMetadata);
     public bool ShowFilmRecipeSectionUI    => IsRecipeMode && IsSectionVisible(SettingsSection.FilmRecipe);
+    // Unlike Collage, the QR section applies to every export mode (Card/InfoOnly/Recipe/
+    // Collage/CollageInfoOnly can all carry a QR code), so it's shown whenever the section
+    // itself is in view, with no extra mode gate.
+    public bool ShowQrCodeSectionUI        => IsSectionVisible(SettingsSection.QrCode);
     public bool ShowAboutSectionUI         => IsSectionVisible(SettingsSection.About);
 
     public bool IsSectionSheetOpen => FocusedSection != null;
@@ -166,6 +184,7 @@ public partial class SettingsViewModel : ViewModelBase
         SettingsSection.Output => "Output",
         SettingsSection.PhotoMetadata => "Photo metadata",
         SettingsSection.FilmRecipe => "Film recipe",
+        SettingsSection.QrCode => "QR code",
         SettingsSection.About => "About",
         _ => ""
     };
@@ -194,6 +213,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowOutputSectionUI));
         OnPropertyChanged(nameof(ShowPhotoMetadataSectionUI));
         OnPropertyChanged(nameof(ShowFilmRecipeSectionUI));
+        OnPropertyChanged(nameof(ShowQrCodeSectionUI));
         OnPropertyChanged(nameof(ShowAboutSectionUI));
     }
 
@@ -284,6 +304,112 @@ public partial class SettingsViewModel : ViewModelBase
     {
         RaiseSectionVisibilityChanged();
         OnPropertyChanged(nameof(ShowBlurredIgnoredForCollageHint));
+    }
+
+    // ── QR code (see PaletteExportSettings.BuildQrRenderOptions for how these resolve into
+    // an actual render-time URL/placement) ─────────────────────────────────────────────────
+    [ObservableProperty] private bool             _showQrCode      = false;
+    [ObservableProperty] private QrPlacement       _qrPlacement     = QrPlacement.Below;
+    // Independent of Placement (v4 spec §1b) — what's drawn beside the QR block, not what's
+    // encoded inside it (that's QrContentPreset below).
+    [ObservableProperty] private QrCaption         _qrCaption       = QrCaption.None;
+    [ObservableProperty] private QrContentSource   _qrContentSource = QrContentSource.GeneratedLink;
+    // Matches QrModeGuidance.RecommendedPreset(ExportMode.Card) — ExportMode's own default —
+    // so a fresh VM starts already "auto-recommended" (see _qrPresetIsAutoRecommended below)
+    // instead of looking like the user already made a choice.
+    [ObservableProperty] private QrContentPreset   _qrContentPreset = QrContentPreset.CameraLensPhotoInfoAndRecipe;
+    [ObservableProperty] private string            _qrCustomUrl     = "";
+    [ObservableProperty] private bool              _qrIncludeNote   = false;
+    [ObservableProperty] private string            _qrNoteText      = "";
+
+    // Whether QrContentPreset is still following OnExportModeChanged's mode-appropriate
+    // recommendation rather than a deliberate user pick — flips to false the first time
+    // OnQrContentPresetChanged fires for a change this class didn't make itself.
+    private bool _qrPresetIsAutoRecommended = true;
+    private bool _settingQrPresetAutomatically;
+
+    public bool IsQrCustomUrlMode => QrContentSource == QrContentSource.CustomUrl;
+
+    // Generated-link presets only: whether the currently-selected preset repeats data this
+    // Export Mode already prints as text on the card (v2 spec §2) — an advisory hint, not a
+    // restriction, shown next to the preset picker.
+    public bool ShowQrDuplicateHint => !IsQrCustomUrlMode && QrModeGuidance.DuplicatesCardText(ExportMode, QrContentPreset);
+
+    // Note text field is fully hidden (not just greyed out) when "Include note" isn't
+    // checked — a disabled-but-visible field read as a bug, not an unavailable option
+    // (v2 bugfix §5).
+    public bool ShowQrNoteTextBox => QrIncludeNote && !IsQrCustomUrlMode;
+
+    public int QrPlacementIndex
+    {
+        get => (int)QrPlacement;
+        set => QrPlacement = (QrPlacement)value;
+    }
+
+    public int QrCaptionIndex
+    {
+        get => (int)QrCaption;
+        set => QrCaption = (QrCaption)value;
+    }
+
+    public int QrContentSourceIndex
+    {
+        get => (int)QrContentSource;
+        set => QrContentSource = (QrContentSource)value;
+    }
+
+    public int QrContentPresetIndex
+    {
+        get => (int)QrContentPreset;
+        set => QrContentPreset = (QrContentPreset)value;
+    }
+
+    partial void OnQrPlacementChanged(QrPlacement value) => OnPropertyChanged(nameof(QrPlacementIndex));
+    partial void OnQrCaptionChanged(QrCaption value) => OnPropertyChanged(nameof(QrCaptionIndex));
+
+    partial void OnQrContentSourceChanged(QrContentSource value)
+    {
+        OnPropertyChanged(nameof(QrContentSourceIndex));
+        OnPropertyChanged(nameof(IsQrCustomUrlMode));
+        OnPropertyChanged(nameof(ShowQrDuplicateHint));
+        OnPropertyChanged(nameof(ShowQrNoteTextBox));
+    }
+
+    partial void OnQrContentPresetChanged(QrContentPreset value)
+    {
+        OnPropertyChanged(nameof(QrContentPresetIndex));
+        OnPropertyChanged(nameof(ShowQrDuplicateHint));
+        if (!_settingQrPresetAutomatically) _qrPresetIsAutoRecommended = false;
+    }
+
+    partial void OnQrIncludeNoteChanged(bool value) => OnPropertyChanged(nameof(ShowQrNoteTextBox));
+
+    // ── Show recipe card (v3 spec §1a) ──────────────────────────────────────────────────
+    // Independent of QR: whether Recipe mode draws its title + parameter-plate grid at all.
+    // Off + Show QR on together is the "clean, compact" card the spec describes — just the
+    // photo and the QR block, no duplicated text.
+    [ObservableProperty] private bool _showRecipeCard = true;
+
+    // One-way, same pattern as _qrPresetIsAutoRecommended: the first time QR gets turned on
+    // while in Recipe mode, suggest unchecking "Show recipe card" (not an automatic gate —
+    // the spec calls this "a sensible default on enabling QR", not enforcement) — but only
+    // while the user hasn't touched this checkbox themselves.
+    private bool _recipeCardVisibilityIsUserSet;
+    private bool _settingRecipeCardVisibilityAutomatically;
+
+    partial void OnShowRecipeCardChanged(bool value)
+    {
+        if (!_settingRecipeCardVisibilityAutomatically) _recipeCardVisibilityIsUserSet = true;
+    }
+
+    partial void OnShowQrCodeChanged(bool value)
+    {
+        if (value && IsRecipeMode && !_recipeCardVisibilityIsUserSet && ShowRecipeCard)
+        {
+            _settingRecipeCardVisibilityAutomatically = true;
+            ShowRecipeCard = false;
+            _settingRecipeCardVisibilityAutomatically = false;
+        }
     }
 
     // Editable subset of the photo's metadata strip (Camera/Lens/Focal/Aperture/Shutter/Iso/

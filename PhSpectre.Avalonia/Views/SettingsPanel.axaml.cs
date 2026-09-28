@@ -74,6 +74,26 @@ public partial class SettingsPanel : UserControl
         AddItem(CompositionGuideBox, "Diagonal", "Diagonal method / golden triangles");
         AddItem(CompositionGuideBox, "Cross",    "Center cross");
 
+        // Order matches QrPlacement/QrCaption/QrContentSource/QrContentPreset's declaration
+        // order — SelectedIndex binds straight to (int)enum, same convention as every other
+        // enum ComboBox in this file. Overlay was cut from v1 (v3 spec §1b) — see QrPlacement.
+        AddItem(QrPlacementBox, "Below photo",             "In its own block under the photo");
+
+        // Caption is independent of Placement (v4 spec §1b) — what's drawn beside the QR,
+        // not what's encoded inside it.
+        AddItem(QrCaptionBox, "None",             "Just the QR code, no text beside it");
+        AddItem(QrCaptionBox, "Camera",           "Camera name beside the QR");
+        AddItem(QrCaptionBox, "Camera + Lens",    "Camera and lens, as two lines beside the QR");
+
+        AddItem(QrContentSourceBox, "Generated link", "Links to the phspectre-view page with this shot's data");
+        AddItem(QrContentSourceBox, "Custom URL",     "Links to your own URL instead (social profile, portfolio, etc.)");
+
+        AddItem(QrContentPresetBox, "Camera + Recipe",                      "Camera and film recipe only");
+        AddItem(QrContentPresetBox, "Camera + Lens + Photo info + Recipe",  "Everything — camera, lens, exposure, recipe");
+        AddItem(QrContentPresetBox, "Camera + Photo info + Recipe",         "Camera, exposure and recipe, no lens");
+        AddItem(QrContentPresetBox, "Camera + Lens + Photo info",           "Camera, lens and exposure, no recipe");
+        AddItem(QrContentPresetBox, "Recipe only",                          "Just the film recipe");
+
         // Export Mode's item list is rebuilt dynamically (see RebuildExportModeItems) —
         // inapplicable modes for the current photo selection are removed entirely, not
         // shown disabled, per the bugfix-pass spec ("disabled without explanation reads as
@@ -175,6 +195,7 @@ public partial class SettingsPanel : UserControl
                      SamplingRow, ColorCountRow, BackgroundThemeRow, BackgroundModeRow, GuideRow, VerbosityRow,
                      StyleRow, FormatRow, ExportSizeRow, WorkingQualityRow,
                      ShapeRow, SortRow,
+                     QrPlacementRow, QrCaptionRow, QrContentSourceRow, QrContentPresetRow,
                      MetaCameraRow, MetaLensRow, MetaFocalRow, MetaApertureRow,
                      MetaShutterRow, MetaIsoRow, MetaDateRow
                  })

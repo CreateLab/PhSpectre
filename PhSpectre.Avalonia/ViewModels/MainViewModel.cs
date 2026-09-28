@@ -674,7 +674,7 @@ public partial class MainViewModel : ViewModelBase
             // ExportCollageAsync already offloads its own work to the thread pool, so this
             // doesn't need (and shouldn't double up) an outer Task.Run.
             await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
-                metadataOverride: Settings.BuildMetadataOverride());
+                metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
 
             token.ThrowIfCancellationRequested();
 
@@ -914,10 +914,14 @@ public partial class MainViewModel : ViewModelBase
                 // exports — reuse RecipeCardRenderer directly, same as desktop.
                 // exportSettings.MetaVerbosity already reflects the "Show camera info plate"
                 // toggle (Off when unchecked — see PaletteExportSettings.SnapshotFrom).
+                var recipeMetadataOverride = Settings.BuildMetadataOverride();
+                var recipeQr = exportSettings.BuildQrRenderOptions(
+                    recipeMetadataOverride ?? PaletteImageRenderer.ReadMetadata(working), recipeForRender);
                 await Task.Run(() => RecipeCardRenderer.Render(working, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
-                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride(),
-                    labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground), token);
+                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: recipeMetadataOverride,
+                    labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground, qr: recipeQr,
+                    showRecipeCard: exportSettings.ShowRecipeCard), token);
                 LogStage($"RecipeCardRenderer.Render ({exportSettings.Format})");
             }
             else
@@ -939,6 +943,8 @@ public partial class MainViewModel : ViewModelBase
                 }
 
                 var metadataOverride = Settings.BuildMetadataOverride();
+                var qr = exportSettings.BuildQrRenderOptions(
+                    metadataOverride ?? PaletteImageRenderer.ReadMetadata(working), Settings.DetectedRecipe);
                 await Task.Run(() => PaletteImageRenderer.Render(
                     working, palette, tmpOut,
                     showHex:          exportSettings.ShowHex,
@@ -958,7 +964,8 @@ public partial class MainViewModel : ViewModelBase
                     sortOrder:        exportSettings.SortOrder,
                     customBackground: exportSettings.CustomBackground,
                     compositionGuide: exportSettings.CompositionGuide,
-                    useBlurredBackground: exportSettings.UseBlurredBackground), token);
+                    useBlurredBackground: exportSettings.UseBlurredBackground,
+                    qr:               qr), token);
                 LogStage($"PaletteImageRenderer.Render ({exportSettings.Format})");
             }
 
