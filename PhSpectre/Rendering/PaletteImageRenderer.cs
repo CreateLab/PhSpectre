@@ -189,12 +189,13 @@ public static class PaletteImageRenderer
         SortOrder sortOrder = SortOrder.None,
         Color? customBackground = null,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
         RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
-            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground);
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground, qr);
     }
 
     // Renders from an already-decoded image (caller owns disposal) — skips a redundant
@@ -221,9 +222,10 @@ public static class PaletteImageRenderer
         SortOrder sortOrder = SortOrder.None,
         Color? customBackground = null,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null)
         => RenderCore(original, palette, outputPath, showHex, metaVerbosity, metaStyle, theme, hexBelow, showSwatches, downscale, format, exportPreset, metadataOverride,
-            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground);
+            labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground, qr);
 
     private static void RenderCore(
         Image<Rgb24> original,
@@ -246,7 +248,8 @@ public static class PaletteImageRenderer
         SortOrder sortOrder = SortOrder.None,
         Color? customBackground = null,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null)
     {
         labelScale = Math.Clamp(labelScale, 0.5f, 2.0f);
         swatchScale = Math.Clamp(swatchScale, 0.5f, 2.0f);
@@ -259,8 +262,8 @@ public static class PaletteImageRenderer
 
         bool landscape = original.Width >= original.Height;
         var canvas = landscape
-            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide, useBlurredBackground)
-            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide, useBlurredBackground);
+            ? BuildLandscapeCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide, useBlurredBackground, qr, downscale)
+            : BuildPortraitCanvas(original, effectivePalette, showHex, hexBelow, exif, metaVerbosity, metaStyle, theme, showSwatches, labelScale, swatchScale, showPercent, swatchShape, customBackground, compositionGuide, useBlurredBackground, qr, downscale);
 
         if (downscale > 1)
             canvas.Mutate(ctx => ctx.Resize(canvas.Width / downscale, canvas.Height / downscale));
@@ -327,7 +330,9 @@ public static class PaletteImageRenderer
         float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null,
+        int downscale = 1)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
@@ -348,14 +353,21 @@ public static class PaletteImageRenderer
         // Meta strip
         (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width, labelScale);
 
+        int qrBoxSize = QrCodeRenderer.SuggestBoxSize(original.Width);
+        int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin, downscale);
+
         // Canvas layout — swatch panel is optional. Swatches sit directly under the photo;
-        // the filmstrip (when present) goes after the swatches, not before.
-        int canvasH      = original.Height + (showSwatches ? panelH : 0) + (style == MetaStyle.FilmStrip ? stripH : 0);
+        // the QR below-block (when present) goes right after that, and the filmstrip (when
+        // present) goes after the QR — QR must land immediately under the photo/swatches and
+        // before any text plate (metadata/recipe), never at the very bottom of the whole
+        // composition (v2 spec §1: "Below" is anchored to the photo, not to the full card).
+        int canvasH      = original.Height + (showSwatches ? panelH : 0) + (style == MetaStyle.FilmStrip ? stripH : 0) + qrBelowH;
         int swatchPanelY = original.Height;
         int labelH       = labelLines > 0 && hexBelow ? (int)swatchFs * labelLines + textPad : 0;
         int swatchY      = swatchPanelY + (panelH - swatchH - labelH) / 2;
+        int qrBlockY     = original.Height + (showSwatches ? panelH : 0);
         int stripY       = style == MetaStyle.FilmStrip
-            ? original.Height + (showSwatches ? panelH : 0)
+            ? qrBlockY + qrBelowH
             : original.Height - stripH;
 
         Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
@@ -374,6 +386,12 @@ public static class PaletteImageRenderer
                 x: 0, y: stripY,
                 w: original.Width, overlayTextColor: overlayTextColor, customBackground: customBackground,
                 useBlurredBackground: useBlurredBackground);
+
+            if (qr != null)
+                QrCodeRenderer.DrawBelowBlock(ctx, qr.TargetUrl, qrBoxSize, margin,
+                    blockY: qrBlockY, blockWidth: canvas.Width,
+                    qr.Caption, qr.CaptionCamera, qr.CaptionLens,
+                    theme, customBackground, downscale);
         });
         return canvas;
     }
@@ -387,7 +405,9 @@ public static class PaletteImageRenderer
         float labelScale = 1.0f, float swatchScale = 1.0f, bool showPercent = false,
         SwatchShape swatchShape = SwatchShape.Rectangle, Color? customBackground = null,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null,
+        int downscale = 1)
     {
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
@@ -415,9 +435,17 @@ public static class PaletteImageRenderer
         int stripWidth = style == MetaStyle.Overlay ? original.Width : canvasW;
         (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth, labelScale);
 
-        int canvasH = style == MetaStyle.FilmStrip && stripH > 0
+        int qrBoxSize = QrCodeRenderer.SuggestBoxSize(canvasW);
+        int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin, downscale);
+
+        int canvasH = (style == MetaStyle.FilmStrip && stripH > 0
             ? original.Height + stripH
-            : original.Height;
+            : original.Height) + qrBelowH;
+
+        // QR below-block lands right after the photo itself (swatches are a side column here,
+        // not a band below the photo) and before the filmstrip, same anchoring fix as landscape.
+        int qrBlockY = original.Height;
+        int stripY   = style == MetaStyle.FilmStrip ? qrBlockY + qrBelowH : original.Height - stripH;
 
         Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
 
@@ -429,7 +457,7 @@ public static class PaletteImageRenderer
             DrawCompositionGuide(ctx, compositionGuide, 0, 0, original.Width, original.Height);
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
-                x: 0, y: style == MetaStyle.FilmStrip ? original.Height : original.Height - stripH,
+                x: 0, y: stripY,
                 w: canvasW, overlayTextColor: overlayTextColor, customBackground: customBackground,
                 useBlurredBackground: useBlurredBackground);
 
@@ -449,6 +477,12 @@ public static class PaletteImageRenderer
                         DrawSwatchLabelLines(ctx, swatchFont, labelText, swatchX + swatchW / 2f, y + swatchH / 2f, swatchFs, ContrastColor(r, g, b), down: false);
                 }
             }
+
+            if (qr != null)
+                QrCodeRenderer.DrawBelowBlock(ctx, qr.TargetUrl, qrBoxSize, margin,
+                    blockY: qrBlockY, blockWidth: canvas.Width,
+                    qr.Caption, qr.CaptionCamera, qr.CaptionLens,
+                    theme, customBackground, downscale);
         });
         return canvas;
     }
@@ -889,11 +923,14 @@ public static class PaletteImageRenderer
         }
     }
 
-    internal static Font ResolveMetaFont(float size)
+    // style defaults to Regular for every existing caller; QR captions are the one caller that
+    // asks for Bold (camera line) — falls back to Regular wherever a family has no bold variant
+    // rather than throwing, since a slightly-wrong weight beats a missing caption entirely.
+    internal static Font ResolveMetaFont(float size, FontStyle style = FontStyle.Regular)
     {
         if (EmbeddedMonoFamily is { } embedded)
         {
-            try { return embedded.CreateFont(size, FontStyle.Regular); }
+            try { return embedded.CreateFont(size, style); }
             catch { /* fall through to the system-font chain below */ }
         }
 
@@ -906,8 +943,9 @@ public static class PaletteImageRenderer
             "Roboto", "Droid Sans", "Noto Sans", "Arial"
         })
         {
-            try { return SystemFonts.CreateFont(name, size, FontStyle.Regular); }
+            try { return SystemFonts.CreateFont(name, size, style); }
             catch (FontFamilyNotFoundException) { }
+            catch when (style != FontStyle.Regular) { } // family has no such style — try the next
         }
 
         // Last resort: pick any installed family, but skip emoji/symbol fonts — on some
@@ -922,7 +960,42 @@ public static class PaletteImageRenderer
             !f.Name.Contains("math",     StringComparison.OrdinalIgnoreCase));
 
         var family = !string.IsNullOrEmpty(textFamily.Name) ? textFamily : families.First();
-        return family.CreateFont(size, FontStyle.Regular);
+        try { return family.CreateFont(size, style); }
+        catch when (style != FontStyle.Regular) { return family.CreateFont(size, FontStyle.Regular); }
+    }
+
+    // Non-mono counterpart to ResolveMetaFont, for the QR Caption text only (v-final spec §3:
+    // "Моно-шрифт оставить только в сетке цифр рецепта, не в свободном тексте переменной
+    // длины" — camera/lens names are free-form variable-width text, not the fixed-width digit
+    // grid ResolveMetaFont exists for, so they get an ordinary sans family instead). No
+    // embedded fallback family for this one — mono is embedded because glyph WIDTH parity
+    // across platforms mattered for the digit grid; a caption's width already gets measured
+    // and ellipsized per-platform (see EllipsizeToWidth), so there's nothing to keep parity of.
+    internal static Font ResolveSansFont(float size, FontStyle style = FontStyle.Regular)
+    {
+        foreach (string name in new[]
+        {
+            "Segoe UI", "Helvetica Neue", "Arial",
+            "Roboto", "Droid Sans", "Noto Sans",
+        })
+        {
+            try { return SystemFonts.CreateFont(name, size, style); }
+            catch (FontFamilyNotFoundException) { }
+            catch when (style != FontStyle.Regular) { } // family has no such style — try the next
+        }
+
+        var families = SystemFonts.Families.ToList();
+        var textFamily = families.FirstOrDefault(f =>
+            !string.IsNullOrEmpty(f.Name) &&
+            !f.Name.Contains("emoji",    StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("symbol",   StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("dingbat",  StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("wingding", StringComparison.OrdinalIgnoreCase) &&
+            !f.Name.Contains("math",     StringComparison.OrdinalIgnoreCase));
+
+        var family = !string.IsNullOrEmpty(textFamily.Name) ? textFamily : families.First();
+        try { return family.CreateFont(size, style); }
+        catch when (style != FontStyle.Regular) { return family.CreateFont(size, FontStyle.Regular); }
     }
 
     // Shrinks the swatch hex-label font until "#000000" (all hex labels are the same

@@ -516,7 +516,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
-                metadataOverride: Settings.BuildMetadataOverride());
+                metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
 
             token.ThrowIfCancellationRequested();
 
@@ -680,15 +680,19 @@ public partial class MainWindowViewModel : ViewModelBase
                 // palette pipeline. exportSettings.MetaVerbosity already reflects the "Show
                 // camera info plate" toggle (Off when unchecked — see PaletteExportSettings.
                 // SnapshotFrom), so the checkbox reaches the render params here (bugfix §2).
+                var metadataOverride = Settings.BuildMetadataOverride();
+                var qr = exportSettings.BuildQrRenderOptions(
+                    metadataOverride ?? PaletteImageRenderer.ReadMetadata(working), recipeForRender);
                 await Task.Run(() => RecipeCardRenderer.Render(working, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
-                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: Settings.BuildMetadataOverride(),
-                    labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground), token);
+                    metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: metadataOverride,
+                    labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground, qr: qr,
+                    showRecipeCard: exportSettings.ShowRecipeCard), token);
             }
             else
             {
                 await PaletteExportService.ExportAsync(working, tmpOut, exportSettings, token,
-                    metadataOverride: Settings.BuildMetadataOverride());
+                    metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
             }
 
             token.ThrowIfCancellationRequested();

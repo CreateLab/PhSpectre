@@ -1,5 +1,6 @@
 using PhSpectre;
 using PhSpectre.Models;
+using PhSpectre.Qr;
 using PhSpectre.Rendering;
 using PhSpectre.Avalonia.ViewModels;
 using SixLabors.ImageSharp;
@@ -32,9 +33,49 @@ public sealed record PaletteExportSettings(
     int GutterThickness,
     BackgroundMode BackgroundMode = BackgroundMode.Theme,
     int CollageSourceMaxDimension = 2400,
-    ExportMode Mode = ExportMode.Card)
+    ExportMode Mode = ExportMode.Card,
+    bool ShowQrCode = false,
+    QrPlacement QrPlacement = QrPlacement.Below,
+    QrCaption QrCaption = QrCaption.None,
+    QrContentSource QrContentSource = QrContentSource.GeneratedLink,
+    QrContentPreset QrContentPreset = QrContentPreset.CameraLensPhotoInfoAndRecipe,
+    string QrCustomUrl = "",
+    bool QrIncludeNote = false,
+    string QrNoteText = "",
+    bool ShowRecipeCard = true)
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
+
+    // Resolves the raw settings above into a render-ready QrRenderOptions for one photo —
+    // can't be done inside SnapshotFrom itself, since the preset needs the per-photo
+    // PhotoMetadata/FilmRecipe that are only known at each render call site (mirrors how
+    // MainViewModel resolves recipeForRender inline right before dispatching to
+    // RecipeCardRenderer.Render). Returns null when QR is off, Custom URL is blank, or a
+    // Generated-link preset needs data (e.g. RecipeOnly) that isn't actually available.
+    public QrRenderOptions? BuildQrRenderOptions(PaletteImageRenderer.PhotoMetadata? metadata, FilmRecipe? recipe)
+    {
+        if (!ShowQrCode) return null;
+
+        // Caption is independent of Content source/preset (v4 spec §1b/§3) — a Custom URL QR
+        // can still be captioned "Camera + Lens", and a fully-detailed Generated-link QR can
+        // still show no caption at all.
+        string? captionCamera = QrCaption != QrCaption.None ? metadata?.Camera : null;
+        string? captionLens = QrCaption == QrCaption.CameraAndLens ? metadata?.Lens : null;
+
+        if (QrContentSource == QrContentSource.CustomUrl)
+        {
+            return string.IsNullOrWhiteSpace(QrCustomUrl)
+                ? null
+                : new QrRenderOptions(QrPlacement, QrCustomUrl.Trim(), QrCaption, captionCamera, captionLens);
+        }
+
+        if (metadata == null) return null;
+        if (QrContentPreset == QrContentPreset.RecipeOnly && recipe == null) return null;
+
+        string note = QrIncludeNote ? QrNoteText : "";
+        string url = QrLinkBuilder.BuildGeneratedUrl(QrContentPreset, metadata, recipe, note);
+        return new QrRenderOptions(QrPlacement, url, QrCaption, captionCamera, captionLens);
+    }
 
     // Whether k-means palette extraction should run at all for this snapshot — mirrors
     // SettingsViewModel.ComputeColors, kept in sync here so the render pipeline (which only
@@ -73,7 +114,16 @@ public sealed record PaletteExportSettings(
             // dial actually control collage speed/output size, same as it already does for
             // the single-photo path (see MainViewModel.MaxWorkingDimension).
             CollageSourceMaxDimension: s.IsMobile ? s.WorkingMaxDimension : 2400,
-            Mode: s.ExportMode);
+            Mode: s.ExportMode,
+            ShowQrCode: s.ShowQrCode,
+            QrPlacement: s.QrPlacement,
+            QrCaption: s.QrCaption,
+            QrContentSource: s.QrContentSource,
+            QrContentPreset: s.QrContentPreset,
+            QrCustomUrl: s.QrCustomUrl,
+            QrIncludeNote: s.QrIncludeNote,
+            QrNoteText: s.QrNoteText,
+            ShowRecipeCard: s.ShowRecipeCard);
     }
 
     private static Color? ParseHexOrNull(string? hex) =>

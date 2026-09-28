@@ -275,7 +275,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         if (fine == "Manual")
         {
             var dev = ReadRawNumber(entries, 0x1403);
-            if (dev is int d) return $"DR{d}%";
+            if (dev is int d) return $"DR{d}";
         }
         return fine ?? DecodeEnumOrNull(entries, 0x1400, DynamicRangeMap);
     }
@@ -349,7 +349,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
     private static readonly IReadOnlyDictionary<int, string> DynamicRangeSettingMap = new Dictionary<int, string>
     {
         [0x0] = "Auto", [0x1] = "Manual", // "Manual" alone is resolved further in DecodeDynamicRange
-        [0x100] = "DR100%", [0x200] = "DR200%", [0x201] = "DR400%",
+        [0x100] = "DR100", [0x200] = "DR200", [0x201] = "DR400",
         [0x8000] = "Film Simulation",
     };
 

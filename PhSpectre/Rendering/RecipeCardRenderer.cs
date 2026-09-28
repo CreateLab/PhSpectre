@@ -29,11 +29,13 @@ public static class RecipeCardRenderer
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
         float labelScale = 1f,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null,
+        bool showRecipeCard = true)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard);
         Save(canvas, outputPath, format);
     }
 
@@ -49,10 +51,12 @@ public static class RecipeCardRenderer
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
         float labelScale = 1f,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null,
+        bool showRecipeCard = true)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard);
         RenderPerfLog.OnStage?.Invoke("BuildCanvas total", sw.ElapsedMilliseconds);
         sw.Restart();
         Save(canvas, outputPath, format);
@@ -70,8 +74,10 @@ public static class RecipeCardRenderer
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
         float labelScale = 1f,
-        bool useBlurredBackground = false)
-        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground);
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null,
+        bool showRecipeCard = true)
+        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard);
 
     private static void Save(Image<Rgb24> canvas, string outputPath, OutputFormat format)
     {
@@ -115,10 +121,16 @@ public static class RecipeCardRenderer
         MetaVerbosity metaVerbosity = MetaVerbosity.Off,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null,
         float labelScale = 1f,
-        bool useBlurredBackground = false)
+        bool useBlurredBackground = false,
+        QrRenderOptions? qr = null,
+        bool showRecipeCard = true)
     {
         var prepSw = System.Diagnostics.Stopwatch.StartNew();
-        var rows = BuildRows(recipe);
+        // Independent of QR (v3 spec §1a): unchecking "Show recipe card" drops the title +
+        // parameter-plate grid entirely, so Show QR + Show recipe card off together leaves
+        // just the photo and the QR block — no duplicated text. Camera-info strip (metaVerbosity)
+        // is a separate toggle and unaffected.
+        var rows = showRecipeCard ? BuildRows(recipe) : [];
 
         // Camera info plate (bugfix §2): only actually drawn when metaVerbosity isn't Off —
         // callers pass PaletteExportSettings.MetaVerbosity, which is already forced to Off
@@ -151,7 +163,7 @@ public static class RecipeCardRenderer
         // as the Swatches section's LabelScale, reused here for card appearance).
         float titleFs = CardWidth / 22f * Math.Clamp(labelScale, 0.5f, 2f);
         var titleFont = PaletteImageRenderer.ResolveMetaFont(titleFs);
-        int titleH = (int)(titleFs * 1.8f);
+        int titleH = showRecipeCard ? (int)(titleFs * 1.8f) : 0;
 
         // Grid geometry: as many columns as fit a comfortable target plate width, wrapped
         // into rows — same "evenly divide available width" spirit as the swatch panel in
@@ -175,7 +187,16 @@ public static class RecipeCardRenderer
         int gridRows = rows.Count == 0 ? 0 : (rows.Count + cols - 1) / cols;
         int gridH = gridRows == 0 ? 0 : gridRows * plateH + (gridRows - 1) * gap;
 
-        int canvasH = photoH + margin + titleH + (gridH > 0 ? margin / 2 + gridH : 0) + margin + metaStripH;
+        int qrBoxSize = QrCodeRenderer.SuggestBoxSize(CardWidth);
+        int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin);
+
+        // QR below-block sits right after the photo, before the title/plates grid and the
+        // metadata strip — those are exactly the "text plates" the v2 spec says Below must
+        // anchor ahead of, not the very bottom of the whole card (the reported bug: Recipe
+        // mode's QR landed under everything, with a big empty band beside it).
+        int qrBlockY = photoH;
+        int titleY   = photoH + qrBelowH + margin;
+        int canvasH  = photoH + qrBelowH + margin + titleH + (gridH > 0 ? margin / 2 + gridH : 0) + margin + metaStripH;
         RenderPerfLog.OnStage?.Invoke("rows+metadata+layout prep", prepSw.ElapsedMilliseconds);
         var canvas = new Image<Rgb24>(CardWidth, canvasH);
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -190,57 +211,59 @@ public static class RecipeCardRenderer
             ctx.DrawImage(roundedPhoto, new Point(0, 0), 1f);
             Stage("ApplyRoundedCorners+DrawImage");
 
-            int titleY = photoH + margin;
-            ctx.DrawText(new RichTextOptions(titleFont)
+            if (showRecipeCard)
             {
-                Origin = new PointF(margin, titleY),
-                HorizontalAlignment = HorizontalAlignment.Left,
-            }, title, text);
-            Stage("title DrawText");
-
-            int gridY = titleY + titleH + margin / 2;
-            var labelFont = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.34f);
-            var valueFont = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.5f);
-            for (int i = 0; i < rows.Count; i++)
-            {
-                int col = i % cols;
-                int row = i / cols;
-                int x = margin + col * (plateW + gap);
-                int y = gridY + row * (plateH + gap);
-
-                if (useBlurredBackground)
+                ctx.DrawText(new RichTextOptions(titleFont)
                 {
-                    // Paint the plate at full opacity onto its own small transparent canvas,
-                    // then composite that onto the card via DrawImage's opacity parameter —
-                    // the one blending path in this ImageSharp version that's actually proven
-                    // to alpha-composite correctly (see ApplyRoundedCorners below).
-                    using var plateImg = new Image<Rgba32>(plateW, plateH);
-                    plateImg.Mutate(pc => pc.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(0, 0, plateW, plateH, plateH * 0.12f)));
-                    ctx.DrawImage(plateImg, new Point(x, y), platesOpacityOnBlur);
+                    Origin = new PointF(margin, titleY),
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                }, title, text);
+                Stage("title DrawText");
+
+                int gridY = titleY + titleH + margin / 2;
+                var labelFont = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.34f);
+                var valueFont = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.5f);
+                for (int i = 0; i < rows.Count; i++)
+                {
+                    int col = i % cols;
+                    int row = i / cols;
+                    int x = margin + col * (plateW + gap);
+                    int y = gridY + row * (plateH + gap);
+
+                    if (useBlurredBackground)
+                    {
+                        // Paint the plate at full opacity onto its own small transparent canvas,
+                        // then composite that onto the card via DrawImage's opacity parameter —
+                        // the one blending path in this ImageSharp version that's actually proven
+                        // to alpha-composite correctly (see ApplyRoundedCorners below).
+                        using var plateImg = new Image<Rgba32>(plateW, plateH);
+                        plateImg.Mutate(pc => pc.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(0, 0, plateW, plateH, plateH * 0.12f)));
+                        ctx.DrawImage(plateImg, new Point(x, y), platesOpacityOnBlur);
+                    }
+                    else
+                    {
+                        ctx.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(x, y, plateW, plateH, plateH * 0.12f));
+                    }
+
+                    var (label, value) = rows[i];
+                    float cx = x + plateW / 2f;
+                    float labelY = y + plateH * (anyValueWraps ? 0.2f : 0.28f);
+                    float valueY = y + plateH * (anyValueWraps ? 0.62f : 0.68f);
+                    ctx.DrawText(new RichTextOptions(labelFont)
+                    {
+                        Origin = new PointF(cx, labelY),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                    }, label, text.WithAlpha(0.65f));
+                    ctx.DrawText(new RichTextOptions(valueFont)
+                    {
+                        Origin = new PointF(cx, valueY),
+                        HorizontalAlignment = HorizontalAlignment.Center,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        WrappingLength = wrapWidth,
+                        TextAlignment = TextAlignment.Center,
+                    }, value, text);
                 }
-                else
-                {
-                    ctx.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(x, y, plateW, plateH, plateH * 0.12f));
-                }
-
-                var (label, value) = rows[i];
-                float cx = x + plateW / 2f;
-                float labelY = y + plateH * (anyValueWraps ? 0.2f : 0.28f);
-                float valueY = y + plateH * (anyValueWraps ? 0.62f : 0.68f);
-                ctx.DrawText(new RichTextOptions(labelFont)
-                {
-                    Origin = new PointF(cx, labelY),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                }, label, text.WithAlpha(0.65f));
-                ctx.DrawText(new RichTextOptions(valueFont)
-                {
-                    Origin = new PointF(cx, valueY),
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    WrappingLength = wrapWidth,
-                    TextAlignment = TextAlignment.Center,
-                }, value, text);
             }
             Stage($"plates grid ({rows.Count} rows)");
 
@@ -252,6 +275,13 @@ public static class RecipeCardRenderer
                     useBlurredBackground: useBlurredBackground);
             }
             Stage("DrawStrip");
+
+            if (qr != null)
+                QrCodeRenderer.DrawBelowBlock(ctx, qr.TargetUrl, qrBoxSize, margin,
+                    blockY: qrBlockY, blockWidth: CardWidth,
+                    qr.Caption, qr.CaptionCamera, qr.CaptionLens,
+                    theme, customBackground);
+            Stage("QrCode");
         });
 
         return canvas;

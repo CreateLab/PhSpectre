@@ -21,7 +21,7 @@ public static class RecipeFieldOptions
     // "Off" covers bodies/shots where DR bracketing wasn't used at all.
     public static readonly IReadOnlyList<string> DynamicRange =
     [
-        "Off", "Auto", "DR100%", "DR200%", "DR400%", "Film Simulation",
+        "Off", "Auto", "DR100", "DR200", "DR400", "Film Simulation",
     ];
 
     // Shared by Grain Effect, Color Chrome Effect, Color Chrome FX Blue.

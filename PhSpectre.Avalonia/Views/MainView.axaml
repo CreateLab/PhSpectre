@@ -410,6 +410,14 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         </Grid>
                     </Button>
                     <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
+                            CommandParameter="{x:Static vm:SettingsSection.QrCode}">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <materialIcons:MaterialIcon Grid.Column="0" Kind="Qrcode" Width="18" Height="18"/>
+                            <TextBlock Grid.Column="1" Text="QR code" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <materialIcons:MaterialIcon Grid.Column="2" Kind="ChevronRight" Width="16" Height="16" Opacity="0.5"/>
+                        </Grid>
+                    </Button>
+                    <Button Classes="settings-card" Command="{Binding OpenSectionCommand}"
                             CommandParameter="{x:Static vm:SettingsSection.PhotoMetadata}" IsVisible="{Binding ShowPhotoMetadataSection}">
                         <Grid ColumnDefinitions="Auto,*,Auto">
                             <materialIcons:MaterialIcon Grid.Column="0" Kind="CameraOutline" Width="18" Height="18"/>

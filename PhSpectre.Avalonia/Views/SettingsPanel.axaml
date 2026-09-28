@@ -398,6 +398,94 @@
         </StackPanel>
         </StackPanel>
 
+        <!-- ── QR code ───────────────────────────────────────────── -->
+        <StackPanel IsVisible="{Binding ShowQrCodeSectionUI}">
+        <Border Classes="section-sep"/>
+        <TextBlock Text="QR CODE" Classes="section-header"/>
+        <StackPanel Spacing="10">
+
+            <CheckBox IsChecked="{Binding ShowQrCode}">
+                <TextBlock Text="Show QR code" TextWrapping="Wrap"/>
+            </CheckBox>
+
+            <Grid x:Name="QrPlacementRow" Classes="settings-row" IsEnabled="{Binding ShowQrCode}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Placement" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="QrPlacementBox"
+                          SelectedIndex="{Binding QrPlacementIndex}"/>
+            </Grid>
+
+            <!-- Independent of Placement/Content preset (v4 spec §1b) — just what's drawn
+                 beside the QR block. -->
+            <Grid x:Name="QrCaptionRow" Classes="settings-row" IsEnabled="{Binding ShowQrCode}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Caption" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="QrCaptionBox"
+                          SelectedIndex="{Binding QrCaptionIndex}"/>
+            </Grid>
+
+            <Grid x:Name="QrContentSourceRow" Classes="settings-row" IsEnabled="{Binding ShowQrCode}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Content source" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="QrContentSourceBox"
+                          SelectedIndex="{Binding QrContentSourceIndex}"/>
+            </Grid>
+
+            <Grid x:Name="QrContentPresetRow" Classes="settings-row"
+                  IsVisible="{Binding !IsQrCustomUrlMode}" IsEnabled="{Binding ShowQrCode}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Column="0" Text="Content preset" Classes="row-label"/>
+                <ComboBox Grid.Column="1" x:Name="QrContentPresetBox"
+                          SelectedIndex="{Binding QrContentPresetIndex}"/>
+            </Grid>
+
+            <!-- Advisory only — the preset above stays fully selectable either way (v2 §2). -->
+            <TextBlock Text="May duplicate text already shown on this card"
+                       IsVisible="{Binding ShowQrDuplicateHint}"
+                       Classes="mono-data-small" Opacity="0.6" TextWrapping="Wrap"/>
+
+            <CheckBox IsChecked="{Binding QrIncludeNote}" IsEnabled="{Binding ShowQrCode}"
+                      IsVisible="{Binding !IsQrCustomUrlMode}">
+                <TextBlock Text="Include note" TextWrapping="Wrap"/>
+            </CheckBox>
+
+            <TextBox Text="{Binding QrNoteText}" PlaceholderText="Note text"
+                     IsVisible="{Binding ShowQrNoteTextBox}" IsEnabled="{Binding ShowQrCode}"/>
+
+            <TextBox Text="{Binding QrCustomUrl}" PlaceholderText="https://example.com/you"
+                     IsVisible="{Binding IsQrCustomUrlMode}" IsEnabled="{Binding ShowQrCode}"/>
+
+        </StackPanel>
+        </StackPanel>
+
         <!-- ── Photo metadata ────────────────────────────────────── -->
         <!-- Only relevant in Recipe mode, or whenever the camera-info plate is actually
              going to be drawn (any mode with the info toggle on) — see §5. -->
@@ -530,11 +618,19 @@
         <Border Classes="section-sep"/>
         <TextBlock Text="FILM RECIPE" Classes="section-header"/>
 
+        <!-- Independent of the QR section below (v3 spec §1a) — off + Show QR on leaves just
+             the photo and the QR block, no duplicated text. -->
+        <CheckBox IsChecked="{Binding ShowRecipeCard}" Margin="0,0,0,4">
+            <TextBlock Text="Show recipe card" TextWrapping="Wrap"/>
+        </CheckBox>
+
         <!-- Text size — Card theme and Background (color/custom/blurred photo) are now
              handled globally by the BACKGROUND section above; this is the only
              recipe-card-specific appearance control left here. Reuses the same LabelScale
              setting as the Swatches section's "Label size" dial. -->
-        <StackPanel Spacing="10" Margin="0,0,0,4">
+        <!-- Only meaningful while the recipe card is actually drawn (v-final spec §1.2) —
+             hidden entirely, not just grayed out, when "Show recipe card" is off. -->
+        <StackPanel Spacing="10" Margin="0,0,0,4" IsVisible="{Binding ShowRecipeCard}">
             <Grid x:Name="RecipeLabelScaleRow" Classes="settings-row">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>

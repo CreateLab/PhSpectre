@@ -8,8 +8,10 @@ public static class RecipeValueAbbreviations
 {
     private static readonly IReadOnlyDictionary<string, string> Map = new Dictionary<string, string>
     {
-        ["Auto (white priority)"] = "Auto W",
-        ["Auto (ambiance priority)"] = "Auto A",
+        // "Auto (white/ambiance priority)" used to shorten to "Auto W"/"Auto A" — cryptic to
+        // the point of being unreadable (v2 bugfix §5). Left unmapped so the full text goes
+        // through the plate grid's own wrap-to-two-lines handling instead (RecipeCardRenderer's
+        // anyValueWraps), which keeps the words intact rather than losing their meaning.
         ["Fluorescent (Daylight)"] = "Fluor. Daylight",
         ["Fluorescent (Warm White)"] = "Fluor. Warm",
         ["Fluorescent (Cool White)"] = "Fluor. Cool",

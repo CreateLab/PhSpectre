@@ -30,7 +30,8 @@ public sealed record CollageRenderSettings(
     Color GutterColor,
     int GutterThickness,
     int SourceMaxDimension = 2400,
-    bool ComputeColors = true)
+    bool ComputeColors = true,
+    QrRenderOptions? Qr = null)
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 }
@@ -104,7 +105,8 @@ public static class CollageService
                     swatchShape:      settings.SwatchShape,
                     sortOrder:        settings.SortOrder,
                     customBackground: settings.CustomBackground,
-                    compositionGuide: settings.CompositionGuide);
+                    compositionGuide: settings.CompositionGuide,
+                    qr:               settings.Qr);
             }
             finally
             {
