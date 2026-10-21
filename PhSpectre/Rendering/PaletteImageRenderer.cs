@@ -94,68 +94,53 @@ public static class PaletteImageRenderer
             return;
         }
 
+        // The backdrop is the same photo, cover-cropped over the whole card with a little extra
+        // zoom (so the blur never fades at the edges) and heavily blurred: the sharp photo reads as
+        // if it continued past its own borders. Only a light tint (<=12%) keeps text legible; the
+        // Dark/Light theme changes plate and text colours, not the backdrop itself.
         Color scrimColor = theme == Theme.Dark ? Color.Black : Color.White;
-
-        // Split into two independently cover-cropped bands rather than one crop across the
-        // whole (w, h) canvas: a single crop's aspect ratio is w:h, which is nothing like the
-        // photo's own w:photoBoxHeight box, so the backdrop showing through the photo's rounded
-        // corners was a differently-zoomed/cropped slice of the same source photo than the sharp
-        // copy drawn on top of it — visible as a seam right at the corners. Cropping the top band
-        // to the exact same (w, photoBoxHeight) box the photo itself is cropped to keeps the two
-        // pixel-consistent there; the bottom band (behind title/plates, no sharp photo edge to
-        // clash with) can crop independently with no visible seam risk.
-        if (photoBoxHeight is int boxH && boxH > 0 && boxH < h)
-        {
-            DrawBlurredBackdropBand(ctx, sourcePhoto, 0, w, boxH, scrimColor);
-            DrawBlurredBackdropBand(ctx, sourcePhoto, boxH, w, h - boxH, scrimColor);
-        }
-        else
-        {
-            DrawBlurredBackdropBand(ctx, sourcePhoto, 0, w, h, scrimColor);
-        }
+        DrawBlurredBackdrop(ctx, sourcePhoto, w, h, scrimColor);
     }
 
-    // Blurring is done on a small downscaled copy and resized back up — blur output is
-    // low-frequency so the upscale is visually free, and this keeps the op's cost roughly
-    // constant regardless of export resolution (multi-thousand-px photos otherwise make this
-    // needlessly slow, especially on Android).
-    //
-    // A scrim (not a multiplicative Brightness pass) is what actually makes this legible: the
-    // photo region that ends up behind a recipe card's plates/title is often already dark
-    // (shadow, ground, foliage), and Brightness is multiplicative — it can't lift a near-black
-    // pixel toward white (0 * anything is still 0), so a Light-theme card over a dark corner of
-    // the photo came out just as dark as Dark theme, indistinguishable from a flat fill.
-    // Compositing translucent black/white on top guarantees the intended tone regardless of
-    // what's locally in the photo, while still leaving blurred color/texture showing through.
-    private static void DrawBlurredBackdropBand(
-        IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int y, int w, int bandH, Color scrimColor)
+    // Blurring is done on a small downscaled copy and resized back up: the blur output is
+    // low-frequency so the upscale is visually free, and the cost stays roughly constant regardless
+    // of export resolution. The radius is a fraction of the card width, so the look is the same at
+    // every export size.
+    private static void DrawBlurredBackdrop(
+        IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int w, int h, Color scrimColor)
     {
-        if (bandH <= 0) return;
+        if (w <= 0 || h <= 0) return;
 
         const int blurWorkWidth = 640;
-        const float scrimOpacity = 0.6f;
-        int workW = Math.Min(blurWorkWidth, w);
-        int workH = Math.Max(1, (int)Math.Round(bandH * (workW / (double)w)));
-        // Eased off by 1/3 from the initial pass — the original sigma read as too strong/soft
-        // in practice, losing too much of the source photo's character.
-        float sigma = Math.Max(8f, workW * 0.05f * (2f / 3f));
+        const float zoom = 1.15f;
+        const float scrimOpacity = 0.12f;
+        int workW = Math.Max(2, Math.Min(blurWorkWidth, w));
+        int workH = Math.Max(2, (int)Math.Round(h * (workW / (double)w)));
+        // About 5% of the card width; the kernel must stay smaller than the image or ImageSharp throws.
+        float sigma = Math.Min(workW * 0.05f, (Math.Min(workW, workH) - 1) / 3f);
 
-        using var backdrop = sourcePhoto.Clone(c => c.Resize(new ResizeOptions
+        using var backdrop = sourcePhoto.Clone(c =>
         {
-            Size = new Size(workW, workH),
-            Mode = ResizeMode.Crop,
-        }));
-        backdrop.Mutate(c => c.GaussianBlur(sigma));
+            c.Resize(new ResizeOptions
+            {
+                Size = new Size((int)Math.Ceiling(workW * zoom), (int)Math.Ceiling(workH * zoom)),
+                Mode = ResizeMode.Crop,
+            });
+            c.Crop(new Rectangle(
+                ((int)Math.Ceiling(workW * zoom) - workW) / 2,
+                ((int)Math.Ceiling(workH * zoom) - workH) / 2,
+                workW, workH));
+        });
+        if (sigma >= 0.5f)
+            backdrop.Mutate(c => c.GaussianBlur(sigma));
 
-        // ctx.Fill(translucentColor) (no region) does a straight replace rather than an
-        // alpha blend in this ImageSharp version — DrawImage's opacity parameter is the
-        // proven blend path already used elsewhere in this file (e.g. the rounded-photo
-        // overlay below), so the scrim goes through that instead of Fill.
+        // ctx.Fill(translucentColor) (no region) does a straight replace rather than an alpha
+        // blend in this ImageSharp version, so the tint goes through DrawImage's opacity instead.
         using (var scrim = new Image<Rgb24>(workW, workH, scrimColor.ToPixel<Rgb24>()))
             backdrop.Mutate(c => c.DrawImage(scrim, Point.Empty, scrimOpacity));
 
-        backdrop.Mutate(c => c.Resize(w, bandH));
-        ctx.DrawImage(backdrop, new Point(0, y), 1f);
+        backdrop.Mutate(c => c.Resize(w, h));
+        ctx.DrawImage(backdrop, Point.Empty, 1f);
     }
 
     // 12 display-formatted metadata fields drawn into the strip/overlay. Camera, Lens, Focal,
@@ -321,6 +306,10 @@ public static class PaletteImageRenderer
         return frame;
     }
 
+    // Shared padding unit: 2.5% of the card width, never below 12 px. Used for the outer
+    // margin, the gaps between photo / palette / plate, and (halved) between swatch tiles.
+    internal static int CardPadding(int cardWidth) => Math.Max(12, (int)Math.Round(cardWidth * 0.025));
+
     // ── Landscape: photo → swatches → [filmstrip] ──────────────────────────
 
     private static Image<Rgb24> BuildLandscapeCanvas(
@@ -338,36 +327,49 @@ public static class PaletteImageRenderer
         var tc = GetThemeColors(theme, customBackground);
 
         // Swatch panel (computed always; only added to canvas when showSwatches=true)
-        int panelH   = (int)(Math.Max(120, original.Height / 8) * swatchScale);
-        int margin   = Math.Max(10, original.Width / 80);
-        int gap      = Math.Max(4, panelH / 20);
-        int swatchH  = panelH * 6 / 10;
+        // Every size derives from the card width (here: the photo width), not from fixed
+        // pixel clamps — otherwise labels read tiny on small photos and huge on big ones, and
+        // spacing drifts between photos. One padding unit P is shared by every edge and gap.
+        int margin   = CardPadding(original.Width);
+        int gap      = n >= 6 ? Math.Max(4, original.Width / 100) : Math.Max(4, margin / 2);
+        int swatchH  = (int)(Math.Max(44, original.Height * 0.15) * swatchScale);
         int swatchW  = (original.Width - 2 * margin - (n - 1) * gap) / n;
-        float swatchFs = Math.Clamp(panelH / 14f * 6f, 60f, 168f) * labelScale;
-        int textPad  = Math.Max(3, panelH / 25);
+        float swatchFs = Math.Max(10f, original.Width * 0.018f) * labelScale;
+        int textPad  = Math.Max(3, margin / 3);
         int labelLines = (showHex ? 1 : 0) + (showPercent ? 1 : 0);
         Font? swatchFont = labelLines > 0
             ? FitSwatchFont(swatchFs, swatchW - 2 * textPad, showHex)
             : null;
 
-        // Meta strip
-        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, original.Width, labelScale);
-
+        // QR first: when the camera plate shares its row (QR bottom-right, plate left), the plate
+        // is fitted to the width the code leaves over.
         int qrBoxSize = QrCodeRenderer.SuggestBoxSize(original.Width);
         int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin, downscale);
+        // A dense payload forces a big code (see MinPxPerModule); the plate only moves beside it when
+        // at least 40% of the width is left, otherwise it keeps its own row below the code.
+        int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize, downscale) : 0;
+        bool plateBesideQr = qr != null && style == MetaStyle.FilmStrip
+            && original.Width - (qrImgSize + 2 * margin) >= original.Width * 0.4;
+        int plateWidth = plateBesideQr ? original.Width - (qrImgSize + 2 * margin) : original.Width;
+
+        // Meta strip
+        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, plateWidth, labelScale);
+        bool plateInRow = plateBesideQr && lines.Length > 0;
+        int qrRowH = plateInRow ? Math.Max(qrBelowH, stripH) : qrBelowH;
 
         // Canvas layout — swatch panel is optional. Swatches sit directly under the photo;
         // the QR below-block (when present) goes right after that, and the filmstrip (when
         // present) goes after the QR — QR must land immediately under the photo/swatches and
         // before any text plate (metadata/recipe), never at the very bottom of the whole
         // composition (v2 spec §1: "Below" is anchored to the photo, not to the full card).
-        int canvasH      = original.Height + (showSwatches ? panelH : 0) + (style == MetaStyle.FilmStrip ? stripH : 0) + qrBelowH;
         int swatchPanelY = original.Height;
         int labelH       = labelLines > 0 && hexBelow ? (int)swatchFs * labelLines + textPad : 0;
-        int swatchY      = swatchPanelY + (panelH - swatchH - labelH) / 2;
+        int panelH       = margin + swatchH + labelH + margin;
+        int canvasH      = original.Height + (showSwatches ? panelH : 0) + (style == MetaStyle.FilmStrip && !plateInRow ? stripH : 0) + qrRowH;
+        int swatchY      = swatchPanelY + margin;
         int qrBlockY     = original.Height + (showSwatches ? panelH : 0);
         int stripY       = style == MetaStyle.FilmStrip
-            ? qrBlockY + qrBelowH
+            ? (plateInRow ? qrBlockY + (qrRowH - stripH) / 2 : qrBlockY + qrRowH)
             : original.Height - stripH;
 
         Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
@@ -384,14 +386,15 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: stripY,
-                w: original.Width, overlayTextColor: overlayTextColor, customBackground: customBackground,
+                w: plateInRow ? plateWidth : original.Width, overlayTextColor: overlayTextColor, customBackground: customBackground,
                 useBlurredBackground: useBlurredBackground);
 
             if (qr != null)
                 QrCodeRenderer.DrawBelowBlock(ctx, qr.TargetUrl, qrBoxSize, margin,
                     blockY: qrBlockY, blockWidth: canvas.Width,
                     qr.Caption, qr.CaptionCamera, qr.CaptionLens,
-                    theme, customBackground, downscale);
+                    theme, customBackground, downscale,
+                    rowHeight: qrRowH, plateInRow: plateInRow);
         });
         return canvas;
     }
@@ -414,11 +417,11 @@ public static class PaletteImageRenderer
 
         // Swatch panel (computed always; column only added to canvas when showSwatches=true)
         int panelW   = (int)(Math.Max(100, original.Width / 5) * swatchScale);
-        int margin   = Math.Max(10, original.Height / 80);
-        int gap      = Math.Max(4, panelW / 20);
-        int textPad  = Math.Max(3, panelW / 25);
-        float swatchFs = Math.Clamp(panelW / 8f * 6f, 60f, 144f) * labelScale;
-        int swatchW  = panelW * 7 / 10;
+        int margin   = CardPadding(original.Width + (showSwatches ? panelW : 0));
+        int gap      = n >= 6 ? Math.Max(4, original.Width / 100) : Math.Max(4, margin / 2);
+        int textPad  = Math.Max(3, margin / 3);
+        float swatchFs = Math.Max(10f, (original.Width + panelW) * 0.018f) * labelScale;
+        int swatchW  = Math.Max(panelW / 2, panelW - 2 * margin);
         int swatchX  = original.Width + (panelW - swatchW) / 2;
         int labelLines = (showHex ? 1 : 0) + (showPercent ? 1 : 0);
         Font? swatchFont = labelLines > 0
@@ -431,21 +434,30 @@ public static class PaletteImageRenderer
 
         int canvasW = showSwatches ? original.Width + panelW : original.Width;
 
-        // In overlay mode the box covers only the photo, so fit text to photo width
-        int stripWidth = style == MetaStyle.Overlay ? original.Width : canvasW;
-        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth, labelScale);
-
+        // QR first (see BuildLandscapeCanvas): the plate shares the QR row when both are present.
         int qrBoxSize = QrCodeRenderer.SuggestBoxSize(canvasW);
         int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin, downscale);
+        int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize, downscale) : 0;
+        bool plateBesideQr = qr != null && style == MetaStyle.FilmStrip
+            && canvasW - (qrImgSize + 2 * margin) >= canvasW * 0.4;
+        int plateWidth = plateBesideQr ? canvasW - (qrImgSize + 2 * margin) : canvasW;
 
-        int canvasH = (style == MetaStyle.FilmStrip && stripH > 0
+        // In overlay mode the box covers only the photo, so fit text to photo width
+        int stripWidth = style == MetaStyle.Overlay ? original.Width : plateWidth;
+        (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth, labelScale);
+        bool plateInRow = plateBesideQr && lines.Length > 0;
+        int qrRowH = plateInRow ? Math.Max(qrBelowH, stripH) : qrBelowH;
+
+        int canvasH = (style == MetaStyle.FilmStrip && stripH > 0 && !plateInRow
             ? original.Height + stripH
-            : original.Height) + qrBelowH;
+            : original.Height) + qrRowH;
 
         // QR below-block lands right after the photo itself (swatches are a side column here,
         // not a band below the photo) and before the filmstrip, same anchoring fix as landscape.
         int qrBlockY = original.Height;
-        int stripY   = style == MetaStyle.FilmStrip ? qrBlockY + qrBelowH : original.Height - stripH;
+        int stripY   = style == MetaStyle.FilmStrip
+            ? (plateInRow ? qrBlockY + (qrRowH - stripH) / 2 : qrBlockY + qrRowH)
+            : original.Height - stripH;
 
         Color? overlayTextColor = style == MetaStyle.Overlay ? GetOverlayTextColor(original) : null;
 
@@ -458,7 +470,7 @@ public static class PaletteImageRenderer
 
             DrawStrip(ctx, lines, stripH, metaFs, metaFont, style, theme,
                 x: 0, y: stripY,
-                w: canvasW, overlayTextColor: overlayTextColor, customBackground: customBackground,
+                w: plateInRow ? plateWidth : canvasW, overlayTextColor: overlayTextColor, customBackground: customBackground,
                 useBlurredBackground: useBlurredBackground);
 
             if (showSwatches)
@@ -482,7 +494,8 @@ public static class PaletteImageRenderer
                 QrCodeRenderer.DrawBelowBlock(ctx, qr.TargetUrl, qrBoxSize, margin,
                     blockY: qrBlockY, blockWidth: canvas.Width,
                     qr.Caption, qr.CaptionCamera, qr.CaptionLens,
-                    theme, customBackground, downscale);
+                    theme, customBackground, downscale,
+                    rowHeight: qrRowH, plateInRow: plateInRow);
         });
         return canvas;
     }
@@ -506,10 +519,10 @@ public static class PaletteImageRenderer
         // fits roughly constant at any photo resolution *and* across platforms: measuring
         // against the font actually resolved here also cancels out metric differences
         // between e.g. desktop Consolas and Android Roboto, which a hardcoded ratio can't.
-        const int targetChars = 55;
+        const int targetChars = 70;
         var probeFont   = ResolveMetaFont(100f);
         float probeW    = TextMeasurer.MeasureSize(new string('0', targetChars), new TextOptions(probeFont)).Width;
-        float fs        = Math.Max(photoWidth * 0.95f * 100f / probeW, 40f) * labelScale;
+        float fs        = Math.Max(photoWidth * 0.95f * 100f / probeW, 10f) * labelScale;
         Font font       = ResolveMetaFont(fs);
 
         float stripPadF = fs * 0.6f;
@@ -715,7 +728,7 @@ public static class PaletteImageRenderer
 
     // ── Composition guide overlay ───────────────────────────────────────────
 
-    private static void DrawCompositionGuide(IImageProcessingContext ctx, CompositionGuide guide, float x, float y, float w, float h)
+    internal static void DrawCompositionGuide(IImageProcessingContext ctx, CompositionGuide guide, float x, float y, float w, float h)
     {
         if (guide == CompositionGuide.None) return;
         float thickness = Math.Max(1.5f, Math.Min(w, h) / 400f);

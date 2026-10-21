@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <ApplicationId>com.CompanyName.PhSpectre</ApplicationId>
         <ApplicationVersion>6</ApplicationVersion>
-        <ApplicationDisplayVersion>1.5</ApplicationDisplayVersion>
+        <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
         <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
         <!-- Local dev machine only — CI runners auto-detect SDK/JDK via ANDROID_HOME/JAVA_HOME,

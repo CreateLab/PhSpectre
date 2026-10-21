@@ -33,10 +33,7 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // Desktop always runs light, regardless of the Windows theme — the dark
-            // palette wasn't working out there. Must happen before MainWindow is
-            // constructed, since StaticResource resolves once.
-            ApplyLightPalette();
+            ApplyAppearance(SettingsStorage.Load().Appearance);
 
             AppDomain.CurrentDomain.UnhandledException += (_, e) =>
                 AppLogger.LogError("Unhandled exception", e.ExceptionObject as Exception);
@@ -53,18 +50,14 @@ public partial class App : Application
         }
         else if (ApplicationLifetime is IActivityApplicationLifetime singleViewFactoryApplicationLifetime)
         {
-            // Mobile has no in-app light/dark toggle, so match the phone's system theme
-            // once at startup (no need to react if it changes mid-session).
-            if (PreferLightPalette)
-                ApplyLightPalette();
+            ApplyAppearance(SettingsStorage.Load().Appearance);
 
             singleViewFactoryApplicationLifetime.MainViewFactory =
                 () => new MainView { DataContext = new MainViewModel() };
         }
         else if (ApplicationLifetime is ISingleViewApplicationLifetime singleViewPlatform)
         {
-            if (PreferLightPalette)
-                ApplyLightPalette();
+            ApplyAppearance(SettingsStorage.Load().Appearance);
 
             singleViewPlatform.MainView = new MainView
             {
@@ -80,15 +73,21 @@ public partial class App : Application
         _ = AppUpdateService.Instance.CheckAsync();
     }
 
-    // Flips the theme variant (so FluentTheme's own default control colors switch too)
-    // and merges a light override on top of Colors.axaml's dark tokens, same keys, so
-    // it applies with no XAML changes anywhere else.
-    private void ApplyLightPalette()
+    // App theme (System / Light / Dark). Tokens live in Colors.axaml's ThemeDictionaries and are
+    // consumed through DynamicResource, so flipping RequestedThemeVariant restyles the open
+    // window in place. System on Android uses the phone's UI mode read by the Android head
+    // (PreferLightPalette) because Avalonia's own system-theme detection is unreliable there.
+    // This is the app chrome only — the exported card has its own theme (Style → Card).
+    public static void ApplyAppearance(AppAppearance appearance)
     {
-        RequestedThemeVariant = ThemeVariant.Light;
-        var lightColors = AvaloniaXamlLoader.Load(
-            new Uri("avares://PhSpectre.Avalonia/Styles/Colors.Light.axaml"));
-        if (lightColors is IResourceProvider lightColorsResources)
-            Resources.MergedDictionaries.Add(lightColorsResources);
+        if (Current is not { } app) return;
+        app.RequestedThemeVariant = appearance switch
+        {
+            AppAppearance.Light => ThemeVariant.Light,
+            AppAppearance.Dark => ThemeVariant.Dark,
+            _ => OperatingSystem.IsAndroid()
+                ? (PreferLightPalette ? ThemeVariant.Light : ThemeVariant.Dark)
+                : ThemeVariant.Default
+        };
     }
 }

@@ -43,7 +43,7 @@ public static class FileDialogService
         var startFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(defaultDir);
         var result = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save palette",
+            Title = SuggestedFileName.DialogTitle(suggestedName),
             SuggestedFileName = suggestedName,
             SuggestedStartLocation = startFolder,
             FileTypeChoices = FileTypeChoicesFor(suggestedName)
@@ -120,7 +120,7 @@ public static class FileDialogService
     {
         var result = await topLevel.StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
-            Title = "Save palette",
+            Title = SuggestedFileName.DialogTitle(suggestedName),
             SuggestedFileName = suggestedName,
             FileTypeChoices = FileTypeChoicesFor(suggestedName)
         });

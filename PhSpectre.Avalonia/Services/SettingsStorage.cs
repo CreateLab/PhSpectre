@@ -54,6 +54,11 @@ internal sealed class PersistedSettings
     public bool QrIncludeNote { get; set; }
     public string QrNoteText { get; set; } = "";
     public bool ShowRecipeCard { get; set; } = true;
+    public string HiddenRecipeFields { get; set; } = "";
+    public bool RecipeVisibilityUserSet { get; set; }
+    public AppAppearance Appearance { get; set; } = AppAppearance.System;
+    public string SaveFolder { get; set; } = "";
+    public bool ShowInFolderAfterSave { get; set; } = false;
 }
 
 internal static class SettingsStorage
@@ -76,6 +81,8 @@ internal static class SettingsStorage
         nameof(SettingsViewModel.QrContentSource), nameof(SettingsViewModel.QrContentPreset),
         nameof(SettingsViewModel.QrCustomUrl), nameof(SettingsViewModel.QrIncludeNote),
         nameof(SettingsViewModel.QrNoteText), nameof(SettingsViewModel.ShowRecipeCard),
+        nameof(SettingsViewModel.HiddenRecipeFields), nameof(SettingsViewModel.RecipeVisibilityUserSet),
+        nameof(SettingsViewModel.Appearance), nameof(SettingsViewModel.SaveFolder), nameof(SettingsViewModel.ShowInFolderAfterSave),
     };
 
     public static bool IsPersistedProperty(string propertyName) => PersistedPropertyNames.Contains(propertyName);
@@ -112,6 +119,11 @@ internal static class SettingsStorage
         vm.QrIncludeNote         = s.QrIncludeNote;
         vm.QrNoteText            = s.QrNoteText;
         vm.ShowRecipeCard        = s.ShowRecipeCard;
+        vm.HiddenRecipeFields    = s.HiddenRecipeFields ?? "";
+        vm.RecipeVisibilityUserSet = s.RecipeVisibilityUserSet;
+        vm.Appearance            = s.Appearance;
+        vm.SaveFolder            = s.SaveFolder;
+        vm.ShowInFolderAfterSave = s.ShowInFolderAfterSave;
     }
 
     public static PersistedSettings Capture(SettingsViewModel vm) => new()
@@ -147,6 +159,11 @@ internal static class SettingsStorage
         QrIncludeNote       = vm.QrIncludeNote,
         QrNoteText          = vm.QrNoteText,
         ShowRecipeCard      = vm.ShowRecipeCard,
+        HiddenRecipeFields  = vm.HiddenRecipeFields,
+        RecipeVisibilityUserSet = vm.RecipeVisibilityUserSet,
+        Appearance          = vm.Appearance,
+        SaveFolder          = vm.SaveFolder,
+        ShowInFolderAfterSave = vm.ShowInFolderAfterSave,
     };
 
     private static string FilePath => Path.Combine(

@@ -12,9 +12,11 @@ public static class ExportModeRules
 {
     public static IReadOnlyList<ExportMode> AvailableModes(int selectedCount) => selectedCount switch
     {
-        1 => new[] { ExportMode.Card, ExportMode.InfoOnly, ExportMode.Recipe },
-        >= 2 => new[] { ExportMode.Collage, ExportMode.CollageInfoOnly },
-        _ => System.Array.Empty<ExportMode>()
+        // 0 photos (nothing opened yet, or a freshly opened empty folder) still lists the
+        // single-photo modes — an empty Export mode box looked broken and de-synced from
+        // the Save button label.
+        <= 1 => new[] { ExportMode.Card, ExportMode.InfoOnly, ExportMode.Recipe },
+        _ => new[] { ExportMode.Collage, ExportMode.CollageInfoOnly }
     };
 
     // Card<->Collage and InfoOnly<->CollageInfoOnly preserve "computes colors or not" across
@@ -25,7 +27,7 @@ public static class ExportModeRules
     public static ExportMode ClosestValidMode(ExportMode current, int selectedCount)
     {
         var available = AvailableModes(selectedCount);
-        if (available.Count == 0 || available.Contains(current))
+        if (selectedCount <= 0 || available.Contains(current))
             return current;
 
         return current switch

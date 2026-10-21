@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -40,11 +41,55 @@ public partial class MainWindowViewModel : ViewModelBase
     // Only meaningful outside collage mode (collage has no single "original" to compare to).
     public Bitmap? DisplayedSingleBitmap => IsComparingToOriginal ? OriginalBitmap : PaletteBitmap;
 
-    partial void OnIsComparingToOriginalChanged(bool value) => OnPropertyChanged(nameof(DisplayedSingleBitmap));
-    partial void OnOriginalBitmapChanged(Bitmap? value)      => OnPropertyChanged(nameof(DisplayedSingleBitmap));
+    partial void OnIsComparingToOriginalChanged(bool value) { OnPropertyChanged(nameof(DisplayedSingleBitmap)); OnPropertyChanged(nameof(CompareIndex)); }
+    partial void OnOriginalBitmapChanged(Bitmap? value)      { OnPropertyChanged(nameof(DisplayedSingleBitmap)); OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill)); }
 
     [RelayCommand]
     private void ToggleCompareToOriginal() => IsComparingToOriginal = !IsComparingToOriginal;
+
+    // Result | Original segment in the floating pill (replaces the old Compare button).
+    public int CompareIndex
+    {
+        get => IsComparingToOriginal ? 1 : 0;
+        set => IsComparingToOriginal = value == 1;
+    }
+    public bool CanCompare => !IsCollageMode && OriginalBitmap != null;
+
+    // Preview error card (V2-Errors): the message stays out of the photo, the last good
+    // result stays visible underneath, and the user can copy the details or retry.
+    public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+    [RelayCommand]
+    private void DismissError() => ErrorMessage = null;
+
+    [RelayCommand]
+    private void RetryRender()
+    {
+        if (IsCollageMode) _ = GenerateCollagePaletteAsync();
+        else if (SelectedFile != null) _ = GeneratePaletteAsync(SelectedFile, keepPrevious: true);
+    }
+
+    // Filmstrip header and footer texts.
+    public string PhotosHeaderText
+    {
+        get
+        {
+            var exported = Files.Count(f => f.IsExported);
+            return exported > 0
+                ? $"{Files.Count} PHOTOS · {exported} EXPORTED"
+                : $"{Files.Count} PHOTOS";
+        }
+    }
+    public bool HasPhotos => Files.Count > 0;
+    public string EmptyStageText => !HasPhotos ? "Open a folder of photos to begin"
+        : IsCollageMode ? "Tick two or more photos in the strip below" : "Pick a photo from the strip below";
+
+    // File name the Save dialog will propose, shown above the Save button in the Export tab.
+    public string SuggestedNameText => IsCollageMode
+        ? SuggestedFileName.BuildCollage(Settings.FileExtension)
+        : SuggestedFileName.Build(SelectedFile?.FileName, Settings.ExportMode, Settings.FileExtension);
+
+    private void RaiseSuggestedNameChanged() => OnPropertyChanged(nameof(SuggestedNameText));
     [ObservableProperty] private string?    _errorMessage;
     [ObservableProperty] private bool       _isListView = false;
     [ObservableProperty] private string?    _fileInfoText;
@@ -110,9 +155,24 @@ public partial class MainWindowViewModel : ViewModelBase
     // an explanatory placeholder.
     public string OriginalPanePlaceholderText => "No photo selected";
 
-    partial void OnIsGeneratingChanged(bool value)    { OnPropertyChanged(nameof(ShowResultPlaceholder)); RegenerateCommand.NotifyCanExecuteChanged(); }
+    // Live preview: while a re-render runs, the previous result stays on screen dimmed with an
+    // "Updating…" pill instead of blanking out. "Generating…" is only for the very first render.
+    public bool ShowUpdatingPill        => IsGenerating && PaletteBitmap != null && !IsCollageMode;
+    public bool ShowPill => ShowUpdatingPill || CanCompare;
+    public bool ShowGeneratingTextSingle => IsGenerating && !ShowUpdatingPill;
+    public double SinglePreviewOpacity  => ShowUpdatingPill ? 0.4 : 1.0;
+
+    private void RaiseUpdatingStateChanged()
+    {
+        OnPropertyChanged(nameof(ShowUpdatingPill)); OnPropertyChanged(nameof(ShowPill));
+        OnPropertyChanged(nameof(ShowGeneratingTextSingle));
+        OnPropertyChanged(nameof(SinglePreviewOpacity));
+    }
+
+    partial void OnIsGeneratingChanged(bool value)    { OnPropertyChanged(nameof(ShowResultPlaceholder)); RaiseUpdatingStateChanged(); RegenerateCommand.NotifyCanExecuteChanged(); }
     partial void OnPaletteBitmapChanged(Bitmap? value)
     {
+        RaiseUpdatingStateChanged();
         OnPropertyChanged(nameof(ShowResultPlaceholder));
         OnPropertyChanged(nameof(DisplayedCollageBitmap));
         OnPropertyChanged(nameof(RegenerateButtonLabel));
@@ -123,11 +183,14 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowResultPlaceholder));
         OnPropertyChanged(nameof(DisplayedCollageBitmap));
     }
-    partial void OnErrorMessageChanged(string? value)  => OnPropertyChanged(nameof(ShowResultPlaceholder));
+    partial void OnErrorMessageChanged(string? value)  { OnPropertyChanged(nameof(ShowResultPlaceholder)); OnPropertyChanged(nameof(HasError)); }
     partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
 
     partial void OnIsCollageModeChanged(bool value)
     {
+        OnPropertyChanged(nameof(EmptyStageText));
+        OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill));
+        RaiseSuggestedNameChanged();
         OnPropertyChanged(nameof(ShowSaveAllButton));
         OnPropertyChanged(nameof(OriginalPanePlaceholderText));
         OnPropertyChanged(nameof(ShowResultPlaceholder));
@@ -171,7 +234,7 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool ShowBatchProgress => IsBatchActive;
     public bool ShowBatchResult   => BatchState is BatchExportState.Finished or BatchExportState.Cancelled;
     public bool BatchHasErrors    => BatchErrors.Count > 0;
-    public string IdleButtonText   => $"Save all ({Files.Count})";
+    public string IdleButtonText   => Files.Count == 1 ? "Save all · 1 photo" : $"Save all · {Files.Count} photos";
     public string ActiveButtonText => BatchState == BatchExportState.Cancelling ? "Cancelling…" : "Cancel";
     public double BatchProgressPercent => BatchTotal == 0 ? 0 : BatchProcessed * 100.0 / BatchTotal;
     public string BatchProgressText    => BatchTotal == 0 ? "" : $"{BatchProcessed} / {BatchTotal} ({(int)BatchProgressPercent}%)";
@@ -189,8 +252,8 @@ public partial class MainWindowViewModel : ViewModelBase
         OpenFolderCommand.NotifyCanExecuteChanged();
         RegenerateCommand.NotifyCanExecuteChanged();
     }
-    partial void OnBatchProcessedChanged(int value) { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); }
-    partial void OnBatchTotalChanged(int value)     { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); }
+    partial void OnBatchProcessedChanged(int value) { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); OnPropertyChanged(nameof(BatchHeadline)); }
+    partial void OnBatchTotalChanged(int value)     { OnPropertyChanged(nameof(BatchProgressPercent)); OnPropertyChanged(nameof(BatchProgressText)); OnPropertyChanged(nameof(BatchHeadline)); }
 
     public Func<Task<string?>>?                 PickFolderAsync      { get; set; }
     public Func<string, string, Task<string?>>? SavePngAsync         { get; set; }
@@ -215,6 +278,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private CancellationTokenSource? _batchCts;
     private DispatcherTimer?         _batchCancelGuardTimer;
     private DispatcherTimer?         _batchResultTimer;
+    private DispatcherTimer?         _toastTimer;
+    private string?                  _toastPath;
     private bool                     _batchCancelGuardActive;
     private string?                  _lastBatchDestFolder;
 
@@ -222,6 +287,9 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         _files.CollectionChanged += (_, _) =>
         {
+            OnPropertyChanged(nameof(PhotosHeaderText));
+            OnPropertyChanged(nameof(HasPhotos));
+            OnPropertyChanged(nameof(EmptyStageText));
             OnPropertyChanged(nameof(FilePositionText));
             OnPropertyChanged(nameof(IdleButtonText));
             SaveAllCommand.NotifyCanExecuteChanged();
@@ -287,6 +355,7 @@ public partial class MainWindowViewModel : ViewModelBase
         // didn't want. Instead a settings change just surfaces the Regenerate button; the
         // actual re-render only happens when the user clicks it.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
+        Settings.TopModeHandler = HandleTopMode;
 
         SettingsStorage.Apply(Settings, SettingsStorage.Load());
         Settings.PropertyChanged += (_, e) =>
@@ -307,26 +376,59 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName is nameof(SettingsViewModel.ExportMode) or nameof(SettingsViewModel.OutputFormat))
+            RaiseSuggestedNameChanged();
+
+        if (SettingsViewModel.IsUiOnlyProperty(e.PropertyName)) return;
         if (!HasActiveContent || IsBatchActive || Settings.IsBulkLoading) return;
 
-        // "Show camera info plate" bugfix §2: in Recipe mode the card render is cheap (no
-        // k-means, just RecipeCardRenderer), so unlike every other settings change — which
-        // only surfaces the Regenerate button — this toggle re-renders immediately and
-        // updates the preview/save button on its own, since the whole point of the fix is
-        // that flipping the checkbox visibly does something right away.
-        if (e.PropertyName == nameof(SettingsViewModel.ShowCameraInfo) && Settings.ExportMode == ExportMode.Recipe && !IsCollageMode)
+        // Collage is a heavy render, so it keeps the manual Generate/Regenerate button.
+        if (IsCollageMode)
         {
-            _ = GeneratePaletteAsync(SelectedFile);
+            ErrorMessage = null;
+            IsRegenerateAvailable = true;
             return;
         }
 
-        IsRegenerateAvailable = true;
+        // Single photo: live preview. Any settings change re-renders after a short pause so a
+        // burst of edits (typing a hex, dragging a slider) produces one render. Changes that
+        // don't alter the export snapshot are served from the single-slot render cache.
+        ScheduleLiveRender();
+    }
+
+    private const int LiveRenderDebounceMs = 300;
+
+    private bool IsPreviewCurrent(string path)
+    {
+        var recipe = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
+        return PaletteBitmap != null && _cachedSingleRenderOutput != null
+            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe));
+    }
+    private CancellationTokenSource? _liveDebounceCts;
+
+    private async void ScheduleLiveRender()
+    {
+        _liveDebounceCts?.Cancel();
+        var cts = _liveDebounceCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(LiveRenderDebounceMs, cts.Token);
+        }
+        catch (OperationCanceledException) { return; }
+
+        if (cts.IsCancellationRequested || IsCollageMode || SelectedFile == null || IsBatchActive) return;
+        // Same parameters as the last finished render: nothing to rebuild (and no "Updating…" flash).
+        if (IsPreviewCurrent(SelectedFile.FullPath)) return;
+        await GeneratePaletteAsync(SelectedFile, keepPrevious: true);
     }
 
     partial void OnIsListViewChanged(bool value) => OnPropertyChanged(nameof(IsGridView));
 
     partial void OnSelectedFileChanged(FileEntry? value)
     {
+        RaiseSuggestedNameChanged();
+        Settings.HasPhoto = value != null;
+        _liveDebounceCts?.Cancel();
         OnPropertyChanged(nameof(FilePositionText));
         Settings.LoadMetadataFields(
             value != null ? PaletteImageRenderer.ReadMetadata(value.FullPath) : null,
@@ -342,6 +444,24 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
+    // Top-bar Card / Recipe / Collage segment. Collage opens the tray (seeded with the photo
+    // currently on screen); Card/Recipe close it first, then set the single-photo mode.
+    private void HandleTopMode(int index)
+    {
+        if (index == 2)
+        {
+            if (!IsCollageMode)
+            {
+                EnterCollageMode();
+                if (SelectedFile != null) SelectedFile.IsChecked = true;
+            }
+            return;
+        }
+
+        if (IsCollageMode) ExitCollageMode();
+        Settings.ApplyTopMode(index);
+    }
+
     [RelayCommand]
     private void ToggleView() => IsListView = !IsListView;
 
@@ -351,12 +471,20 @@ public partial class MainWindowViewModel : ViewModelBase
         if (PickFolderAsync == null) return;
         var folder = await PickFolderAsync();
         if (folder == null) return;
+        LoadFolder(folder);
+    }
 
+    private void LoadFolder(string folder)
+    {
         // A different folder invalidates whatever's currently in the tray (it references
         // FileEntry objects from the folder about to be cleared below).
         if (IsCollageMode) ExitCollageMode();
 
         _thumbnailCts?.Cancel();
+        // Drop the old selection and render state first: Files.Clear() alone leaves
+        // SelectedFile/PaletteBitmap pointing at the previous folder, and the mode/Save-label
+        // state then disagreed with the (now empty) list.
+        SelectedFile = null;
         Files.Clear();
 
         foreach (var path in Directory.EnumerateFiles(folder)
@@ -365,6 +493,7 @@ public partial class MainWindowViewModel : ViewModelBase
                         p.EndsWith(".heif", StringComparison.OrdinalIgnoreCase) ||
                         p.EndsWith(".heic", StringComparison.OrdinalIgnoreCase) ||
                         p.EndsWith(".hif",  StringComparison.OrdinalIgnoreCase))
+            .Where(p => !SuggestedFileName.IsGeneratedCard(p))
             .OrderBy(p => p))
         {
             var entry = new FileEntry(Path.GetFileName(path), path);
@@ -374,10 +503,14 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _thumbnailCts = new CancellationTokenSource();
         _ = LoadThumbnailsAsync(_thumbnailCts.Token);
+
+        // Never leave the centre on "No result yet" after opening a folder.
+        if (Files.Count > 0) SelectedFile = Files[0];
     }
 
     private void OnFileEntryPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(FileEntry.IsExported)) { OnPropertyChanged(nameof(PhotosHeaderText)); return; }
         if (e.PropertyName != nameof(FileEntry.IsChecked) || sender is not FileEntry entry) return;
 
         if (entry.IsChecked)
@@ -531,7 +664,7 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = ex.ToString();
             AppLogger.LogError("Collage generation failed", ex);
         }
         finally
@@ -572,6 +705,9 @@ public partial class MainWindowViewModel : ViewModelBase
         if (idx > 0) SelectedFile = Files[idx - 1];
     }
 
+    public void SelectFirstFile() { if (Files.Count > 0) SelectedFile = Files[0]; }
+    public void SelectLastFile()  { if (Files.Count > 0) SelectedFile = Files[^1]; }
+
     public void SelectNextFile()
     {
         if (Files.Count == 0) return;
@@ -593,37 +729,105 @@ public partial class MainWindowViewModel : ViewModelBase
         if (IsCollageMode)
         {
             if (CollageItems.Count == 0) return;
-            suggested = "collage_palette" + _lastExtension;
-            folder = Path.GetDirectoryName(CollageItems[0].FullPath)!;
+            suggested = SuggestedFileName.BuildCollage(_lastExtension);
+            folder = ResolveSaveFolder();
         }
         else
         {
             if (SelectedFile == null) return;
-            var suffix = Settings.IsRecipeMode ? "_recipe" : "_palette";
-            suggested = Path.GetFileNameWithoutExtension(SelectedFile.FileName) + suffix + _lastExtension;
-            folder = Path.GetDirectoryName(SelectedFile.FullPath)!;
+            suggested = SuggestedFileName.Build(SelectedFile.FileName, Settings.ExportMode, _lastExtension);
+            folder = ResolveSaveFolder();
         }
 
         var dest = await SavePngAsync(suggested, folder);
         if (dest != null)
+        {
             File.Copy(_lastTempPng, dest, overwrite: true);
+            ShowSavedToast(dest);
+            if (!IsCollageMode && SelectedFile != null) SelectedFile.IsExported = true;
+            if (Settings.ShowInFolderAfterSave) RevealInFolder(dest);
+        }
+    }
+
+    private string ResolveSaveFolder()
+    {
+        if (!string.IsNullOrEmpty(Settings.SaveFolder) && Directory.Exists(Settings.SaveFolder)) return Settings.SaveFolder;
+        var def = SuggestedFileName.DefaultOutputFolder();
+        Settings.SaveFolder = def;
+        return def;
+    }
+
+    // ── "Saved" toast ───────────────────────────────────────────────────────────────
+
+    [ObservableProperty] private bool   _isToastVisible;
+    [ObservableProperty] private string _toastTitle = "";
+    [ObservableProperty] private string _toastPathText = "";
+
+    private void ShowSavedToast(string savedPath)
+    {
+        _toastPath = savedPath;
+        var mb = new FileInfo(savedPath).Length / (1024.0 * 1024.0);
+        ToastTitle = $"Saved · {mb:0.0} MB";
+        ToastPathText = savedPath;
+        IsToastVisible = true;
+
+        _toastTimer?.Stop();
+        _toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+        _toastTimer.Tick += (_, _) =>
+        {
+            _toastTimer!.Stop();
+            IsToastVisible = false;
+        };
+        _toastTimer.Start();
+    }
+
+    [RelayCommand]
+    private void DismissToast()
+    {
+        _toastTimer?.Stop();
+        IsToastVisible = false;
+    }
+
+    [RelayCommand]
+    private void ShowInFolder()
+    {
+        RevealInFolder(_toastPath);
+        DismissToast();
+    }
+
+    private static void RevealInFolder(string? path)
+    {
+        if (path == null || !File.Exists(path)) return;
+        try
+        {
+            if (OperatingSystem.IsWindows())
+                Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{path}\"") { UseShellExecute = true });
+            else if (OperatingSystem.IsMacOS())
+                Process.Start(new ProcessStartInfo("open", new[] { "-R", path }));
+            else
+                Process.Start(new ProcessStartInfo("xdg-open", new[] { Path.GetDirectoryName(path)! }));
+        }
+        catch { /* nothing useful to do if the file manager can't be launched */ }
     }
 
     private bool CanSavePng() => PaletteBitmap != null && !IsGenerating && !IsBatchActive;
 
-    private async Task GeneratePaletteAsync(FileEntry? entry)
+    private async Task GeneratePaletteAsync(FileEntry? entry, bool keepPrevious = false)
     {
         _renderCts?.Cancel();
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        OriginalBitmap  = null;
-        PaletteBitmap   = null;
         ErrorMessage    = null;
-        FileInfoText    = null;
-        OutputSizeText  = null;
-        _lastTempPng    = null;
-        IsComparingToOriginal = false;
+        if (!keepPrevious || entry == null)
+        {
+            OriginalBitmap  = null;
+            PaletteBitmap   = null;
+            FileInfoText    = null;
+            OutputSizeText  = null;
+            _lastTempPng    = null;
+            IsComparingToOriginal = false;
+        }
         SavePngAsync2Command.NotifyCanExecuteChanged();
         RegenerateCommand.NotifyCanExecuteChanged();
 
@@ -646,12 +850,16 @@ public partial class MainWindowViewModel : ViewModelBase
                 return img;
             }, token);
             token.ThrowIfCancellationRequested();
-            using (var previewMs = ImageLoader.ToJpegStream(working))
+            // Live re-renders of the same photo keep the already-built "original" preview.
+            if (!keepPrevious || OriginalBitmap == null)
+            {
+                using var previewMs = ImageLoader.ToJpegStream(working);
                 OriginalBitmap = new Bitmap(previewMs);
-
-            var ps = OriginalBitmap.PixelSize;
-            var folder = Path.GetDirectoryName(filePath) ?? "";
-            FileInfoText = $"{entry.FileName}  ·  {ps.Width}×{ps.Height}  ·  {folder}";
+                var ps = OriginalBitmap.PixelSize;
+                Settings.SourceWidth  = working.Width;
+                Settings.SourceHeight = working.Height;
+                FileInfoText = $"{entry.FileName}  ·  {working.Width}×{working.Height}";
+            }
 
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
@@ -687,7 +895,9 @@ public partial class MainWindowViewModel : ViewModelBase
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
                     metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: metadataOverride,
                     labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground, qr: qr,
-                    showRecipeCard: exportSettings.ShowRecipeCard), token);
+                    showRecipeCard: exportSettings.ShowRecipeCard,
+                    compositionGuide: exportSettings.CompositionGuide,
+                    hiddenRecipeFields: exportSettings.HiddenRecipeFields), token);
             }
             else
             {
@@ -708,7 +918,7 @@ public partial class MainWindowViewModel : ViewModelBase
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = ex.ToString();
             AppLogger.LogError("Palette generation failed", ex);
         }
         finally
@@ -760,12 +970,49 @@ public partial class MainWindowViewModel : ViewModelBase
             await ShowBatchErrorsAsync(BatchErrors);
     }
 
+    // ── Batch progress presentation ("Exporting 2 of 4 · ≈ 12 s left") ─────────────────────
+    private DateTime _batchStartedAt;
+    [ObservableProperty] private string _batchEtaText = "";
+
+    public string BatchHeadline => $"Exporting {Math.Min(BatchProcessed + 1, Math.Max(BatchTotal, 1))} of {BatchTotal}";
+
+    private void UpdateBatchEta()
+    {
+        OnPropertyChanged(nameof(BatchHeadline));
+        if (BatchProcessed <= 0 || BatchProcessed >= BatchTotal) { BatchEtaText = ""; return; }
+        var perItem = (DateTime.UtcNow - _batchStartedAt).TotalSeconds / BatchProcessed;
+        var left = (int)Math.Ceiling(perItem * (BatchTotal - BatchProcessed));
+        BatchEtaText = left >= 90 ? $"≈ {left / 60} min left" : $"≈ {Math.Max(left, 1)} s left";
+    }
+
+    // One file of a Save all in Recipe mode: each photo's own film recipe, same renderer and
+    // options as the single-photo Recipe preview. A photo without a recipe is reported as a
+    // failure (shown under "Details") instead of silently exporting a different card.
+    private static void RenderRecipeCardFile(string sourcePath, string destPath, PaletteExportSettings s)
+    {
+        var recipe = RecipeReader.Read(sourcePath)
+            ?? throw new InvalidOperationException("No film recipe found in this photo");
+        using var img = Image.Load<Rgb24>(sourcePath);
+        img.Mutate(ctx => ctx.AutoOrient());
+        var metadata = PaletteImageRenderer.ReadMetadata(sourcePath);
+        var qr = s.BuildQrRenderOptions(metadata, recipe);
+        RecipeCardRenderer.Render(img, recipe, destPath,
+            theme: s.Theme, format: s.Format, customBackground: s.CustomBackground,
+            metaVerbosity: s.MetaVerbosity, metadataOverride: null,
+            labelScale: s.LabelScale, useBlurredBackground: s.UseBlurredBackground, qr: qr,
+            showRecipeCard: s.ShowRecipeCard, compositionGuide: s.CompositionGuide,
+            hiddenRecipeFields: s.HiddenRecipeFields);
+    }
+
     private async Task RunBatchAsync(string destFolder)
     {
         _batchResultTimer?.Stop();
 
         var snapshot = Files.Select(f => f.FullPath).ToList();
+        var exportedLookup = Files.ToDictionary(f => f.FullPath, f => f);
         var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+        _batchStartedAt = DateTime.UtcNow;
+        BatchEtaText = "";
 
         _batchCts = new CancellationTokenSource();
         var cancelToken = _batchCts.Token;
@@ -802,11 +1049,17 @@ public partial class MainWindowViewModel : ViewModelBase
             {
                 try
                 {
-                    var destName = Path.GetFileNameWithoutExtension(sourcePath) + "_palette" + exportSettings.FileExtension;
+                    var destName = Path.GetFileNameWithoutExtension(sourcePath) + SuggestedFileName.ModeSuffix(exportSettings.Mode) + exportSettings.FileExtension;
                     var destPath = Path.Combine(destFolder, destName);
                     bool existed = File.Exists(destPath);
 
-                    await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None);
+                    if (exportSettings.Mode == ExportMode.Recipe)
+                        await Task.Run(() => RenderRecipeCardFile(sourcePath, destPath, exportSettings));
+                    else
+                        await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None);
+
+                    var exportedEntry = exportedLookup.GetValueOrDefault(sourcePath);
+                    if (exportedEntry != null) await Dispatcher.UIThread.InvokeAsync(() => exportedEntry.IsExported = true);
 
                     Interlocked.Increment(ref saved);
                     if (existed) Interlocked.Increment(ref overwritten);
@@ -831,6 +1084,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
                         if (done > BatchProcessed) BatchProcessed = done;
+                        UpdateBatchEta();
                         BatchCurrentFileName = fileName;
                     });
                     gate.Release();
@@ -844,20 +1098,20 @@ public partial class MainWindowViewModel : ViewModelBase
 
         if (diskFull)
         {
-            BatchResultText = $"Stopped — disk full: {saved} saved before it ran out";
+            BatchResultText = $"Stopped — disk full · saved {saved} of {snapshot.Count}";
             BatchState = BatchExportState.Finished;
         }
         else if (cancelToken.IsCancellationRequested)
         {
-            BatchResultText = $"Cancelled: {saved} saved";
+            BatchResultText = $"Cancelled · saved {saved} of {snapshot.Count}";
             BatchState = BatchExportState.Cancelled;
         }
         else
         {
             var overwriteNote = overwritten > 0 ? $", overwritten: {overwritten}" : "";
             BatchResultText = failed > 0
-                ? $"Done: {saved} saved, {failed} failed{overwriteNote}"
-                : $"Done: {saved} saved{overwriteNote}";
+                ? $"Saved {saved} of {snapshot.Count} · {failed} failed{overwriteNote}"
+                : $"Saved {saved} of {snapshot.Count}{overwriteNote}";
             BatchState = BatchExportState.Finished;
         }
 

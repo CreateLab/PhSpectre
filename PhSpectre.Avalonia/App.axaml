@@ -3,6 +3,7 @@
              xmlns:local="using:PhSpectre.Avalonia"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PhSpectre.Avalonia.App"
+             Name="PhSpectre"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
@@ -23,5 +24,6 @@
         <materialIcons:MaterialIconStyles />
         <StyleInclude Source="avares://PhSpectre.Avalonia/Styles/Typography.axaml"/>
         <StyleInclude Source="avares://PhSpectre.Avalonia/Styles/Buttons.axaml"/>
+        <StyleInclude Source="avares://PhSpectre.Avalonia/Styles/Controls.axaml"/>
     </Application.Styles>
 </Application>

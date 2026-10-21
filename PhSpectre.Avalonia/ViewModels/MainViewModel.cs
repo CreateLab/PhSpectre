@@ -83,7 +83,7 @@ public partial class MainViewModel : ViewModelBase
         IsComparingToOriginal && !IsCollageMode && OriginalBitmap != null ? OriginalBitmap : DisplayedCollageBitmap;
     public bool CanCompareToOriginal => !IsCollageMode && OriginalBitmap != null;
 
-    partial void OnIsComparingToOriginalChanged(bool value) => OnPropertyChanged(nameof(DisplayedResultBitmap));
+    partial void OnIsComparingToOriginalChanged(bool value) { OnPropertyChanged(nameof(DisplayedResultBitmap)); OnPropertyChanged(nameof(CompareIndex)); }
 
     [RelayCommand]
     private void ToggleCompareToOriginal() => IsComparingToOriginal = !IsComparingToOriginal;
@@ -134,6 +134,7 @@ public partial class MainViewModel : ViewModelBase
 
         _recentPhotos.CollectionChanged += (_, _) =>
         {
+            RaiseShellTextsChanged();
             OnPropertyChanged(nameof(HasRecentPhotos));
             OnPropertyChanged(nameof(ShowEmptyBrowserGrid));
             OnPropertyChanged(nameof(ShowEmptyDashedPlaceholder));
@@ -163,8 +164,79 @@ public partial class MainViewModel : ViewModelBase
         };
     }
 
+    // ── V2 shell (png/V2-Mobile, V2-Tablet) ─────────────────────────────────────────────────
+    // IsWide is set by MainView from the window width (≥ 840 dp → tablet layout with the
+    // inspector as a right-hand column; below that the inspector is a bottom sheet).
+    [ObservableProperty] private bool _isWide;
+    [ObservableProperty] private bool _isSheetOpen;
+
+    public bool IsPhone   => !IsWide;
+    public bool ShowSheet => IsSheetOpen && !IsWide;
+
+    partial void OnIsWideChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsPhone));
+        OnPropertyChanged(nameof(ShowSheet));
+    }
+    partial void OnIsSheetOpenChanged(bool value) => OnPropertyChanged(nameof(ShowSheet));
+
+    [RelayCommand]
+    private void OpenAdjust()
+    {
+        Settings.ActiveTab = InspectorTab.Style;
+        IsSheetOpen = true;
+    }
+
+    [RelayCommand]
+    private void OpenExport()
+    {
+        Settings.ActiveTab = InspectorTab.Export;
+        IsSheetOpen = true;
+    }
+
+    [RelayCommand]
+    private void CloseSheet() => IsSheetOpen = false;
+
+    public int CompareIndex
+    {
+        get => IsComparingToOriginal ? 1 : 0;
+        set => IsComparingToOriginal = value == 1;
+    }
+    public bool CanCompare => CanCompareToOriginal;
+
+    public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+    [RelayCommand]
+    private void DismissError() => ErrorMessage = null;
+
+    [RelayCommand]
+    private void RetryRender()
+    {
+        if (IsCollageMode) _ = GenerateCollagePaletteAsync();
+        else _ = RenderCurrentAsync(keepPrevious: true);
+    }
+
+    public string PhotosHeaderText => IsCollageMode
+        ? (CollageItems.Count == 1 ? "1 PHOTO" : $"{CollageItems.Count} PHOTOS")
+        : $"{RecentPhotos.Count} PHOTOS";
+
+    public string SuggestedNameText => IsCollageMode
+        ? SuggestedFileName.BuildCollage(Settings.FileExtension)
+        : SuggestedFileName.Build(_lastFileName, Settings.ExportMode, Settings.FileExtension);
+
+    // Toast shown for a few seconds after a successful save (replaces the silent "Saved!" flip).
+    public string SavedToastText => $"Saved · {OutputSizeText}";
+
+    private void RaiseShellTextsChanged()
+    {
+        OnPropertyChanged(nameof(PhotosHeaderText));
+        OnPropertyChanged(nameof(SuggestedNameText));
+        OnPropertyChanged(nameof(EmptyStageText));
+    }
+
     private void OnCollageTrayChanged()
     {
+        RaiseShellTextsChanged();
         for (int i = 0; i < CollageItems.Count; i++)
             CollageItems[i].IsCollageExifSource = i == 0;
 
@@ -220,6 +292,8 @@ public partial class MainViewModel : ViewModelBase
     {
         if (e.PropertyName is nameof(SettingsViewModel.ExportMode) or nameof(SettingsViewModel.OutputFormat))
             OnPropertyChanged(nameof(SaveButtonText));
+        if (e.PropertyName is nameof(SettingsViewModel.ExportMode) or nameof(SettingsViewModel.OutputFormat))
+            OnPropertyChanged(nameof(SuggestedNameText));
 
         // Single-button pick/add entry point (bugfix "одна кнопка выбора фото вместо двух,
         // управляется ExportMode"): the chip is now the only thing that decides single vs
@@ -234,18 +308,58 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
 
-        if (!HasActiveContent || IsGenerating || Settings.IsBulkLoading) return;
+        if (SettingsViewModel.IsUiOnlyProperty(e.PropertyName)) return;
+        if (!HasActiveContent || Settings.IsBulkLoading) return;
 
-        // "Show camera info plate" bugfix §2 (mirrors MainWindowViewModel): in Recipe mode
-        // the card render is cheap, so this toggle re-renders immediately instead of only
-        // surfacing the Regenerate button like every other settings change does.
-        if (e.PropertyName == nameof(SettingsViewModel.ShowCameraInfo) && Settings.ExportMode == ExportMode.Recipe && !IsCollageMode)
+        // Collage is a heavy render, so it keeps the manual Generate/Regenerate button.
+        if (IsCollageMode)
         {
-            _ = RenderCurrentAsync();
+            ErrorMessage = null;
+            if (!IsGenerating) IsRegenerateAvailable = true;
             return;
         }
 
-        IsRegenerateAvailable = true;
+        // Single photo: live preview on the working copy (Settings.WorkingQuality). Debounced
+        // so a burst of edits produces one render; the previous result stays visible meanwhile.
+        ScheduleLiveRender();
+    }
+
+    private const int LiveRenderDebounceMs = 300;
+
+    private bool IsPreviewCurrent(string path)
+    {
+        var recipe = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
+        return PaletteBitmap != null && _cachedSingleRenderOutput != null
+            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe));
+    }
+    private CancellationTokenSource? _liveDebounceCts;
+
+    private async void ScheduleLiveRender()
+    {
+        _liveDebounceCts?.Cancel();
+        var cts = _liveDebounceCts = new CancellationTokenSource();
+        try
+        {
+            await Task.Delay(LiveRenderDebounceMs, cts.Token);
+        }
+        catch (OperationCanceledException) { return; }
+
+        if (cts.IsCancellationRequested || IsCollageMode || _currentSourcePath == null) return;
+        // Same parameters as the last finished render: nothing to rebuild (and no "Updating…" flash).
+        if (IsPreviewCurrent(_currentSourcePath)) return;
+        await RenderCurrentAsync(keepPrevious: true);
+    }
+
+    public bool ShowUpdatingPill         => IsGenerating && PaletteBitmap != null && !IsCollageMode;
+    public bool ShowPill => ShowUpdatingPill || CanCompare;
+    public bool ShowGeneratingIndicator  => IsGenerating && !ShowUpdatingPill;
+    public double ResultPreviewOpacity   => ShowUpdatingPill ? 0.4 : 1.0;
+
+    private void RaiseUpdatingStateChanged()
+    {
+        OnPropertyChanged(nameof(ShowUpdatingPill)); OnPropertyChanged(nameof(ShowPill));
+        OnPropertyChanged(nameof(ShowGeneratingIndicator));
+        OnPropertyChanged(nameof(ResultPreviewOpacity));
     }
 
     private bool CanRegenerate() => IsRegenerateAvailable && HasActiveContent && !IsGenerating;
@@ -302,6 +416,7 @@ public partial class MainViewModel : ViewModelBase
     // The result card's dashed empty-state box is shared by both modes — its label and
     // tap action switch with IsCollageMode rather than needing two overlapping buttons.
     public string EmptyStateText => IsCollageMode ? "Add photos to the collage" : "No photo selected";
+    public string EmptyStageText => IsCollageMode || IsCollageExportMode ? "Add photos to start a collage" : "Pick a photo to begin";
 
     // True whenever the ExportMode chip currently selected is one of the two collage modes —
     // independent of whether a tray actually has any photos in it yet, since switching the
@@ -327,6 +442,7 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnIsGeneratingChanged(bool value)
     {
+        RaiseUpdatingStateChanged();
         OnPropertyChanged(nameof(ShowPlaceholder));
         OnPropertyChanged(nameof(ShowEmptyBrowserGrid));
         OnPropertyChanged(nameof(ShowEmptyDashedPlaceholder));
@@ -336,6 +452,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
     partial void OnPaletteBitmapChanged(Bitmap? value)
     {
+        RaiseUpdatingStateChanged();
         OnPropertyChanged(nameof(ShowPlaceholder));
         OnPropertyChanged(nameof(HasResult));
         OnPropertyChanged(nameof(ShowPickPhotoToolbarButton));
@@ -364,11 +481,13 @@ public partial class MainViewModel : ViewModelBase
     }
     partial void OnOriginalBitmapChanged(Bitmap? value)
     {
+        OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill));
         OnPropertyChanged(nameof(DisplayedResultBitmap));
         OnPropertyChanged(nameof(CanCompareToOriginal));
     }
     partial void OnErrorMessageChanged(string? value)
     {
+        OnPropertyChanged(nameof(HasError));
         OnPropertyChanged(nameof(ShowPlaceholder));
         OnPropertyChanged(nameof(ShowEmptyBrowserGrid));
         OnPropertyChanged(nameof(ShowEmptyDashedPlaceholder));
@@ -382,6 +501,8 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnIsCollageModeChanged(bool value)
     {
+        RaiseShellTextsChanged();
+        OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill));
         RegenerateCommand.NotifyCanExecuteChanged();
         OnPropertyChanged(nameof(ShowPlaceholder));
         OnPropertyChanged(nameof(HasResult));
@@ -526,6 +647,7 @@ public partial class MainViewModel : ViewModelBase
             OutputSizeText = null;
             _collageExifSourcePath = null;
             _currentSourcePath = null;
+            Settings.HasPhoto = false;
             _lastFileName  = null;
             SavePngCommand.NotifyCanExecuteChanged();
 
@@ -689,7 +811,7 @@ public partial class MainViewModel : ViewModelBase
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = ex.ToString();
         }
         finally
         {
@@ -712,21 +834,19 @@ public partial class MainViewModel : ViewModelBase
         string suggested;
         if (IsCollageMode)
         {
-            suggested = "collage_palette" + _lastExtension;
+            suggested = SuggestedFileName.BuildCollage(_lastExtension);
         }
         else
         {
-            var suffix = Settings.IsRecipeMode ? "_recipe" : "_palette";
-            suggested = _lastFileName != null
-                ? Path.GetFileNameWithoutExtension(_lastFileName) + suffix + _lastExtension
-                : "palette" + _lastExtension;
+            suggested = SuggestedFileName.Build(_lastFileName, Settings.ExportMode, _lastExtension);
         }
         var ok = await SavePngAsync(suggested, _lastTempPng);
         if (!ok) return;
 
         _saveConfirmTimer?.Stop();
         IsSaved = true;
-        _saveConfirmTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+        if (!IsCollageMode) RecentPhotos.FirstOrDefault(r => r.IsCurrent)?.IsExported = true;
+        _saveConfirmTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
         _saveConfirmTimer.Tick += (_, _) =>
         {
             _saveConfirmTimer!.Stop();
@@ -774,11 +894,15 @@ public partial class MainViewModel : ViewModelBase
         _renderCts?.Cancel();
 
         _currentSourcePath = path;
+        Settings.HasPhoto = true;
         _lastFileName = fileName;
+        foreach (var r in RecentPhotos) r.IsCurrent = false;
+        if (!addToRecent) RecentPhotos.FirstOrDefault(r => r.FullPath == path)?.IsCurrent = true;
 
         if (addToRecent)
         {
             var entry = new FileEntry(fileName, path);
+            entry.IsCurrent = true;
             RecentPhotos.Insert(0, entry);
             _ = LoadRecentThumbnailAsync(entry);
 
@@ -820,22 +944,26 @@ public partial class MainViewModel : ViewModelBase
         catch { /* ignore unreadable files — thumbnail just stays blank */ }
     }
 
-    private async Task RenderCurrentAsync()
+    private async Task RenderCurrentAsync(bool keepPrevious = false)
     {
         if (_currentSourcePath == null) return;
         var sourcePath = _currentSourcePath;
 
+        if (!keepPrevious) _liveDebounceCts?.Cancel();
         _renderCts?.Cancel();
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        OriginalBitmap = null;
-        PaletteBitmap  = null;
         ErrorMessage   = null;
-        FileInfoText   = null;
-        OutputSizeText = null;
-        _lastTempPng   = null;
-        IsComparingToOriginal = false;
+        if (!keepPrevious)
+        {
+            OriginalBitmap = null;
+            PaletteBitmap  = null;
+            FileInfoText   = null;
+            OutputSizeText = null;
+            _lastTempPng   = null;
+            IsComparingToOriginal = false;
+        }
         _saveConfirmTimer?.Stop();
         IsSaved = false;
         SavePngCommand.NotifyCanExecuteChanged();
@@ -921,7 +1049,9 @@ public partial class MainViewModel : ViewModelBase
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
                     metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: recipeMetadataOverride,
                     labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground, qr: recipeQr,
-                    showRecipeCard: exportSettings.ShowRecipeCard), token);
+                    showRecipeCard: exportSettings.ShowRecipeCard,
+                    compositionGuide: exportSettings.CompositionGuide,
+                    hiddenRecipeFields: exportSettings.HiddenRecipeFields), token);
                 LogStage($"RecipeCardRenderer.Render ({exportSettings.Format})");
             }
             else
@@ -987,7 +1117,7 @@ public partial class MainViewModel : ViewModelBase
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = ex.ToString();
         }
         finally
         {

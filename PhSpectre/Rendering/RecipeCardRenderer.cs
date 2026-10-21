@@ -31,11 +31,13 @@ public static class RecipeCardRenderer
         float labelScale = 1f,
         bool useBlurredBackground = false,
         QrRenderOptions? qr = null,
-        bool showRecipeCard = true)
+        bool showRecipeCard = true,
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        string? hiddenRecipeFields = null)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields);
         Save(canvas, outputPath, format);
     }
 
@@ -53,10 +55,12 @@ public static class RecipeCardRenderer
         float labelScale = 1f,
         bool useBlurredBackground = false,
         QrRenderOptions? qr = null,
-        bool showRecipeCard = true)
+        bool showRecipeCard = true,
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        string? hiddenRecipeFields = null)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields);
         RenderPerfLog.OnStage?.Invoke("BuildCanvas total", sw.ElapsedMilliseconds);
         sw.Restart();
         Save(canvas, outputPath, format);
@@ -76,8 +80,10 @@ public static class RecipeCardRenderer
         float labelScale = 1f,
         bool useBlurredBackground = false,
         QrRenderOptions? qr = null,
-        bool showRecipeCard = true)
-        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard);
+        bool showRecipeCard = true,
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        string? hiddenRecipeFields = null)
+        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields);
 
     private static void Save(Image<Rgb24> canvas, string outputPath, OutputFormat format)
     {
@@ -91,29 +97,8 @@ public static class RecipeCardRenderer
     // exact same "what's shown" logic (kept here since it's a rendering concern, not a
     // ViewModel concern; the Avalonia ViewModel builds an equivalent list independently for
     // its own live display, since it doesn't reference PhSpectre.Rendering's raster types).
-    internal static List<(string Label, string Value)> BuildRows(FilmRecipe r)
-    {
-        var rows = new List<(string, string)>();
-        // Shortened first — a plate cell is a fixed width, and the full text of values like
-        // "Auto (white priority)" doesn't fit at a legible size (bugfix-pass §2).
-        void Add(string label, string? value) { if (!string.IsNullOrEmpty(value)) rows.Add((label, RecipeValueAbbreviations.Shorten(value))); }
-
-        Add("White Balance", r.WhiteBalance);
-        if (r.WhiteBalanceShift is { } shift) Add("WB Shift", $"R{shift.Red:+0;-0;0} B{shift.Blue:+0;-0;0}");
-        Add("Dynamic Range", r.DynamicRange);
-        if (r.HighlightTone is { } hi) Add("Highlight", hi.ToString("+0.#;-0.#;0"));
-        if (r.ShadowTone is { } sh) Add("Shadow", sh.ToString("+0.#;-0.#;0"));
-        if (r.Color is { } col) Add("Color", col.ToString());
-        if (r.Sharpness is { } sharp) Add("Sharpness", sharp.ToString("+0;-0;0"));
-        if (r.NoiseReduction is { } nr) Add("Noise Reduction", nr.ToString("+0;-0;0"));
-        if (r.Clarity is { } clarity) Add("Clarity", clarity.ToString("+0.#;-0.#;0"));
-        Add("Grain Effect", r.GrainEffect);
-        Add("Color Chrome", r.ColorChromeEffect);
-        Add("Color Chrome Blue", r.ColorChromeFxBlue);
-        if (r.BwAdjustment is { } bw) Add("B&W Adjustment", bw.ToString("+0;-0;0"));
-
-        return rows;
-    }
+    internal static List<(string Label, string Value)> BuildRows(FilmRecipe r, IReadOnlySet<string>? hidden = null) =>
+        RecipeFields.BuildVisible(r, hidden).Select(f => (f.FullLabel, f.Value)).ToList();
 
     private static Image<Rgb24> BuildCanvas(
         Image<Rgb24> original, FilmRecipe recipe,
@@ -123,14 +108,16 @@ public static class RecipeCardRenderer
         float labelScale = 1f,
         bool useBlurredBackground = false,
         QrRenderOptions? qr = null,
-        bool showRecipeCard = true)
+        bool showRecipeCard = true,
+        CompositionGuide compositionGuide = CompositionGuide.None,
+        string? hiddenRecipeFields = null)
     {
         var prepSw = System.Diagnostics.Stopwatch.StartNew();
         // Independent of QR (v3 spec §1a): unchecking "Show recipe card" drops the title +
         // parameter-plate grid entirely, so Show QR + Show recipe card off together leaves
         // just the photo and the QR block — no duplicated text. Camera-info strip (metaVerbosity)
         // is a separate toggle and unaffected.
-        var rows = showRecipeCard ? BuildRows(recipe) : [];
+        var rows = showRecipeCard ? BuildRows(recipe, RecipeFields.ParseKeys(hiddenRecipeFields)) : [];
 
         // Camera info plate (bugfix §2): only actually drawn when metaVerbosity isn't Off —
         // callers pass PaletteExportSettings.MetaVerbosity, which is already forced to Off
@@ -139,9 +126,20 @@ public static class RecipeCardRenderer
         PaletteImageRenderer.PhotoMetadata? exif = metaVerbosity == MetaVerbosity.Off
             ? null
             : (metadataOverride ?? PaletteImageRenderer.ReadMetadata(original));
+        int margin = PaletteImageRenderer.CardPadding(CardWidth);
+
+        // QR first: the camera plate shares the bottom row with the code (code bottom-right, plate
+        // left), so the plate is fitted to the width the code leaves over.
+        int qrBoxSize = QrCodeRenderer.SuggestBoxSize(CardWidth);
+        int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin);
+        int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize) : 0;
+        bool plateBesideQr = qr != null && CardWidth - (qrImgSize + 2 * margin) >= CardWidth * 0.4;
+        int plateWidth = plateBesideQr ? CardWidth - (qrImgSize + 2 * margin) : CardWidth;
+
         var (metaLines, metaStripH, metaFs, metaFont) = exif != null
-            ? PaletteImageRenderer.PrepareStrip(exif, metaVerbosity, CardWidth)
+            ? PaletteImageRenderer.PrepareStrip(exif, metaVerbosity, plateWidth)
             : ([], 0, 0f, null);
+        bool plateInRow = plateBesideQr && metaLines.Length > 0;
         var text = PaletteImageRenderer.GetTextColor(theme, customBackground);
         var plateFill = theme == Theme.Light ? Color.ParseHex("EAEAEA") : Color.ParseHex("222222");
         // Over a blurred-photo backdrop, a fully opaque plate reads as a harsh, out-of-place
@@ -152,7 +150,6 @@ public static class RecipeCardRenderer
         // blending in this ImageSharp version, so it can't be used directly for this).
         const float platesOpacityOnBlur = 0.4f;
 
-        int margin = CardWidth / 30;
         int photoH = Math.Max(1, (int)Math.Round(CardWidth * (double)original.Height / original.Width));
         float photoRadius = CardWidth * 0.02f;
 
@@ -171,8 +168,10 @@ public static class RecipeCardRenderer
         // ~11 parameters versus a handful of swatches in one row.
         const int targetPlateW = 260;
         int gap = margin / 2;
-        int cols = Math.Max(1, Math.Min(rows.Count, (CardWidth - 2 * margin + gap) / (targetPlateW + gap)));
-        int plateW = cols > 0 ? (CardWidth - 2 * margin - gap * (cols - 1)) / cols : 0;
+        // Always 4 columns: the plate width comes from the full grid, so with fewer visible fields
+        // (or an incomplete last row) the plates keep their size instead of stretching across the card.
+        const int cols = 4;
+        int plateW = (CardWidth - 2 * margin - gap * (cols - 1)) / cols;
 
         // Even after RecipeValueAbbreviations.Shorten, a value can still be too wide for a
         // one-line fit at the plate's fixed width (bugfix-pass §2) — rather than let it spill
@@ -187,16 +186,12 @@ public static class RecipeCardRenderer
         int gridRows = rows.Count == 0 ? 0 : (rows.Count + cols - 1) / cols;
         int gridH = gridRows == 0 ? 0 : gridRows * plateH + (gridRows - 1) * gap;
 
-        int qrBoxSize = QrCodeRenderer.SuggestBoxSize(CardWidth);
-        int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin);
-
-        // QR below-block sits right after the photo, before the title/plates grid and the
-        // metadata strip — those are exactly the "text plates" the v2 spec says Below must
-        // anchor ahead of, not the very bottom of the whole card (the reported bug: Recipe
-        // mode's QR landed under everything, with a big empty band beside it).
-        int qrBlockY = photoH;
-        int titleY   = photoH + qrBelowH + margin;
-        int canvasH  = photoH + qrBelowH + margin + titleH + (gridH > 0 ? margin / 2 + gridH : 0) + margin + metaStripH;
+        // Bottom row (Cards-Recipe): camera plate on the left, QR on the right, both centered in
+        // one row of the taller one's height. Without a plate the QR keeps a row of its own.
+        int bottomRowH = plateInRow ? Math.Max(qrBelowH, metaStripH) : qrBelowH + metaStripH;
+        int titleY   = photoH + margin;
+        int canvasH  = photoH + margin + titleH + (gridH > 0 ? margin / 2 + gridH : 0) + margin + bottomRowH;
+        int qrBlockY = plateInRow ? canvasH - bottomRowH : canvasH - metaStripH - qrBelowH;
         RenderPerfLog.OnStage?.Invoke("rows+metadata+layout prep", prepSw.ElapsedMilliseconds);
         var canvas = new Image<Rgb24>(CardWidth, canvasH);
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -210,6 +205,9 @@ public static class RecipeCardRenderer
             using var roundedPhoto = ApplyRoundedCorners(original, CardWidth, photoH, photoRadius);
             ctx.DrawImage(roundedPhoto, new Point(0, 0), 1f);
             Stage("ApplyRoundedCorners+DrawImage");
+
+            PaletteImageRenderer.DrawCompositionGuide(ctx, compositionGuide, 0, 0, CardWidth, photoH);
+            Stage("DrawCompositionGuide");
 
             if (showRecipeCard)
             {
@@ -269,9 +267,9 @@ public static class RecipeCardRenderer
 
             if (metaStripH > 0)
             {
-                int stripY = canvasH - metaStripH;
+                int stripY = plateInRow ? qrBlockY + (bottomRowH - metaStripH) / 2 : canvasH - metaStripH;
                 PaletteImageRenderer.DrawStrip(ctx, metaLines, metaStripH, metaFs, metaFont,
-                    MetaStyle.FilmStrip, theme, x: 0, y: stripY, w: CardWidth, customBackground: customBackground,
+                    MetaStyle.FilmStrip, theme, x: 0, y: stripY, w: plateInRow ? plateWidth : CardWidth, customBackground: customBackground,
                     useBlurredBackground: useBlurredBackground);
             }
             Stage("DrawStrip");
@@ -280,7 +278,8 @@ public static class RecipeCardRenderer
                 QrCodeRenderer.DrawBelowBlock(ctx, qr.TargetUrl, qrBoxSize, margin,
                     blockY: qrBlockY, blockWidth: CardWidth,
                     qr.Caption, qr.CaptionCamera, qr.CaptionLens,
-                    theme, customBackground);
+                    theme, customBackground,
+                    rowHeight: plateInRow ? bottomRowH : qrBelowH, plateInRow: plateInRow);
             Stage("QrCode");
         });
 

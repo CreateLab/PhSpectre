@@ -32,9 +32,20 @@ public partial class MainView : UserControl
 
     private void ApplySafeArea(Thickness padding) => RootPanel.Margin = padding;
 
+    // Tablet layout (inspector as a right-hand column) from 840 dp up; below that the inspector
+    // is a bottom sheet. Breakpoint is an estimate — confirm on real devices.
+    private const double WideBreakpoint = 840;
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (DataContext is MainViewModel vm) vm.IsWide = e.NewSize.Width >= WideBreakpoint;
+    }
+
     private void WireViewModel()
     {
         if (DataContext is not MainViewModel vm) return;
+        vm.IsWide = Bounds.Width >= WideBreakpoint;
 
         // Resolved lazily on each call, not captured once here: on Android the
         // DataContext is assigned before this control is attached to the visual

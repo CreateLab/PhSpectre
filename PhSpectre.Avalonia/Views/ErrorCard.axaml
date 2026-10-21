@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:views="using:PhSpectre.Avalonia.Views"
+             x:Class="PhSpectre.Avalonia.Views.ErrorCard"
+             x:DataType="views:ErrorCard"
+             x:Name="Root">
+
+    <!-- V2-Errors: a banner at the top of the stage. The last good result stays visible below it
+         and the UI stays usable; the full exception text sits in a scrollable, copyable block. -->
+    <Border Classes="toast" Padding="16" MaxWidth="560" HorizontalAlignment="Center" VerticalAlignment="Top">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <Border Width="36" Height="36" CornerRadius="18" VerticalAlignment="Top"
+                    Background="{DynamicResource ControlBrush}">
+                <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="20" Height="20"
+                                             Foreground="{DynamicResource ErrorBrush}"/>
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="10">
+                <TextBlock Text="Couldn’t update the preview" FontSize="16" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="These settings don’t work with this photo. The previous result is still shown."
+                           Classes="hint"/>
+                <Border Background="{DynamicResource ControlBrush}" CornerRadius="8" Padding="10,8">
+                    <ScrollViewer MaxHeight="120" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <SelectableTextBlock Text="{Binding #Root.Message}" Classes="value" FontWeight="Normal"
+                                             FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                    </ScrollViewer>
+                </Border>
+                <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                    <Button Classes="ghost" Content="Copy details" Click="CopyDetails_Click"/>
+                    <Button Classes="cta" Content="Try again" Padding="16,0"
+                            Command="{Binding #Root.TryAgainCommand}"/>
+                </StackPanel>
+            </StackPanel>
+            <Button Grid.Column="2" Classes="link" VerticalAlignment="Top" Width="28" Height="28"
+                    Foreground="{DynamicResource TextSecondaryBrush}"
+                    Command="{Binding #Root.DismissCommand}"
+                    ToolTip.Tip="Close (Esc)">
+                <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

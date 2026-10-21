@@ -1,0 +1,403 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        V2 component kit (HANDOFF §4). Everything reads tokens through DynamicResource so the
+        app theme switch restyles it live. Controls are re-templated here instead of overriding
+        Fluent's part names, which keeps them independent of the Fluent version.
+    -->
+
+    <!-- Base fills live in styles, not in the templates: a value set inside a template is a local
+         value and would beat the :selected / :checked overrides below. -->
+    <Style Selector="ListBox.seg > ListBoxItem /template/ Border#Bg">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="ToggleButton.switch /template/ Border#Track">
+        <Setter Property="Background" Value="{DynamicResource SwitchOffBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.switch /template/ Ellipse#Knob">
+        <Setter Property="Fill" Value="#FFFFFF"/>
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem /template/ Border#Bg">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+    <Style Selector="ListBox.options > ListBoxItem /template/ Border#Bg">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+    </Style>
+    <Style Selector="ListBox.filmstrip > ListBoxItem /template/ Border#Ring">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+    </Style>
+
+    <!-- ── Segmented control: ListBox.seg ─────────────────────────────────────────────── -->
+    <Style Selector="ListBox.seg">
+        <Setter Property="Background" Value="{DynamicResource ControlBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="3"/>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <UniformGrid Rows="1"/>
+            </ItemsPanelTemplate>
+        </Setter>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+    </Style>
+    <Style Selector="ListBox.seg > ListBoxItem">
+        <Setter Property="MinHeight" Value="30"/>
+        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="Margin" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bg" CornerRadius="{TemplateBinding CornerRadius}"
+                        MinHeight="{TemplateBinding MinHeight}" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Name="Content"
+                                      Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.seg > ListBoxItem:pointerover /template/ Border#Bg">
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
+    </Style>
+    <Style Selector="ListBox.seg > ListBoxItem:selected">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+    </Style>
+    <Style Selector="ListBox.seg > ListBoxItem:selected /template/ Border#Bg">
+        <Setter Property="Background" Value="{DynamicResource ControlSelectedBrush}"/>
+    </Style>
+    <Style Selector="ListBox.seg.compact > ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="12"/>
+    </Style>
+    <Style Selector="ListBox.seg.touch > ListBoxItem">
+        <Setter Property="MinHeight" Value="38"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+
+    <!-- ── Switch: ToggleButton.switch ────────────────────────────────────────────────── -->
+    <Style Selector="ToggleButton.switch">
+        <Setter Property="Width" Value="40"/>
+        <Setter Property="Height" Value="24"/>
+        <Setter Property="MinWidth" Value="40"/>
+        <Setter Property="MinHeight" Value="24"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Track" CornerRadius="12">
+                    <Ellipse Name="Knob" Width="18" Height="18" Margin="3,0"
+                             HorizontalAlignment="Left" VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ToggleButton.switch:checked /template/ Border#Track">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.switch:checked /template/ Ellipse#Knob">
+        <Setter Property="HorizontalAlignment" Value="Right"/>
+        <Setter Property="Fill" Value="{DynamicResource AccentInkBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.switch:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- ── Slider: Slider.v2 ──────────────────────────────────────────────────────────── -->
+    <Style Selector="Slider.v2">
+        <Setter Property="MinHeight" Value="28"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Height="28" Background="Transparent">
+                    <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                            Background="{DynamicResource SwitchOffBrush}"/>
+                    <Track Name="PART_Track" Orientation="Horizontal"
+                           Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                           Value="{TemplateBinding Value, Mode=TwoWay}"
+                           IsDirectionReversed="{TemplateBinding IsDirectionReversed}">
+                        <Track.DecreaseButton>
+                            <RepeatButton Name="PART_DecreaseButton" Focusable="False">
+                                <RepeatButton.Template>
+                                    <ControlTemplate>
+                                        <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                                                Background="{DynamicResource AccentBrush}"/>
+                                    </ControlTemplate>
+                                </RepeatButton.Template>
+                            </RepeatButton>
+                        </Track.DecreaseButton>
+                        <Track.IncreaseButton>
+                            <RepeatButton Name="PART_IncreaseButton" Focusable="False">
+                                <RepeatButton.Template>
+                                    <ControlTemplate>
+                                        <Border Background="Transparent"/>
+                                    </ControlTemplate>
+                                </RepeatButton.Template>
+                            </RepeatButton>
+                        </Track.IncreaseButton>
+                        <Thumb Name="thumb" Width="22" Height="22">
+                            <Thumb.Template>
+                                <ControlTemplate>
+                                    <Ellipse Fill="{DynamicResource TextPrimaryBrush}"
+                                             Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/>
+                                </ControlTemplate>
+                            </Thumb.Template>
+                        </Thumb>
+                    </Track>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+
+    <!-- ── Fields ─────────────────────────────────────────────────────────────────────── -->
+    <Style Selector="TextBox, ComboBox">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="MinHeight" Value="36"/>
+    </Style>
+    <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="TextBox.invalid /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="TextBox.invalid">
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+
+    <!-- ── Text roles ─────────────────────────────────────────────────────────────────── -->
+    <Style Selector="TextBlock.section-title">
+        <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="LetterSpacing" Value="0.9"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="Margin" Value="0,22,0,10"/>
+    </Style>
+    <Style Selector="TextBlock.section-title.first">
+        <Setter Property="Margin" Value="0,8,0,10"/>
+    </Style>
+    <Style Selector="TextBlock.row">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.row-dim">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.hint">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="LineHeight" Value="17"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.hint.error">
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.value">
+        <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- ── Color chip (Card: Dark / Light / Custom): ListBox.chips ────────────────────── -->
+    <Style Selector="ListBox.chips">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <UniformGrid Rows="1"/>
+            </ItemsPanelTemplate>
+        </Setter>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem">
+        <Setter Property="Padding" Value="2"/>
+        <Setter Property="Margin" Value="0,0,4,0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bg" Padding="{TemplateBinding Padding}" BorderThickness="2" CornerRadius="12">
+                    <ContentPresenter Name="Content" Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.chips > ListBoxItem:selected /template/ Border#Bg">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+
+    <!-- ── Option row (export size): ListBox.options ──────────────────────────────────── -->
+    <Style Selector="ListBox.options">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Disabled"/>
+    </Style>
+    <Style Selector="ListBox.options > ListBoxItem">
+        <Setter Property="Padding" Value="12,0"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="MinHeight" Value="44"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Bg" Padding="{TemplateBinding Padding}" MinHeight="{TemplateBinding MinHeight}"
+                        BorderThickness="1" CornerRadius="8">
+                    <ContentPresenter Name="Content" Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.options > ListBoxItem:selected /template/ Border#Bg">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+    </Style>
+
+    <!-- ── Panels ─────────────────────────────────────────────────────────────────────── -->
+    <Style Selector="Border.pill">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+    </Style>
+    <Style Selector="Border.toast">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="BoxShadow" Value="0 8 28 0 #55000000"/>
+    </Style>
+
+    <!-- Filmstrip item -->
+    <Style Selector="ListBox.filmstrip">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="ItemsPanel">
+            <ItemsPanelTemplate>
+                <VirtualizingStackPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.filmstrip > ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Ring" Padding="2" CornerRadius="9" BorderThickness="2">
+                    <ContentPresenter Name="Content" Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.filmstrip > ListBoxItem:selected /template/ Border#Ring">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="ListBox.filmstrip > ListBoxItem:pointerover /template/ Border#Ring">
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
+    </Style>
+
+    <!-- Tabs reuse the segmented look but are taller on touch -->
+    <Style Selector="Button.cta">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.cta:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+        <Setter Property="Opacity" Value="0.9"/>
+    </Style>
+    <Style Selector="Button.cta:pressed /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+        <Setter Property="Opacity" Value="0.8"/>
+    </Style>
+    <Style Selector="Button.cta:disabled /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource DisabledFillBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+
+    <!-- Secondary action next to a cta: transparent, theme border, same height -->
+    <Style Selector="Button.ghost">
+        <Setter Property="Height" Value="40"/>
+        <Setter Property="Padding" Value="16,0"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.ghost:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <!-- Mobile filmstrip tile: accent ring on the photo on screen -->
+    <Style Selector="Button.film">
+        <Setter Property="Padding" Value="2"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="BorderThickness" Value="2"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="CornerRadius" Value="9"/>
+    </Style>
+    <Style Selector="Button.film.current">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+    </Style>
+    <Style Selector="Button.film:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="Button.link">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="MinWidth" Value="0"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+        <Setter Property="Opacity" Value="0.8"/>
+    </Style>
+
+</Styles>

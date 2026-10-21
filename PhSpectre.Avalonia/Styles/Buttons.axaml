@@ -6,7 +6,7 @@
         <Setter Property="Height" Value="44"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="BorderThickness" Value="1.5"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderPrimaryBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
     </Style>
     <!-- FluentTheme's own base (non-hover) Button style also sets Foreground, at the same
@@ -14,17 +14,17 @@
          (where our :pointerover selector, being pseudo-class-scoped, does outrank it).
          Scoping this to :enabled gives it the same specificity edge. -->
     <Style Selector="Button.primary:enabled">
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="Button.primary:pointerover">
-        <Setter Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderPrimaryBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderPrimaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="Button.primary:disabled">
-        <Setter Property="Background" Value="{StaticResource DisabledFillBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource DisabledFillBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
     <!-- Secondary action (e.g. Save to Gallery): thin border, muted text -->
@@ -32,14 +32,14 @@
         <Setter Property="Height" Value="40"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Padding" Value="16,0"/>
     </Style>
     <Style Selector="Button.secondary:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#0FFFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
     </Style>
 
     <!-- Mobile Settings summary screen row — a tappable "card" opening a bottom sheet for
@@ -48,22 +48,22 @@
         <Setter Property="Height" Value="52"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="HorizontalAlignment" Value="Stretch"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
     </Style>
     <Style Selector="Button.settings-card:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#0FFFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
     </Style>
 
     <!-- Plain text action (e.g. Done on the settings header): no border, full-weight text -->
     <Style Selector="Button.text">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Padding" Value="8,6"/>
@@ -86,20 +86,20 @@
         <Setter Property="Height" Value="36"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
         <Setter Property="FontSize" Value="13"/>
     </Style>
     <Style Selector="Button.danger-outline:pointerover">
-        <Setter Property="Background" Value="{StaticResource HoverOverlayBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource ErrorBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource ErrorBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ErrorBrush}"/>
     </Style>
     <Style Selector="Button.danger-outline:disabled">
-        <Setter Property="Background" Value="{StaticResource DisabledFillBrush}"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource DisabledFillBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
     <!-- Small square icon-only button used in toolbars (settings, reopen-photo) -->
@@ -108,14 +108,14 @@
         <Setter Property="Height" Value="32"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.icon-toolbar:pointerover /template/ ContentPresenter">
-        <Setter Property="Background" Value="#14FFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource HoverOverlayBrush}"/>
     </Style>
 
     <!-- Small icon button overlaid directly on a photo thumbnail (collage tray's
@@ -142,16 +142,16 @@
         <Setter Property="Height" Value="32"/>
         <Setter Property="CornerRadius" Value="16"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Padding" Value="12,0"/>
     </Style>
     <Style Selector="Button.mode-chip.selected">
-        <Setter Property="BorderBrush" Value="{StaticResource CardBorderPrimaryBrush}"/>
-        <Setter Property="Background" Value="{StaticResource CardBorderPrimaryBrush}"/>
-        <Setter Property="Foreground" Value="{StaticResource BackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource CardBorderPrimaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/>
     </Style>
 
 </Styles>

@@ -42,7 +42,8 @@ public sealed record PaletteExportSettings(
     string QrCustomUrl = "",
     bool QrIncludeNote = false,
     string QrNoteText = "",
-    bool ShowRecipeCard = true)
+    bool ShowRecipeCard = true,
+    string HiddenRecipeFields = "")
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 
@@ -92,7 +93,7 @@ public sealed record PaletteExportSettings(
 
     public static PaletteExportSettings SnapshotFrom(SettingsViewModel s)
     {
-        var customBackground = s.BackgroundMode == BackgroundMode.Custom ? ParseHexOrNull(s.CustomBackgroundHex) : null;
+        var customBackground = s.BackgroundMode == BackgroundMode.Custom ? ParseHexOrNull(s.CustomBackgroundHex) ?? ParseHexOrNull(s.LastValidCustomHex) : null;
         // The camera-info plate only actually draws when EffectiveShowCameraInfo is true
         // (the manual toggle, or forced on for InfoOnly/CollageInfoOnly) — otherwise force
         // MetaVerbosity.Off regardless of what the (now-hidden) Metadata section last had,
@@ -123,9 +124,10 @@ public sealed record PaletteExportSettings(
             QrCustomUrl: s.QrCustomUrl,
             QrIncludeNote: s.QrIncludeNote,
             QrNoteText: s.QrNoteText,
-            ShowRecipeCard: s.ShowRecipeCard);
+            ShowRecipeCard: s.ShowRecipeCard,
+            HiddenRecipeFields: s.HiddenRecipeFields);
     }
 
     private static Color? ParseHexOrNull(string? hex) =>
-        !string.IsNullOrWhiteSpace(hex) && Color.TryParseHex(hex, out var c) ? c : null;
+        HexColorInput.TryParse(hex, out var c) ? c : null;
 }

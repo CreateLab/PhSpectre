@@ -6,7 +6,7 @@
         Title="Batch export — errors"
         Width="480" Height="360" MinWidth="360" MinHeight="240"
         WindowStartupLocation="CenterOwner"
-        Background="{StaticResource BackgroundBrush}">
+        Background="{DynamicResource BackgroundBrush}">
 
     <Grid RowDefinitions="*,Auto" Margin="16">
         <ListBox Grid.Row="0" ItemsSource="{Binding}" Background="Transparent" BorderThickness="0">

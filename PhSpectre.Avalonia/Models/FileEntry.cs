@@ -20,6 +20,12 @@ public partial class FileEntry : ObservableObject
     // imperatively) rather than computed in XAML so the tray badge binding stays trivial.
     [ObservableProperty] private bool _isCollageExifSource;
 
+    // Filmstrip badge: set once this photo has been saved (single save or Save all).
+    [ObservableProperty] private bool _isExported;
+
+    // Mobile filmstrip: the photo currently on screen gets the accent ring.
+    [ObservableProperty] private bool _isCurrent;
+
     public FileEntry(string fileName, string fullPath)
     {
         FileName = fileName;

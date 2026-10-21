@@ -33,7 +33,7 @@ public static class QrCodeRenderer
     // regardless of how many modules it technically has (§4 of the v2 spec: a long payload +
     // high error correction can produce a module count whose per-pixel size, at a merely
     // proportional box size, rounds down to 2-3px and becomes unscannable).
-    private const int MinPxPerModule = 8;
+    private const int MinPxPerModule = 4;
 
     // Suggested QR module-box size for a canvas of the given reference width — proportional,
     // same spirit as the margin/gap formulas already used elsewhere in this file's siblings.
@@ -58,10 +58,15 @@ public static class QrCodeRenderer
         return margin + imgSize + margin;
     }
 
+    // Pixel size of the QR image itself (quiet zone included) — what the bottom row has to make
+    // room for beside the camera plate.
+    public static int PredictImageSize(QrRenderOptions qr, int qrBoxSize, int downscaleFactor = 1) =>
+        PredictModuleImageSize(qr.TargetUrl, qrBoxSize, Ecc, downscaleFactor);
+
     // The spec's recommended default error-correction level — Below has dedicated card space,
     // so there's no partial-occlusion case (that was Overlay's reason for a higher level, and
     // Overlay is gone — see QrPlacement).
-    private const QrCode.Ecc Ecc = QrCode.Ecc.Medium;
+    private const QrCode.Ecc Ecc = QrCode.Ecc.Low;
 
     // Same module/pixel math RenderModules uses, without allocating an image — lets callers
     // that must size a layout BEFORE drawing (ComputeBelowBlockHeight) predict exactly what
@@ -126,25 +131,48 @@ public static class QrCodeRenderer
     // block at standard margin spacing, optionally with a caption beside it (v4 spec §1b:
     // Caption is independent of Content preset — None/Camera/CameraAndLens gate what's drawn
     // here, regardless of what's encoded inside the QR itself).
+    //
+    // Layout (Cards-Recipe board): the code sits at the bottom-right with "SCAN FOR THE RECIPE" in
+    // small mono caps to its left, and the row is shared with the camera plate. rowHeight is the
+    // height of that shared row (default: the QR plus a margin above and below); the code is
+    // centered in it. When the plate isn't drawn in this row (plateInRow = false) the Caption
+    // (camera / lens) fills the left side instead, so the setting still does something on cards
+    // without a plate.
     public static void DrawBelowBlock(
         IImageProcessingContext ctx, string url, int boxSize, int margin,
         int blockY, int blockWidth, QrCaption caption, string? captionCamera, string? captionLens,
-        Theme theme, Color? customBackground, int downscaleFactor = 1)
+        Theme theme, Color? customBackground, int downscaleFactor = 1,
+        int? rowHeight = null, bool plateInRow = false)
     {
         using var qrImg = RenderModules(url, boxSize, Ecc, downscaleFactor);
-        int qrX = margin;
-        int qrY = blockY + margin;
+        int rowH = rowHeight ?? (qrImg.Height + 2 * margin);
+        int qrX = blockWidth - margin - qrImg.Width;
+        int qrY = blockY + (rowH - qrImg.Height) / 2;
         ctx.DrawImage(qrImg, new Point(qrX, qrY), 1f);
 
-        if (caption == QrCaption.None || string.IsNullOrEmpty(captionCamera)) return;
-
         var textColor = PaletteImageRenderer.GetTextColor(theme, customBackground);
+
+        // "SCAN FOR / THE RECIPE": always present next to the code, right-aligned against it.
+        var scanFont = PaletteImageRenderer.ResolveMetaFont(Math.Max(9f, Math.Min(blockWidth * 0.014f, qrImg.Height * 0.11f)));
+        float scanRight = qrX - margin / 2f;
+        float scanLineH = scanFont.Size * 1.35f;
+        float scanTop = qrY + qrImg.Height / 2f - scanLineH;
+        string[] scanLines = ["SCAN FOR", "THE RECIPE"];
+        for (int i = 0; i < scanLines.Length; i++)
+            ctx.DrawText(new RichTextOptions(scanFont)
+            {
+                Origin = new PointF(scanRight, scanTop + i * scanLineH),
+                HorizontalAlignment = HorizontalAlignment.Right,
+            }, scanLines[i], textColor.WithAlpha(0.6f));
+
+        if (plateInRow || caption == QrCaption.None || string.IsNullOrEmpty(captionCamera)) return;
+        float scanWidth = TextMeasurer.MeasureSize("THE RECIPE", new TextOptions(scanFont)).Width;
         // Same column gap RecipeCardRenderer's parameter grid uses between plates — v-final
         // spec §3 "Компоновка": the QR-to-caption gap should match that grid's gap, not the
         // wider outer card margin the block itself is inset by.
         int gap = margin / 2;
-        int textX = qrX + qrImg.Width + gap;
-        float maxTextWidth = Math.Max(20, blockWidth - textX - margin);
+        int textX = margin;
+        float maxTextWidth = Math.Max(20, scanRight - scanWidth - gap - textX);
         bool twoLines = caption == QrCaption.CameraAndLens && !string.IsNullOrEmpty(captionLens);
 
         if (!twoLines)

@@ -46,7 +46,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
                 DynamicRange: DecodeDynamicRange(entries),
                 HighlightTone: DecodeTone(entries, 0x1041),
                 ShadowTone: DecodeTone(entries, 0x1040),
-                Color: DecodeLevel(entries, 0x1003, SaturationLevelMap),
+                Color: DecodeColorLevel(entries),
                 Sharpness: DecodeLevel(entries, 0x1001, SharpnessMap),
                 NoiseReduction: DecodeLevel(entries, 0x100e, NoiseReductionMap),
                 Clarity: DecodeClarity(entries, 0x100f),
@@ -162,6 +162,10 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
     // human-facing dial position via the supplied lookup; an unrecognized raw value passes
     // through unchanged rather than being dropped (there's no string sentinel to fall back
     // to for an int? field).
+    // Fujifilm Color is -4..+4; an unmapped raw value (e.g. a B&W-family code) is not a level.
+    private static int? DecodeColorLevel(Dictionary<ushort, byte[]> entries) =>
+        DecodeLevel(entries, 0x1003, SaturationLevelMap) is >= -4 and <= 4 and var c ? c : null;
+
     private static int? DecodeLevel(Dictionary<ushort, byte[]> entries, ushort tag, IReadOnlyDictionary<int, int> map)
     {
         var raw = ReadRawNumber(entries, tag);

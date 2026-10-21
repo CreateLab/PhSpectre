@@ -16,12 +16,12 @@
     <Style Selector="TextBlock.mono-data">
         <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
     </Style>
     <Style Selector="TextBlock.mono-data-small">
         <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
         <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
     </Style>
 
     <Style Selector="TextBlock.app-title">

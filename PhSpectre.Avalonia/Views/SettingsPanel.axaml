@@ -1,793 +1,665 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
              x:Class="PhSpectre.Avalonia.Views.SettingsPanel"
              x:DataType="vm:SettingsViewModel">
 
     <!--
-        Plain text group headers, not Expander/collapsible cards — 12 settings across 4
-        groups doesn't need collapsing, and Expander's FluentTheme chrome was the source of
-        the accent-colored-header bug in the previous iteration. A thin Border under
-        Classes="section-sep" stands in for a divider (not the FluentTheme Separator
-        control, to keep its exact appearance under our own control).
+        Inspector (HANDOFF §2.3): three tabs — Style / Content / Export — shared by the desktop
+        sidebar and the mobile sheet. Rows follow the V2 kit in Styles/Controls.axaml. Every
+        setting is either usable or states why it isn't (hint line under it).
     -->
     <UserControl.Styles>
-        <Style Selector="TextBlock.section-header">
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="LetterSpacing" Value="0.8"/>
-            <Setter Property="Margin" Value="0,20,0,8"/>
-        </Style>
-        <Style Selector="TextBlock.section-header.first">
-            <Setter Property="Margin" Value="0,0,0,8"/>
-        </Style>
-        <Style Selector="Border.section-sep">
-            <Setter Property="Height" Value="1"/>
-            <Setter Property="Background" Value="{StaticResource CardBorderBrush}"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
-        </Style>
-        <Style Selector="TextBlock.row-label">
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="Margin" Value="0,0,12,4"/>
-        </Style>
-        <Style Selector="Grid.settings-row">
-            <Setter Property="MinHeight" Value="44"/>
-        </Style>
-        <Style Selector="ComboBox">
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="MinHeight" Value="40"/>
-            <Setter Property="MinWidth" Value="0"/>
-            <Setter Property="ItemTemplate">
-                <DataTemplate>
-                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
-                </DataTemplate>
-            </Setter>
-        </Style>
-        <Style Selector="CheckBox, RadioButton">
-            <Setter Property="MinHeight" Value="44"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-        </Style>
-        <Style Selector="TextBox">
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
+        <Style Selector="Grid.row">
             <Setter Property="MinHeight" Value="40"/>
         </Style>
-        <Style Selector="NumericUpDown">
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Style Selector="Grid.row ComboBox">
+            <Setter Property="Width" Value="170"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="MinHeight" Value="40"/>
-            <Setter Property="MinWidth" Value="0"/>
         </Style>
-        <Style Selector="Slider">
-            <Setter Property="HorizontalAlignment" Value="Stretch"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-            <Setter Property="MinHeight" Value="32"/>
+        <Style Selector="StackPanel.group">
+            <Setter Property="Spacing" Value="4"/>
         </Style>
         <Style Selector="Border.recipe-plate">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource CardBorderBrush}"/>
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="CornerRadius" Value="8"/>
             <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="Margin" Value="0,0,8,8"/>
-            <Setter Property="MinWidth" Value="96"/>
-            <!-- Capped so a long value wraps inside the plate instead of stretching the
-                 WrapPanel's column arbitrarily wide (bugfix-pass §2). -->
-            <Setter Property="MaxWidth" Value="160"/>
+            <Setter Property="Margin" Value="3"/>
         </Style>
         <Style Selector="TextBlock.recipe-plate-label">
             <Setter Property="FontSize" Value="10"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
             <Setter Property="TextAlignment" Value="Center"/>
         </Style>
         <Style Selector="TextBlock.recipe-plate-value">
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="TextWrapping" Value="NoWrap"/>
+            <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
             <Setter Property="TextAlignment" Value="Center"/>
         </Style>
     </UserControl.Styles>
 
-    <StackPanel Spacing="0" Grid.IsSharedSizeScope="True">
+    <Grid RowDefinitions="Auto,*">
 
-        <!-- ── Export mode ───────────────────────────────────────── -->
-        <StackPanel IsVisible="{Binding ShowExportModeSectionUI}">
-        <TextBlock Text="EXPORT MODE" Classes="section-header first"/>
-        <ComboBox x:Name="ExportModeBox" HorizontalAlignment="Stretch"/>
-        </StackPanel>
+        <!-- Tabs -->
+        <ListBox Grid.Row="0" Classes="seg" x:Name="TabsBox" IsVisible="{Binding !IsRecipeEditorOpen}" Margin="0,0,0,4"
+                 SelectedIndex="{Binding ActiveTabIndex}">
+            <ListBoxItem Content="Style"/>
+            <ListBoxItem Content="Content"/>
+            <ListBoxItem Content="Export"/>
+        </ListBox>
 
-        <!-- ── Background (theme / custom color / blurred photo) ──────────────
-             Always visible, unlike Palette/Swatches (ComputeColors-gated) and Film Recipe
-             (Recipe-mode-gated) — Theme/Background affects every export mode's card,
-             including InfoOnly, which previously had no UI to control it at all. -->
-        <StackPanel IsVisible="{Binding ShowBackgroundSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="BACKGROUND" Classes="section-header"/>
-        <StackPanel Spacing="10">
+        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsRecipeEditorOpen}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,12,0">
+        <Panel>
 
-            <Grid x:Name="BackgroundThemeRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <!-- Controls the exported image's background/text theme, not the app's own
-                     UI (that's fixed — dark on Android, always-light on Desktop). Labeled
-                     "Card theme" so it doesn't read as a dead app-theme toggle. Also picks
-                     which of the two Blurred-photo variants renders (darkened vs lightened). -->
-                <TextBlock Grid.Column="0" Text="Card theme" Classes="row-label"/>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                    <RadioButton Content="Dark"  IsChecked="{Binding IsDarkTheme}"/>
-                    <RadioButton Content="Light" IsChecked="{Binding IsDarkTheme,
-                                                  Converter={x:Static BoolConverters.Not}}"/>
+        <!-- ═════════════════════════ STYLE ═════════════════════════ -->
+        <StackPanel IsVisible="{Binding IsStyleTab}" Margin="0,0,0,28">
+
+            <TextBlock Text="CARD" Classes="section-title first"/>
+
+            <ListBox Classes="chips" SelectedIndex="{Binding CardChoiceIndex}">
+                <ListBoxItem>
+                    <StackPanel Spacing="6">
+                        <Border Height="48" CornerRadius="8" Background="#111113"
+                                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
+                        <TextBlock Text="Dark" FontSize="12" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Spacing="6">
+                        <Border Height="48" CornerRadius="8" Background="#F3F3F3"
+                                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
+                        <TextBlock Text="Light" FontSize="12" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Spacing="6">
+                        <Border Height="48" CornerRadius="8" BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,100%" EndPoint="100%,0%">
+                                    <GradientStop Offset="0" Color="#3A3F2A"/>
+                                    <GradientStop Offset="1" Color="#B9D2F2"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="+" FontSize="18" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Custom" FontSize="12" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </ListBoxItem>
+            </ListBox>
+
+            <!-- Custom colour: empty field is hidden unless Custom is chosen (V2-Errors). -->
+            <StackPanel IsVisible="{Binding IsCustomBackgroundMode}" Spacing="6" Margin="0,12,0,0">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Width="36" Height="36" CornerRadius="8" Margin="0,0,8,0"
+                            Background="{Binding CustomSwatchBrush}"
+                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
+                    <TextBox Grid.Column="1" Text="{Binding CustomBackgroundHex, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="#RRGGBB" Classes.invalid="{Binding ShowCustomHexError}"
+                             FontFamily="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
+                </Grid>
+                <TextBlock Text="Not a valid color. Use #RRGGBB. The preview keeps the last valid color."
+                           IsVisible="{Binding ShowCustomHexError}" Classes="hint error"/>
+            </StackPanel>
+
+            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                <TextBlock Text="Blurred photo backdrop" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding UseBlurredBackdrop}"
+                              IsEnabled="{Binding IsBlurredBackdropEnabled}"/>
+            </Grid>
+            <TextBlock Text="Not available with a custom color — the backdrop is a flat fill."
+                       IsVisible="{Binding IsCustomBackgroundMode}" Classes="hint"/>
+            <TextBlock Text="Ignored for Collage — falls back to the card theme."
+                       IsVisible="{Binding ShowBlurredIgnoredForCollageHint}" Classes="hint"/>
+
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Guide lines" Classes="row-dim"/>
+                <ComboBox Grid.Column="1" SelectedIndex="{Binding CompositionGuideIndex}">
+                    <ComboBoxItem Content="Off"/>
+                    <ComboBoxItem Content="Thirds"/>
+                    <ComboBoxItem Content="Golden"/>
+                    <ComboBoxItem Content="Diagonal"/>
+                    <ComboBoxItem Content="Cross"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- PALETTE -->
+            <StackPanel IsVisible="{Binding IsPaletteSwitchVisible}">
+                <TextBlock Text="PALETTE" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Show palette" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowPalette}"/>
+                </Grid>
+                <StackPanel IsVisible="{Binding ComputeColors}">
+                    <Grid Classes="row" ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <TextBlock Text="Colors" Classes="row-dim" Margin="0,0,16,0"/>
+                        <ListBox Grid.Column="1" Classes="seg compact" SelectedIndex="{Binding ColorCountSegment}">
+                            <ListBoxItem Content="Auto"/>
+                            <ListBoxItem Content="3"/>
+                            <ListBoxItem Content="4"/>
+                            <ListBoxItem Content="5"/>
+                            <ListBoxItem Content="6"/>
+                            <ListBoxItem Content="8"/>
+                        </ListBox>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <TextBlock Text="Sampling" Classes="row-dim"/>
+                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SamplingModeIndex}">
+                            <ComboBoxItem Content="Vivid"/>
+                            <ComboBoxItem Content="Standard"/>
+                            <ComboBoxItem Content="Contrast"/>
+                        </ComboBox>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <TextBlock Text="Sort" Classes="row-dim"/>
+                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SortOrderIndex}">
+                            <ComboBoxItem Content="Original order"/>
+                            <ComboBoxItem Content="By hue"/>
+                            <ComboBoxItem Content="By luminance"/>
+                            <ComboBoxItem Content="By share"/>
+                        </ComboBox>
+                    </Grid>
                 </StackPanel>
-            </Grid>
+                <TextBlock Text="Off keeps the photo and camera plate only (the old “Info only”)."
+                           IsVisible="{Binding !ShowPalette}" Classes="hint"/>
+            </StackPanel>
 
-            <Grid x:Name="BackgroundModeRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Background" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="BackgroundModeBox"
-                          SelectedIndex="{Binding BackgroundModeIndex}"/>
-            </Grid>
-
-            <!-- Same caveat as the ComboBox item's ToolTip, but always visible — touch/Android
-                 users have no hover to trigger that tooltip (see SettingsPanel.axaml.cs). -->
-            <TextBlock Text="Ignored for Collage — falls back to the card theme"
-                       IsVisible="{Binding ShowBlurredIgnoredForCollageHint}"
-                       Classes="mono-data-small" Opacity="0.6" TextWrapping="Wrap"/>
-
-            <TextBox Text="{Binding CustomBackgroundHex}" IsEnabled="{Binding IsCustomBackgroundMode}"
-                      PlaceholderText="#RRGGBB"/>
-        </StackPanel>
-        </StackPanel>
-
-        <!-- ── Palette ───────────────────────────────────────────── -->
-        <StackPanel IsVisible="{Binding ShowPaletteSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="PALETTE" Classes="section-header"/>
-        <StackPanel Spacing="10">
-
-            <Grid x:Name="SamplingRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Sampling" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="SamplingModeBox"
-                          SelectedIndex="{Binding SamplingModeIndex}"/>
-            </Grid>
-
-            <Grid x:Name="ColorCountRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Colors" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="ColorCountBox"
-                          SelectedIndex="{Binding ColorCountIndex}"/>
-            </Grid>
-
-            <Grid x:Name="GuideRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Guide lines" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="CompositionGuideBox"
-                          SelectedIndex="{Binding CompositionGuideIndex}"/>
-            </Grid>
-
-        </StackPanel>
-        </StackPanel>
-
-        <!-- ── Collage (only while the Main VM has switched into collage mode) ─── -->
-        <StackPanel IsVisible="{Binding ShowCollageSectionUI}">
-            <Border Classes="section-sep"/>
-            <TextBlock Text="COLLAGE" Classes="section-header"/>
-            <StackPanel Spacing="10">
-
-                <Grid x:Name="GutterThicknessRow" Classes="settings-row">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Gutter width" Classes="row-label"/>
-                    <Slider Grid.Column="1" Value="{Binding GutterThickness}"
+            <!-- COLLAGE -->
+            <StackPanel IsVisible="{Binding ShowCollageSectionUI}">
+                <TextBlock Text="COLLAGE" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Gutter" Classes="row-dim" Margin="0,0,16,0"/>
+                    <Slider Grid.Column="1" Classes="v2" Value="{Binding GutterThickness}"
                             Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                    <TextBlock Grid.Column="2" Text="{Binding GutterThickness, StringFormat={}{0}px}"
-                               Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
+                    <TextBlock Grid.Column="2" Text="{Binding GutterThickness, StringFormat={}{0} px}"
+                               Classes="value" Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- SWATCHES -->
+            <StackPanel IsVisible="{Binding ShowSwatchesSectionUI}">
+                <TextBlock Text="SWATCHES" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Hex labels" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowHex}"/>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Labels below" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding HexBelow}"
+                                  IsEnabled="{Binding ShowHex}"/>
+                </Grid>
+                <TextBlock Text="Turn on Hex labels to choose where they go."
+                           IsVisible="{Binding !ShowHex}" Classes="hint"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Percentage" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowPercent}"/>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Shape" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding SwatchShapeIndex}">
+                        <ComboBoxItem Content="Rectangle"/>
+                        <ComboBoxItem Content="Rounded"/>
+                        <ComboBoxItem Content="Circle"/>
+                    </ComboBox>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
+                    <Slider Grid.Column="1" Classes="v2" Value="{Binding SwatchScaleIndex}"
+                            Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="2" Text="{Binding SwatchScaleLabel}" Classes="value"
+                               Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Label size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
+                    <Slider Grid.Column="1" Classes="v2" Value="{Binding LabelScaleIndex}"
+                            Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}" Classes="value"
+                               Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- Recipe mode has no swatches: its text size lives here instead. -->
+            <StackPanel IsVisible="{Binding ShowRecipeCard}">
+                <StackPanel IsVisible="{Binding IsRecipeMode}">
+                    <TextBlock Text="TEXT" Classes="section-title"/>
+                    <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Text="Text size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
+                        <Slider Grid.Column="1" Classes="v2" Value="{Binding LabelScaleIndex}"
+                                Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}" Classes="value"
+                                   Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+
+        <!-- ═════════════════════════ CONTENT ═════════════════════════ -->
+        <StackPanel IsVisible="{Binding IsContentTab}" Margin="0,0,0,28">
+
+            <TextBlock Text="CAMERA PLATE" Classes="section-title first"/>
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Show camera info" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowCameraInfo}"
+                              IsEnabled="{Binding IsCameraInfoToggleEnabled}"/>
+            </Grid>
+            <TextBlock Text="Always on while Show palette is off — the plate is the only content of that card."
+                       IsVisible="{Binding !IsCameraInfoToggleEnabled}" Classes="hint"/>
+
+            <StackPanel IsVisible="{Binding ShowMetaVerbositySectionUI}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Text" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MetaVerbosityIndex}">
+                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="Short"/>
+                        <ComboBoxItem Content="Default"/>
+                        <ComboBoxItem Content="Detail"/>
+                        <ComboBoxItem Content="Full"/>
+                    </ComboBox>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Layout" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MetaStyleIndex}">
+                        <ComboBoxItem Content="Film strip"/>
+                        <ComboBoxItem Content="Overlay"/>
+                    </ComboBox>
+                </Grid>
+            </StackPanel>
+
+            <!-- Photo metadata override (Edit / Hide) -->
+            <StackPanel IsVisible="{Binding ShowPhotoMetadataSectionUI}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Photo metadata" Classes="row-dim"/>
+                    <Button Grid.Column="1" Classes="link" Content="{Binding MetadataEditorToggleLabel}"
+                            Command="{Binding ToggleMetadataEditorCommand}"/>
+                </Grid>
+                <StackPanel Spacing="8" IsVisible="{Binding IsMetadataEditorExpanded}" Margin="0,4,0,0">
+                    <TextBlock Text="Camera" Classes="hint"/>
+                    <TextBox Text="{Binding MetaCameraText}" PlaceholderText="e.g. Canon EOS R5"/>
+                    <TextBlock Text="Lens" Classes="hint"/>
+                    <TextBox Text="{Binding MetaLensText}" PlaceholderText="e.g. RF 24-70mm f/2.8"/>
+                    <TextBlock Text="Focal (mm)" Classes="hint"/>
+                    <NumericUpDown Value="{Binding FocalMm}" Minimum="0" Maximum="2000" Increment="1"
+                                   FormatString="0.#" ParsingNumberStyle="Float"/>
+                    <TextBlock Text="Aperture" Classes="hint"/>
+                    <TextBox Text="{Binding MetaApertureText, UpdateSourceTrigger=LostFocus}" PlaceholderText="e.g. f/2.8"
+                             ToolTip.Tip="Format: f/X.X — invalid values are discarded on commit"/>
+                    <TextBlock Text="Shutter" Classes="hint"/>
+                    <TextBox Text="{Binding MetaShutterText, UpdateSourceTrigger=LostFocus}" PlaceholderText="e.g. 1/200s"
+                             ToolTip.Tip="Format: 1/Xs or Xs — invalid values are discarded on commit"/>
+                    <TextBlock Text="ISO" Classes="hint"/>
+                    <NumericUpDown Value="{Binding IsoValue}" Minimum="0" Maximum="512000" Increment="100"
+                                   FormatString="0" ParsingNumberStyle="Float"/>
+                    <TextBlock Text="Date" Classes="hint"/>
+                    <TextBox Text="{Binding MetaDateText}" PlaceholderText="e.g. 2026-07-05"/>
+                    <Button Classes="secondary" HorizontalAlignment="Left" Content="Reset to photo's EXIF"
+                            Command="{Binding ResetMetadataCommand}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- QR CODE -->
+            <TextBlock Text="QR CODE" Classes="section-title"/>
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Show QR" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowQrCode}"/>
+            </Grid>
+
+            <StackPanel IsVisible="{Binding ShowQrCode}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Caption" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding QrCaptionIndex}">
+                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="Camera"/>
+                        <ComboBoxItem Content="Camera + lens"/>
+                    </ComboBox>
+                </Grid>
+                <TextBlock Text="Printed beside the code. “Scan for the recipe” always goes under it."
+                           Classes="hint"/>
+
+                <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                    <TextBlock Text="Source" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding QrContentSourceIndex}">
+                        <ComboBoxItem Content="Generated link"/>
+                        <ComboBoxItem Content="Custom URL"/>
+                    </ComboBox>
                 </Grid>
 
+                <StackPanel IsVisible="{Binding !IsQrCustomUrlMode}" Spacing="6" Margin="0,6,0,0">
+                    <TextBlock Text="Content" Classes="row-dim"/>
+                    <ComboBox Width="NaN" HorizontalAlignment="Stretch" SelectedIndex="{Binding QrContentPresetIndex}">
+                        <ComboBoxItem Content="Camera + Recipe"/>
+                        <ComboBoxItem Content="Camera + Lens + Photo info + Recipe"/>
+                        <ComboBoxItem Content="Camera + Photo info + Recipe"/>
+                        <ComboBoxItem Content="Camera + Lens + Photo info"/>
+                        <ComboBoxItem Content="Recipe only"/>
+                    </ComboBox>
+                </StackPanel>
+                <TextBlock Text="May duplicate text already shown on this card"
+                           IsVisible="{Binding ShowQrDuplicateHint}" Classes="hint"/>
+
+                <TextBox Text="{Binding QrCustomUrl}" PlaceholderText="https://example.com/you"
+                         IsVisible="{Binding IsQrCustomUrlMode}" Margin="0,4,0,0"/>
+
+                <StackPanel IsVisible="{Binding !IsQrCustomUrlMode}">
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Include note" Classes="row"/>
+                        <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding QrIncludeNote}"/>
+                    </Grid>
+                    <StackPanel IsVisible="{Binding ShowQrNoteTextBox}" Spacing="6" Margin="0,4,0,0">
+                        <Panel>
+                            <TextBox Text="{Binding QrNoteText, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="Note text" MaxLength="80" AcceptsReturn="False"
+                                     TextWrapping="Wrap" MinHeight="68" Padding="12,10,12,26"/>
+                            <TextBlock Text="{Binding QrNoteCounter}" Classes="value" Opacity="0.7"
+                                       FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                       Margin="0,0,12,8" IsHitTestVisible="False"/>
+                        </Panel>
+                        <TextBlock Text="Encoded into the QR. Under the code the card shows “Scan for the recipe”."
+                                   Classes="hint"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- RECIPE -->
+            <StackPanel IsVisible="{Binding ShowFilmRecipeSectionUI}">
+                <TextBlock Text="RECIPE" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Show recipe card" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowRecipeCard}"/>
+                </Grid>
+
+                <StackPanel Spacing="8" IsVisible="{Binding !HasRecipe}" Margin="0,6,0,0">
+                    <TextBlock Text="Film recipe detection currently works for Fujifilm cameras only."
+                               Classes="hint"/>
+                    <Button Classes="secondary" Content="Set recipe manually" HorizontalAlignment="Left"
+                            Command="{Binding OpenRecipeEditorCommand}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="10" IsVisible="{Binding HasRecipe}" Margin="0,6,0,0">
+                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12,10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Text="{Binding RecipeTitleText}" FontSize="16" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding RecipeSourceBadgeText}" Classes="hint"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="link" Content="Edit" VerticalAlignment="Center"
+                                    Command="{Binding OpenRecipeEditorCommand}"/>
+                        </Grid>
+                    </Border>
+                    <!-- Which parameters the card shows: eye per tile, count, presets -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,6">
+                        <TextBlock Text="{Binding RecipeVisibilitySummary}" Classes="hint" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Classes="link" Content="Show all" Command="{Binding ApplyRecipePresetCommand}"
+                                CommandParameter="color" IsEnabled="{Binding CanShowAllRecipeFields}"/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="Color"
+                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="color"/>
+                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="B&amp;W"
+                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="bw"/>
+                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="Minimal"
+                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="min"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding RecipeFieldItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="{Binding RecipeColumns}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RecipeFieldItem">
+                                <Border Classes="recipe-plate" Opacity="{Binding TileOpacity}" ToolTip.Tip="{Binding FullLabel}">
+                                    <Grid>
+                                        <StackPanel Spacing="2" VerticalAlignment="Center" Margin="10,0">
+                                            <TextBlock Text="{Binding Label}" Classes="recipe-plate-label" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Value}" Classes="recipe-plate-value" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <!-- Desktop: small eye in the corner; touch: 44 px target -->
+                                        <Button Classes="link" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="0,-4,-6,0" IsVisible="{Binding IsDesktop}"
+                                                Command="{Binding ToggleCommand}" CommandParameter="{Binding Key}"
+                                                Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <Panel>
+                                                <materialIcons:MaterialIcon Kind="Eye" Width="15" Height="15" IsVisible="{Binding IsShown}"/>
+                                                <materialIcons:MaterialIcon Kind="EyeOff" Width="15" Height="15" IsVisible="{Binding IsHidden}"/>
+                                            </Panel>
+                                        </Button>
+                                        <Button Classes="link" Width="44" Height="44" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="-12,-12,-12,0" IsVisible="{Binding IsMobile}"
+                                                Command="{Binding ToggleCommand}" CommandParameter="{Binding Key}"
+                                                Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <Panel>
+                                                <materialIcons:MaterialIcon Kind="Eye" Width="18" Height="18" IsVisible="{Binding IsShown}"/>
+                                                <materialIcons:MaterialIcon Kind="EyeOff" Width="18" Height="18" IsVisible="{Binding IsHidden}"/>
+                                            </Panel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+
             </StackPanel>
         </StackPanel>
 
-        <!-- ── Swatches ──────────────────────────────────────────── -->
-        <StackPanel IsVisible="{Binding ShowSwatchesSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="SWATCHES" Classes="section-header"/>
-        <StackPanel Spacing="10">
-            <CheckBox IsChecked="{Binding ShowHex}">
-                <TextBlock Text="Show hex labels on swatches" TextWrapping="Wrap"/>
-            </CheckBox>
-            <CheckBox IsChecked="{Binding HexBelow}" IsEnabled="{Binding ShowHex}"
-                      ToolTip.Tip="Off puts labels above the swatch instead of below">
-                <TextBlock Text="Labels below swatches" TextWrapping="Wrap"/>
-            </CheckBox>
-            <CheckBox IsChecked="{Binding ShowPercent}">
-                <TextBlock Text="Show percentage on swatches" TextWrapping="Wrap"/>
-            </CheckBox>
+        <!-- ═════════════════════════ EXPORT ═════════════════════════ -->
+        <StackPanel IsVisible="{Binding IsExportTab}" Margin="0,0,0,28">
 
-            <Grid x:Name="ShapeRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Shape" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="SwatchShapeBox"
-                          SelectedIndex="{Binding SwatchShapeIndex}"/>
+            <TextBlock Text="FORMAT" Classes="section-title first"/>
+            <ListBox Classes="seg" SelectedIndex="{Binding OutputFormatIndex}">
+                <ListBoxItem Content="PNG"/>
+                <ListBoxItem Content="JPEG"/>
+            </ListBox>
+            <TextBlock Text="PNG is lossless and larger; JPEG is much smaller and ready to share."
+                       Classes="hint" Margin="0,6,0,0"/>
+
+            <TextBlock Text="SIZE" Classes="section-title"/>
+            <ListBox Classes="options" ItemsSource="{Binding ExportSizeOptions}"
+                     SelectedIndex="{Binding ExportSizeIndex}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ExportSizeOption">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Label}" Classes="row"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Pixels}" Classes="value" Opacity="0.75"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel IsVisible="{Binding IsMobile}">
+                <TextBlock Text="WORKING QUALITY" Classes="section-title"/>
+                <ListBox Classes="seg" SelectedIndex="{Binding WorkingQualityIndex}">
+                    <ListBoxItem Content="Fast"/>
+                    <ListBoxItem Content="Balanced"/>
+                    <ListBoxItem Content="Best"/>
+                </ListBox>
+                <TextBlock Text="Fast 2000 px · Balanced 3400 px · Best 4800 px. The preview is built from a downscaled copy of the photo."
+                           Classes="hint" Margin="0,6,0,0"/>
+            </StackPanel>
+
+            <TextBlock Text="SAVE TO" Classes="section-title"/>
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="12,0" MinHeight="40">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding SaveFolderDisplay}" Classes="value" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="1" Classes="link" Content="Change" VerticalAlignment="Center"
+                            IsVisible="{Binding CanChooseSaveFolder}"
+                            Command="{Binding ChangeSaveFolderCommand}"/>
+                </Grid>
+            </Border>
+            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,6,0,0" IsVisible="{Binding CanChooseSaveFolder}">
+                <TextBlock Text="Show in folder after saving" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowInFolderAfterSave}"/>
             </Grid>
 
-            <Grid x:Name="SortRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Sort" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="SortOrderBox"
-                          SelectedIndex="{Binding SortOrderIndex}"/>
-            </Grid>
-
-            <Grid x:Name="SwatchScaleRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Plate size" Classes="row-label"/>
-                <Slider Grid.Column="1" Value="{Binding SwatchScaleIndex}"
-                        Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
-                        TickPlacement="BottomRight"/>
-                <TextBlock Grid.Column="2" Text="{Binding SwatchScaleLabel}"
-                           Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
-            </Grid>
-
-            <Grid x:Name="LabelScaleRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Label size" Classes="row-label"/>
-                <Slider Grid.Column="1" Value="{Binding LabelScaleIndex}"
-                        Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
-                        TickPlacement="BottomRight"/>
-                <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}"
-                           Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
-            </Grid>
-        </StackPanel>
+            <!-- ABOUT -->
+            <TextBlock Text="ABOUT" Classes="section-title"/>
+            <TextBlock Text="{Binding AppVersionText}" Classes="hint"/>
+            <Button Classes="link" IsVisible="{Binding ShowUpdateRow}" HorizontalAlignment="Left" Margin="0,6,0,0"
+                    Content="{Binding UpdateAvailableText}" Command="{Binding OpenUpdateUrlCommand}"/>
+            <Border Background="White" CornerRadius="8" Padding="10" HorizontalAlignment="Left" Margin="0,12,0,0">
+                <Image Source="/Assets/qr-code.png" Width="140" Height="140" RenderOptions.BitmapInterpolationMode="None"/>
+            </Border>
         </StackPanel>
 
-        <!-- ── Metadata (render verbosity/style) — only relevant when the camera-info
-             plate is actually going to be drawn -->
-        <StackPanel IsVisible="{Binding ShowMetaVerbositySectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="METADATA" Classes="section-header"/>
-        <StackPanel Spacing="10">
+        </Panel>
+        </ScrollViewer>
 
-            <Grid x:Name="VerbosityRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Verbosity" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="MetaVerbosityBox"
-                          SelectedIndex="{Binding MetaVerbosityIndex}"/>
+        <!-- Recipe editor: replaces the whole inspector while open (header / scrolling body / sticky footer) -->
+        <Grid x:Name="RecipeEditor" Grid.Row="0" Grid.RowSpan="2" RowDefinitions="Auto,*,Auto"
+              IsVisible="{Binding IsRecipeEditorOpen}" Background="{DynamicResource PanelBrush}">
+            <Grid.Styles>
+                <Style Selector="Grid#RecipeEditor StackPanel.cell">
+                    <Setter Property="Spacing" Value="4"/>
+                    <Setter Property="Margin" Value="6,0,6,12"/>
+                </Style>
+                <Style Selector="Grid#RecipeEditor TextBox, Grid#RecipeEditor ComboBox">
+                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                    <Setter Property="CornerRadius" Value="6"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Height" Value="{Binding FieldHeight}"/>
+                    <Setter Property="MinHeight" Value="0"/>
+                    <Setter Property="Padding" Value="12,0"/>
+                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
+                </Style>
+                <Style Selector="Grid#RecipeEditor ComboBox">
+                    <Setter Property="VerticalContentAlignment" Value="Center"/>
+                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                </Style>
+                <Style Selector="Grid#RecipeEditor TextBlock.group">
+                    <Setter Property="Margin" Value="0,14,0,10"/>
+                </Style>
+            </Grid.Styles>
+
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
+                <Button Classes="link" Width="40" Height="40" Command="{Binding CancelRecipeEditorCommand}"
+                        Foreground="{DynamicResource TextPrimaryBrush}" ToolTip.Tip="Back (Esc)">
+                    <materialIcons:MaterialIcon Kind="ArrowLeft" Width="20" Height="20"/>
+                </Button>
+                <TextBlock Grid.Column="1" Text="Edit recipe" FontSize="16" FontWeight="SemiBold"
+                           VerticalAlignment="Center" Margin="4,0,0,0"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <Button Grid.Column="2" Classes="link" Content="Save" Padding="12,0" Height="40"
+                        Command="{Binding SaveRecipeEditsCommand}"/>
             </Grid>
 
-            <Grid x:Name="StyleRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Style" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="MetaStyleBox"
-                          SelectedIndex="{Binding MetaStyleIndex}"/>
-            </Grid>
+            <!-- Body: the only part that scrolls -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                          Padding="0,0,12,0">
+                <StackPanel Margin="0,0,0,16">
+                    <StackPanel Classes="cell" Margin="0,0,0,4">
+                        <TextBlock Text="Recipe name" Classes="hint"/>
+                        <TextBox Text="{Binding EditRecipeName}" PlaceholderText="e.g. Kodak Portra 400"/>
+                    </StackPanel>
 
-        </StackPanel>
-        </StackPanel>
+                    <TextBlock Text="TONE" Classes="section-title group"/>
+                    <UniformGrid x:Name="EditGroup1" Columns="1" Margin="-6,0">
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="White balance" Classes="hint"/>
+                            <ComboBox ItemsSource="{Binding WhiteBalanceOptions}" SelectedItem="{Binding EditWhiteBalance}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Dynamic range" Classes="hint"/>
+                            <ComboBox ItemsSource="{Binding DynamicRangeOptions}" SelectedItem="{Binding EditDynamicRange}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="WB shift (Red)" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditWhiteBalanceShiftRed}" Minimum="-9" Maximum="9" Step="1" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="WB shift (Blue)" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditWhiteBalanceShiftBlue}" Minimum="-9" Maximum="9" Step="1" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Highlight tone" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditHighlightTone}" Minimum="-2" Maximum="4" Step="0.5" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Shadow tone" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditShadowTone}" Minimum="-2" Maximum="4" Step="0.5" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                    </UniformGrid>
 
-        <!-- ── Output ────────────────────────────────────────────── -->
-        <StackPanel IsVisible="{Binding ShowOutputSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="OUTPUT" Classes="section-header"/>
-        <StackPanel Spacing="10">
+                    <TextBlock Text="COLOR &amp; SHARPNESS" Classes="section-title group"/>
+                    <UniformGrid x:Name="EditGroup2" Columns="1" Margin="-6,0">
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Color" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditColor}" Minimum="-4" Maximum="4" Step="1" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Sharpness" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditSharpness}" Minimum="-4" Maximum="4" Step="1" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Noise reduction" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditNoiseReduction}" Minimum="-4" Maximum="4" Step="1" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Clarity" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditClarity}" Minimum="-5" Maximum="5" Step="0.5" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                    </UniformGrid>
 
-            <CheckBox IsChecked="{Binding ShowCameraInfo}" IsEnabled="{Binding IsCameraInfoToggleEnabled}"
-                      ToolTip.Tip="Info only / Collage (fast) always show this — nothing else to toggle there">
-                <TextBlock Text="Show camera info plate" TextWrapping="Wrap"/>
-            </CheckBox>
+                    <TextBlock Text="EFFECTS" Classes="section-title group"/>
+                    <UniformGrid x:Name="EditGroup3" Columns="1" Margin="-6,0">
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Grain effect" Classes="hint"/>
+                            <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditGrainEffect}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Color Chrome" Classes="hint"/>
+                            <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditColorChromeEffect}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="Color Chrome Blue" Classes="hint"/>
+                            <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditColorChromeFxBlue}"/>
+                        </StackPanel>
+                        <StackPanel Classes="cell">
+                            <TextBlock Text="B&amp;W adjustment" Classes="hint"/>
+                            <local:NumberStepper Value="{Binding EditBwAdjustment}" Minimum="-9" Maximum="9" Step="1" ControlHeight="{Binding FieldHeight}"/>
+                        </StackPanel>
+                    </UniformGrid>
+                </StackPanel>
+            </ScrollViewer>
 
-            <Grid x:Name="FormatRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Format" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="OutputFormatBox"
-                          SelectedIndex="{Binding OutputFormatIndex}"/>
-            </Grid>
-
-            <Grid x:Name="ExportSizeRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Export size" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="ExportPresetBox"
-                          SelectedIndex="{Binding ExportSizeIndex}"/>
-            </Grid>
-
-            <Grid x:Name="WorkingQualityRow" Classes="settings-row" IsVisible="{Binding IsMobile}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Working size" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="WorkingQualityBox"
-                          SelectedIndex="{Binding WorkingQualityIndex}"/>
-            </Grid>
-
-        </StackPanel>
-        </StackPanel>
-
-        <!-- ── QR code ───────────────────────────────────────────── -->
-        <StackPanel IsVisible="{Binding ShowQrCodeSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="QR CODE" Classes="section-header"/>
-        <StackPanel Spacing="10">
-
-            <CheckBox IsChecked="{Binding ShowQrCode}">
-                <TextBlock Text="Show QR code" TextWrapping="Wrap"/>
-            </CheckBox>
-
-            <Grid x:Name="QrPlacementRow" Classes="settings-row" IsEnabled="{Binding ShowQrCode}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Placement" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="QrPlacementBox"
-                          SelectedIndex="{Binding QrPlacementIndex}"/>
-            </Grid>
-
-            <!-- Independent of Placement/Content preset (v4 spec §1b) — just what's drawn
-                 beside the QR block. -->
-            <Grid x:Name="QrCaptionRow" Classes="settings-row" IsEnabled="{Binding ShowQrCode}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Caption" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="QrCaptionBox"
-                          SelectedIndex="{Binding QrCaptionIndex}"/>
-            </Grid>
-
-            <Grid x:Name="QrContentSourceRow" Classes="settings-row" IsEnabled="{Binding ShowQrCode}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Content source" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="QrContentSourceBox"
-                          SelectedIndex="{Binding QrContentSourceIndex}"/>
-            </Grid>
-
-            <Grid x:Name="QrContentPresetRow" Classes="settings-row"
-                  IsVisible="{Binding !IsQrCustomUrlMode}" IsEnabled="{Binding ShowQrCode}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Content preset" Classes="row-label"/>
-                <ComboBox Grid.Column="1" x:Name="QrContentPresetBox"
-                          SelectedIndex="{Binding QrContentPresetIndex}"/>
-            </Grid>
-
-            <!-- Advisory only — the preset above stays fully selectable either way (v2 §2). -->
-            <TextBlock Text="May duplicate text already shown on this card"
-                       IsVisible="{Binding ShowQrDuplicateHint}"
-                       Classes="mono-data-small" Opacity="0.6" TextWrapping="Wrap"/>
-
-            <CheckBox IsChecked="{Binding QrIncludeNote}" IsEnabled="{Binding ShowQrCode}"
-                      IsVisible="{Binding !IsQrCustomUrlMode}">
-                <TextBlock Text="Include note" TextWrapping="Wrap"/>
-            </CheckBox>
-
-            <TextBox Text="{Binding QrNoteText}" PlaceholderText="Note text"
-                     IsVisible="{Binding ShowQrNoteTextBox}" IsEnabled="{Binding ShowQrCode}"/>
-
-            <TextBox Text="{Binding QrCustomUrl}" PlaceholderText="https://example.com/you"
-                     IsVisible="{Binding IsQrCustomUrlMode}" IsEnabled="{Binding ShowQrCode}"/>
-
-        </StackPanel>
-        </StackPanel>
-
-        <!-- ── Photo metadata ────────────────────────────────────── -->
-        <!-- Only relevant in Recipe mode, or whenever the camera-info plate is actually
-             going to be drawn (any mode with the info toggle on) — see §5. -->
-        <StackPanel IsVisible="{Binding ShowPhotoMetadataSectionUI}">
-        <Border Classes="section-sep"/>
-        <Grid ColumnDefinitions="*,50">
-            <TextBlock Grid.Column="0" Text="PHOTO METADATA" Classes="section-header"/>
-            <Border Grid.Column="1" Background="Transparent" Cursor="Hand"
-                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,20,0,8"
-                    Tapped="ToggleMetadataEditor_Tapped">
-                <TextBlock Text="{Binding MetadataEditorToggleLabel}" FontSize="11"
-                           Foreground="{StaticResource TextPrimaryBrush}"/>
+            <!-- Sticky footer -->
+            <Border Grid.Row="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
+                <StackPanel Spacing="8">
+                    <Border IsVisible="{Binding ShowDiscardConfirm}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8">
+                        <Grid ColumnDefinitions="*,Auto,Auto">
+                            <TextBlock Text="Discard unsaved changes?" Classes="row" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="link" Content="Keep editing" Margin="8,0"
+                                    Command="{Binding KeepEditingRecipeCommand}"/>
+                            <Button Grid.Column="2" Classes="link" Content="Discard" Foreground="{DynamicResource ErrorBrush}"
+                                    Command="{Binding CancelRecipeEditorCommand}"/>
+                        </Grid>
+                    </Border>
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                        <Button Grid.Column="0" Classes="ghost" Content="Cancel" Height="44" HorizontalAlignment="Stretch"
+                                Command="{Binding CancelRecipeEditorCommand}"/>
+                        <Button Grid.Column="1" Classes="cta" Content="Save" Height="44" HorizontalAlignment="Stretch"
+                                Command="{Binding SaveRecipeEditsCommand}"/>
+                    </Grid>
+                </StackPanel>
             </Border>
         </Grid>
-        <!-- Only Camera/Lens/Focal/Aperture/Shutter/ISO/Date are editable — the strip's other
-             fields (35mm-eq, exposure bias, white balance, exposure program, serial) always
-             come straight from the photo's real EXIF. -->
-        <StackPanel Spacing="10" IsVisible="{Binding IsMetadataEditorExpanded}">
-
-            <Grid x:Name="MetaCameraRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Camera" Classes="row-label"/>
-                <TextBox Grid.Column="1" Text="{Binding MetaCameraText}" PlaceholderText="e.g. Canon EOS R5"/>
-            </Grid>
-
-            <Grid x:Name="MetaLensRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Lens" Classes="row-label"/>
-                <TextBox Grid.Column="1" Text="{Binding MetaLensText}" PlaceholderText="e.g. RF 24-70mm f/2.8"/>
-            </Grid>
-
-            <Grid x:Name="MetaFocalRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Focal (mm)" Classes="row-label"/>
-                <NumericUpDown Grid.Column="1" Value="{Binding FocalMm}" Minimum="0" Maximum="2000" Increment="1"
-                                FormatString="0.#" ParsingNumberStyle="Float"/>
-            </Grid>
-
-            <Grid x:Name="MetaApertureRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Aperture" Classes="row-label"/>
-                <TextBox Grid.Column="1" Text="{Binding MetaApertureText, UpdateSourceTrigger=LostFocus}"
-                         PlaceholderText="e.g. f/2.8" ToolTip.Tip="Format: f/X.X — invalid values are discarded on commit"/>
-            </Grid>
-
-            <Grid x:Name="MetaShutterRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Shutter" Classes="row-label"/>
-                <TextBox Grid.Column="1" Text="{Binding MetaShutterText, UpdateSourceTrigger=LostFocus}"
-                         PlaceholderText="e.g. 1/200s" ToolTip.Tip="Format: 1/Xs or Xs — invalid values are discarded on commit"/>
-            </Grid>
-
-            <Grid x:Name="MetaIsoRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="ISO" Classes="row-label"/>
-                <NumericUpDown Grid.Column="1" Value="{Binding IsoValue}" Minimum="0" Maximum="512000" Increment="100"
-                                FormatString="0" ParsingNumberStyle="Float"/>
-            </Grid>
-
-            <Grid x:Name="MetaDateRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <TextBlock Grid.Column="0" Text="Date" Classes="row-label"/>
-                <TextBox Grid.Column="1" Text="{Binding MetaDateText}" PlaceholderText="e.g. 2026-07-05"/>
-            </Grid>
-
-            <Button Classes="secondary" HorizontalAlignment="Left"
-                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                    Content="Reset to photo's EXIF"
-                    Command="{Binding ResetMetadataCommand}"/>
-
-        </StackPanel>
-        </StackPanel>
-
-        <!-- ── Film recipe (Fujifilm auto-detect, or manual entry for any photo) ──
-             Auto-detected fields are read-only; manual entry (Set recipe manually / Edit)
-             replaces the whole recipe and switches the badge to "Custom". Always visible
-             within Recipe mode (unlike Photo metadata above, no Edit/Hide toggle) since
-             there's nothing to expand — just the "no data" state, the card, or the editor
-             form. Only relevant in Recipe mode — see §5. -->
-        <StackPanel IsVisible="{Binding ShowFilmRecipeSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="FILM RECIPE" Classes="section-header"/>
-
-        <!-- Independent of the QR section below (v3 spec §1a) — off + Show QR on leaves just
-             the photo and the QR block, no duplicated text. -->
-        <CheckBox IsChecked="{Binding ShowRecipeCard}" Margin="0,0,0,4">
-            <TextBlock Text="Show recipe card" TextWrapping="Wrap"/>
-        </CheckBox>
-
-        <!-- Text size — Card theme and Background (color/custom/blurred photo) are now
-             handled globally by the BACKGROUND section above; this is the only
-             recipe-card-specific appearance control left here. Reuses the same LabelScale
-             setting as the Swatches section's "Label size" dial. -->
-        <!-- Only meaningful while the recipe card is actually drawn (v-final spec §1.2) —
-             hidden entirely, not just grayed out, when "Show recipe card" is off. -->
-        <StackPanel Spacing="10" Margin="0,0,0,4" IsVisible="{Binding ShowRecipeCard}">
-            <Grid x:Name="RecipeLabelScaleRow" Classes="settings-row">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" SharedSizeGroup="SettingsLabels"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Text size" Classes="row-label"/>
-                <Slider Grid.Column="1" Value="{Binding LabelScaleIndex}"
-                        Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"
-                        TickPlacement="BottomRight"/>
-                <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}"
-                           Margin="8,0,0,0" VerticalAlignment="Center" MinWidth="34"/>
-            </Grid>
-        </StackPanel>
-
-        <StackPanel Spacing="10" IsVisible="{Binding !HasRecipe}">
-            <TextBlock Text="Film recipe detection currently works for Fujifilm cameras only."
-                       Opacity="0.6" FontSize="12" TextWrapping="Wrap"/>
-            <Button Classes="secondary" Content="Set recipe manually" HorizontalAlignment="Left"
-                    Command="{Binding OpenRecipeEditorCommand}"/>
-        </StackPanel>
-
-        <StackPanel Spacing="10" IsVisible="{Binding HasRecipe}">
-            <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding RecipeTitleText}" FontSize="18" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                <Border Grid.Column="1" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource CardBorderBrush}"
-                        BorderThickness="1" CornerRadius="10" Padding="8,3" Margin="8,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding RecipeSourceBadgeText}" FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"/>
-                </Border>
-                <Button Grid.Column="2" Classes="text" Content="Edit" MinWidth="0" Margin="8,0,0,0"
-                        Command="{Binding OpenRecipeEditorCommand}"/>
-            </Grid>
-            <ItemsControl ItemsSource="{Binding RecipeParameterRows}">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <WrapPanel/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:RecipeParameterRow">
-                        <Border Classes="recipe-plate">
-                            <StackPanel Spacing="2" HorizontalAlignment="Center">
-                                <TextBlock Text="{Binding Label}" Classes="recipe-plate-label" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding Value}" Classes="recipe-plate-value" HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-        </StackPanel>
-
-        <!-- Manual recipe editor form — opened via "Set recipe manually" / "Edit" above. -->
-        <StackPanel Spacing="8" IsVisible="{Binding IsRecipeEditorOpen}" Margin="0,10,0,0">
-            <Border Classes="section-sep"/>
-            <TextBlock Text="Recipe name" Classes="row-label"/>
-            <TextBox Text="{Binding EditRecipeName}" PlaceholderText="e.g. Kodak Portra 400"/>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="White balance" Classes="row-label"/>
-                    <ComboBox ItemsSource="{Binding WhiteBalanceOptions}" SelectedItem="{Binding EditWhiteBalance}"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="Dynamic range" Classes="row-label"/>
-                    <ComboBox ItemsSource="{Binding DynamicRangeOptions}" SelectedItem="{Binding EditDynamicRange}"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="WB shift (Red)" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditWhiteBalanceShiftRed}" Minimum="-9" Maximum="9" Increment="1"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="WB shift (Blue)" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditWhiteBalanceShiftBlue}" Minimum="-9" Maximum="9" Increment="1"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="Highlight tone" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditHighlightTone}" Minimum="-2" Maximum="4" Increment="0.5"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="Shadow tone" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditShadowTone}" Minimum="-2" Maximum="4" Increment="0.5"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="Color" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditColor}" Minimum="-4" Maximum="4" Increment="1"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="Sharpness" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditSharpness}" Minimum="-4" Maximum="4" Increment="1"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="Noise reduction" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditNoiseReduction}" Minimum="-4" Maximum="4" Increment="1"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="Clarity" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditClarity}" Minimum="-5" Maximum="5" Increment="0.5"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="Grain effect" Classes="row-label"/>
-                    <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditGrainEffect}"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="B&amp;W adjustment" Classes="row-label"/>
-                    <NumericUpDown Value="{Binding EditBwAdjustment}" Minimum="-9" Maximum="9" Increment="1"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Classes="settings-row" ColumnDefinitions="*,*">
-                <StackPanel Grid.Column="0" Margin="0,0,6,0" Spacing="2">
-                    <TextBlock Text="Color Chrome" Classes="row-label"/>
-                    <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditColorChromeEffect}"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Margin="6,0,0,0" Spacing="2">
-                    <TextBlock Text="Color Chrome Blue" Classes="row-label"/>
-                    <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditColorChromeFxBlue}"/>
-                </StackPanel>
-            </Grid>
-
-            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                <Button Classes="primary" Content="Save" Command="{Binding SaveRecipeEditsCommand}"/>
-                <Button Classes="secondary" Content="Cancel" Command="{Binding CancelRecipeEditorCommand}"/>
-            </StackPanel>
-        </StackPanel>
-        </StackPanel>
-
-        <!-- ── About ─────────────────────────────────────────────── -->
-        <StackPanel IsVisible="{Binding ShowAboutSectionUI}">
-        <Border Classes="section-sep"/>
-        <TextBlock Text="ABOUT" Classes="section-header"/>
-        <StackPanel Spacing="10">
-            <TextBlock Text="{Binding AppVersionText}" Opacity="0.6" FontSize="12"/>
-            <!-- Desktop gets a dismissible toolbar banner instead (MainWindow.axaml) —
-                 this row only matters where there's no toolbar to put that in. -->
-            <Button Classes="text" IsVisible="{Binding ShowUpdateRow}" MinWidth="0" MinHeight="0" Padding="0"
-                    HorizontalAlignment="Left" HorizontalContentAlignment="Left"
-                    Content="{Binding UpdateAvailableText}"
-                    Command="{Binding OpenUpdateUrlCommand}"/>
-        </StackPanel>
-        </StackPanel>
-
-    </StackPanel>
+    </Grid>
 
 </UserControl>
