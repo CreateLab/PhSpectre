@@ -351,7 +351,9 @@ public partial class MainViewModel : ViewModelBase
     }
 
     public bool ShowUpdatingPill         => IsGenerating && PaletteBitmap != null && !IsCollageMode;
-    public bool ShowPill => ShowUpdatingPill || CanCompare;
+    // Collage has no live preview: its Generate/Regenerate lives in the pill.
+    public bool ShowRegenerate => IsCollageMode && IsRegenerateAvailable;
+    public bool ShowPill => ShowUpdatingPill || CanCompare || ShowRegenerate;
     public bool ShowGeneratingIndicator  => IsGenerating && !ShowUpdatingPill;
     public double ResultPreviewOpacity   => ShowUpdatingPill ? 0.4 : 1.0;
 
@@ -449,7 +451,11 @@ public partial class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowRecentStrip));
         RegenerateCommand.NotifyCanExecuteChanged();
     }
-    partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
+    partial void OnIsRegenerateAvailableChanged(bool value)
+    {
+        RegenerateCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowRegenerate)); OnPropertyChanged(nameof(ShowPill));
+    }
     partial void OnPaletteBitmapChanged(Bitmap? value)
     {
         RaiseUpdatingStateChanged();
@@ -501,6 +507,8 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnIsCollageModeChanged(bool value)
     {
+        OnPropertyChanged(nameof(ShowRegenerate)); OnPropertyChanged(nameof(ShowPill));
+        SavePngCommand.NotifyCanExecuteChanged();
         RaiseShellTextsChanged();
         OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill));
         RegenerateCommand.NotifyCanExecuteChanged();
@@ -830,6 +838,13 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSavePng))]
     private async Task SavePng()
     {
+        // A collage is only the cheap layout preview until generated (or after a setting changed):
+        // build the real file on demand instead of leaving Save disabled.
+        if (IsCollageMode && CollageItems.Count > 0 && (_lastTempPng == null || IsRegenerateAvailable))
+        {
+            await GenerateCollagePaletteAsync();
+            IsRegenerateAvailable = false;
+        }
         if (SavePngAsync == null || _lastTempPng == null) return;
         string suggested;
         if (IsCollageMode)
@@ -855,7 +870,8 @@ public partial class MainViewModel : ViewModelBase
         _saveConfirmTimer.Start();
     }
 
-    private bool CanSavePng() => PaletteBitmap != null && !IsGenerating;
+    private bool CanSavePng() =>
+        (IsCollageMode ? CollageItems.Count > 0 : PaletteBitmap != null) && !IsGenerating;
 
     // Copies a newly picked photo to a stable temp path and renders it. Unlike a one-shot
     // render, this path survives afterwards — see _currentSourcePath — so a later settings/

@@ -64,14 +64,14 @@ public partial class SettingsViewModel : ViewModelBase
     // rather than computing colors that never get shown.
     public bool ComputeColors => ExportMode is ExportMode.Card or ExportMode.Collage;
 
-    // InfoOnly/CollageInfoOnly force the camera-info plate on (it's the only content those
-    // modes render) and disable the manual toggle so the user can't turn off the one thing
-    // the mode exists to show.
-    public bool EffectiveShowCameraInfo => ShowCameraInfo || ExportMode is ExportMode.InfoOnly or ExportMode.CollageInfoOnly;
-    public bool IsCameraInfoToggleEnabled => ExportMode is not (ExportMode.InfoOnly or ExportMode.CollageInfoOnly);
+    // The camera plate is an independent switch: with the palette off it is simply the only thing
+    // on the card (turned on automatically when switching to "no palette"), but it can be turned off too.
+    public bool EffectiveShowCameraInfo => ShowCameraInfo;
+    public bool IsCameraInfoToggleEnabled => true;
 
     partial void OnExportModeChanged(ExportMode value)
     {
+        if (value is ExportMode.InfoOnly or ExportMode.CollageInfoOnly && !ShowCameraInfo) ShowCameraInfo = true;
         OnPropertyChanged(nameof(ShowNoRecipeHint));
         if (value != ExportMode.Recipe) _paletteMemory = value is ExportMode.Card or ExportMode.Collage;
         OnPropertyChanged(nameof(ShowPalette));

@@ -16,6 +16,21 @@ namespace PhSpecre.Tests;
 // BlurredBackgroundTests, plus a check that the Below block actually grows the canvas.
 public class QrCodeRendererTests
 {
+
+    [Fact]
+    public void PaletteImageRenderer_NoPaletteAndNoCameraInfo_RendersPlainCard()
+    {
+        using var photo = new Image<Rgb24>(400, 300);
+        var palette = new ColorPalette([new ColorSwatch("#000000", (0, 0, 0), 1f)]);
+        string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}.png");
+        try
+        {
+            PaletteImageRenderer.Render(photo, palette, path, showSwatches: false, metaVerbosity: MetaVerbosity.Off);
+            using var result = Image.Load(path);
+            Assert.True(result.Width >= 400 && result.Height >= 300);
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
     private static Image<Rgb24> SolidImage(int w, int h, Color color)
     {
         var img = new Image<Rgb24>(w, h);

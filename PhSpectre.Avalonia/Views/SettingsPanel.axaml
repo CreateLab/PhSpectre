@@ -255,8 +255,6 @@
                 <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowCameraInfo}"
                               IsEnabled="{Binding IsCameraInfoToggleEnabled}"/>
             </Grid>
-            <TextBlock Text="Always on while Show palette is off — the plate is the only content of that card."
-                       IsVisible="{Binding !IsCameraInfoToggleEnabled}" Classes="hint"/>
 
             <StackPanel IsVisible="{Binding ShowMetaVerbositySectionUI}">
                 <Grid Classes="row" ColumnDefinitions="*,Auto">

@@ -267,6 +267,13 @@
                                 <ListBoxItem Content="Result"/>
                                 <ListBoxItem Content="Original"/>
                             </ListBox>
+                            <Button Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
+                                    Command="{Binding RegenerateCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14"/>
+                                    <TextBlock Text="{Binding RegenerateButtonLabel}"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </Border>
 

@@ -204,15 +204,6 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         </Border>
                     </StackPanel>
 
-                        <!-- Collage: first render is manual (heavy), same as desktop -->
-                        <Button Classes="cta" IsVisible="{Binding IsRegenerateAvailable}" Command="{Binding RegenerateCommand}"
-                                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,62" Padding="18,0">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <materialIcons:MaterialIcon Kind="Refresh" Width="16" Height="16"/>
-                                <TextBlock Text="{Binding RegenerateButtonLabel}"/>
-                            </StackPanel>
-                        </Button>
-
                         <!-- Pill -->
                         <Border Classes="pill" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,12" Padding="10,6"
                                 IsVisible="{Binding ShowPill}">
@@ -227,6 +218,13 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                     <ListBoxItem Content="Result"/>
                                     <ListBoxItem Content="Original"/>
                                 </ListBox>
+                            <Button Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
+                                    Command="{Binding RegenerateCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14"/>
+                                    <TextBlock Text="{Binding RegenerateButtonLabel}"/>
+                                </StackPanel>
+                            </Button>
                             </StackPanel>
                         </Border>
 

@@ -158,7 +158,9 @@ public partial class MainWindowViewModel : ViewModelBase
     // Live preview: while a re-render runs, the previous result stays on screen dimmed with an
     // "Updating…" pill instead of blanking out. "Generating…" is only for the very first render.
     public bool ShowUpdatingPill        => IsGenerating && PaletteBitmap != null && !IsCollageMode;
-    public bool ShowPill => ShowUpdatingPill || CanCompare;
+    // Collage has no live preview: its Generate/Regenerate lives in the pill.
+    public bool ShowRegenerate => IsCollageMode && IsRegenerateAvailable;
+    public bool ShowPill => ShowUpdatingPill || CanCompare || ShowRegenerate;
     public bool ShowGeneratingTextSingle => IsGenerating && !ShowUpdatingPill;
     public double SinglePreviewOpacity  => ShowUpdatingPill ? 0.4 : 1.0;
 
@@ -184,10 +186,15 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(DisplayedCollageBitmap));
     }
     partial void OnErrorMessageChanged(string? value)  { OnPropertyChanged(nameof(ShowResultPlaceholder)); OnPropertyChanged(nameof(HasError)); }
-    partial void OnIsRegenerateAvailableChanged(bool value) => RegenerateCommand.NotifyCanExecuteChanged();
+    partial void OnIsRegenerateAvailableChanged(bool value)
+    {
+        RegenerateCommand.NotifyCanExecuteChanged();
+        OnPropertyChanged(nameof(ShowRegenerate)); OnPropertyChanged(nameof(ShowPill));
+    }
 
     partial void OnIsCollageModeChanged(bool value)
     {
+        OnPropertyChanged(nameof(ShowRegenerate)); OnPropertyChanged(nameof(ShowPill));
         OnPropertyChanged(nameof(EmptyStageText));
         OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill));
         RaiseSuggestedNameChanged();
@@ -197,6 +204,7 @@ public partial class MainWindowViewModel : ViewModelBase
         OnPropertyChanged(nameof(RegenerateButtonLabel));
         RegenerateCommand.NotifyCanExecuteChanged();
         SaveAllCommand.NotifyCanExecuteChanged();
+        SavePngAsync2Command.NotifyCanExecuteChanged();
         EnterCollageModeCommand.NotifyCanExecuteChanged();
     }
 
@@ -723,6 +731,13 @@ public partial class MainWindowViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanSavePng))]
     private async Task SavePngAsync2()
     {
+        // A collage is only the cheap layout preview until generated (or after a setting changed):
+        // build the real file on demand instead of leaving Save disabled.
+        if (IsCollageMode && CollageItems.Count > 0 && (_lastTempPng == null || IsRegenerateAvailable))
+        {
+            await GenerateCollagePaletteAsync();
+            IsRegenerateAvailable = false;
+        }
         if (SavePngAsync == null || _lastTempPng == null) return;
 
         string suggested, folder;
@@ -810,7 +825,8 @@ public partial class MainWindowViewModel : ViewModelBase
         catch { /* nothing useful to do if the file manager can't be launched */ }
     }
 
-    private bool CanSavePng() => PaletteBitmap != null && !IsGenerating && !IsBatchActive;
+    private bool CanSavePng() =>
+        (IsCollageMode ? CollageItems.Count > 0 : PaletteBitmap != null) && !IsGenerating && !IsBatchActive;
 
     private async Task GeneratePaletteAsync(FileEntry? entry, bool keepPrevious = false)
     {
