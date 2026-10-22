@@ -43,6 +43,7 @@ coverage/
 *.jpeg
 *.png
 !PhSpectre.Android/Icon.png
+!PhSpectre.Avalonia/Assets/qr-code.png
 !screens/*.jpg
 !screens/*.jpeg
 !screens/*.png
