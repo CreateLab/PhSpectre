@@ -79,7 +79,12 @@ public partial class CameraModeView : UserControl
 
     private async void CopyReport_Click(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is SettingsViewModel vm) await CopyAsync(vm.Camera.ReportText);
+        if (DataContext is not SettingsViewModel vm) return;
+        await CopyAsync(vm.Camera.ReportText);
+        var path = vm.Camera.SaveReport();
+        vm.SetRecipeStatus(path == null
+            ? "Camera dump copied. Send it to the developer"
+            : $"Camera dump copied and saved to {path}. Send it to the developer");
     }
 
     private async void CopyManual_Click(object? sender, RoutedEventArgs e)

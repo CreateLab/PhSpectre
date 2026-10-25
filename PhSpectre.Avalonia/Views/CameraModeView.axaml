@@ -415,8 +415,16 @@
                                     <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                             Content="Copy as text" Click="CopyManual_Click"/>
                                 </StackPanel>
-                                <Button Classes="link" HorizontalAlignment="Left" Padding="0" Content="Copy camera report"
-                                        IsVisible="{Binding HasReport}" Click="CopyReport_Click"/>
+                                <Border Classes="card" IsVisible="{Binding HasReport}">
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="Help add support for this camera" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Classes="hint" TextWrapping="Wrap"
+                                                   Text="Collect a dump of what the camera reports and send it to the developer. It holds no slot names and no serial number."/>
+                                        <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Content="Collect camera dump" Click="CopyReport_Click"/>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
 
                             <!-- Slots -->

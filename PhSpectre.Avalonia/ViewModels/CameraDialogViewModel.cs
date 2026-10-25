@@ -528,6 +528,25 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     public string ReportText => _snapshot == null ? "" : FujiCameraReport.Build(_snapshot, AppVersionInfo.DisplayVersion);
     public bool HasReport => _snapshot != null;
 
+    /// <summary>"Collect camera dump": the report goes to a file (Pictures/PhSpectre/dumps) and to the clipboard, ready to send.</summary>
+    public string? SaveReport()
+    {
+        if (_snapshot == null) return null;
+        try
+        {
+            var folder = Path.Combine(Path.GetDirectoryName(RestorePointStore.Folder)!, "dumps");
+            Directory.CreateDirectory(folder);
+            var path = Path.Combine(folder, $"{_snapshot.Model.Replace(' ', '-')}-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+            File.WriteAllText(path, ReportText);
+            return path;
+        }
+        catch (Exception e)
+        {
+            AppLogger.LogError("Could not save the camera dump", e);
+            return null;
+        }
+    }
+
     // ── restore points ───────────────────────────────────────────────────────────────────
     private void RefreshRestorePoints()
     {
