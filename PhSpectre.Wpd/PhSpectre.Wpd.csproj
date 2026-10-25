@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Windows-only at runtime on purpose (compiles anywhere; guarded by SupportedOSPlatform): Windows binds PTP cameras to its MTP driver (WUDFWpdMtp), so raw USB access
+    would need users to swap drivers. WPD's MTP vendor-extension commands let us send arbitrary PTP
+    operations through that driver instead. Other platforms use PhSpectre.Usb (libusb) or UsbManager.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PhSpectre\PhSpectre.csproj" />
+  </ItemGroup>
+
+</Project>

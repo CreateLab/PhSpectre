@@ -1,0 +1,239 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:cam="using:PhSpectre.Camera"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PhSpectre.Avalonia.Views.CameraOverlay"
+             x:DataType="vm:SettingsViewModel"
+             IsHitTestVisible="True">
+
+    <!--
+        Modal layer shared by desktop and mobile (DataContext = Settings): the recipe library and the
+        Send-to-camera dialog (png/V2-Camera*). Centered card on desktop/tablet, bottom sheet on phones.
+    -->
+    <Panel>
+        <Panel.Styles>
+            <Style Selector="Border.dialog">
+                <Setter Property="Background" Value="{DynamicResource PanelBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="16"/>
+                <Setter Property="MaxWidth" Value="560"/>
+                <Setter Property="Margin" Value="16"/>
+            </Style>
+            <Style Selector="Border.card">
+                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="CornerRadius" Value="10"/>
+                <Setter Property="Padding" Value="12,10"/>
+            </Style>
+            <Style Selector="Border.card.selected">
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Style>
+        </Panel.Styles>
+
+        <!-- ═════════════════ Camera setup (feature off) ═════════════════ -->
+        <Panel IsVisible="{Binding Camera.SetupOpen}" Background="{DynamicResource ScrimBrush}">
+            <Border Classes="dialog" VerticalAlignment="{Binding Camera.SheetAlignment}" MaxHeight="680">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <Grid ColumnDefinitions="*,Auto" Margin="20,16,12,8">
+                        <TextBlock Text="Camera setup" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <Button Grid.Column="1" Classes="link" Width="36" Height="36" Command="{Binding Camera.CloseSetupDialogCommand}"
+                                Foreground="{DynamicResource TextPrimaryBrush}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"/>
+                        </Button>
+                    </Grid>
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel Spacing="12" Margin="20,4,20,12">
+                            <TextBlock Text="Send recipes to your camera" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Classes="hint" TextWrapping="Wrap"
+                                       Text="Take the recipe from a photo, or one of the popular recipes, and write it into a custom slot on a Fujifilm camera over USB."/>
+                            <Grid ColumnDefinitions="22,*"><materialIcons:MaterialIcon Kind="ShieldCheckOutline" Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                                <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Saves what is in the slot first, so you can put it back."/></Grid>
+                            <Grid ColumnDefinitions="22,*"><materialIcons:MaterialIcon Kind="Check" Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                                <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Reads every setting back after writing."/></Grid>
+                            <Grid ColumnDefinitions="22,*"><materialIcons:MaterialIcon Kind="Usb" Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                                <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Needs a USB cable and a special USB mode on the camera."/></Grid>
+                            <Grid ColumnDefinitions="22,*"><materialIcons:MaterialIcon Kind="InformationOutline" Width="16" Height="16" VerticalAlignment="Top" Margin="0,2,0,0"/>
+                                <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Works on newer models. Others get a manual checklist."/></Grid>
+                            <Border Classes="card" BorderBrush="{DynamicResource WarningBrush}">
+                                <TextBlock TextWrapping="Wrap" Classes="hint" Foreground="{DynamicResource WarningBrush}">
+                                    <Run Text="Experimental." FontWeight="SemiBold"/>
+                                    <Run Text="Fujifilm may consider third-party USB control outside the warranty."/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                    <Border Grid.Row="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="20,12,20,16">
+                        <Grid ColumnDefinitions="*,8,*">
+                            <Button Classes="secondary" Content="Not now" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding Camera.CloseSetupDialogCommand}"/>
+                            <Button Grid.Column="2" Classes="cta" Content="Turn on" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Command="{Binding Camera.TurnOnCommand}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
+        </Panel>
+
+        <!-- ═════════════════ Send to camera ═════════════════ -->
+        <Panel IsVisible="{Binding Camera.IsOpen}" Background="{DynamicResource ScrimBrush}">
+            <Border Classes="dialog" VerticalAlignment="{Binding Camera.SheetAlignment}" MaxHeight="720">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <!-- Header -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="20,16,12,8">
+                        <TextBlock Text="{Binding Camera.HeaderTitle}" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap"
+                                   VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                        <Button Grid.Column="1" Classes="link" Width="36" Height="36" Command="{Binding Camera.CloseCommand}"
+                                IsVisible="{Binding !Camera.IsWriting}" Foreground="{DynamicResource TextPrimaryBrush}">
+                            <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"/>
+                        </Button>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <Panel Margin="20,4,20,12">
+
+
+                            <!-- 5 · Warning -->
+                            <StackPanel IsVisible="{Binding Camera.IsWarning}" Spacing="12">
+                                <TextBlock Classes="section-title" IsVisible="{Binding Camera.HasChanges}">
+                                    <Run Text="WHAT WILL CHANGE IN"/>
+                                    <Run Text="{Binding Camera.SelectedSlot.Label}"/>
+                                </TextBlock>
+                                <Border Classes="card" Padding="0" IsVisible="{Binding Camera.HasChanges}">
+                                    <ItemsControl ItemsSource="{Binding Camera.Changes}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="cam:RecipeChange">
+                                                <Grid ColumnDefinitions="*,Auto,Auto,Auto" Margin="12,7">
+                                                    <TextBlock Text="{Binding Field}" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding Was}" Classes="mono-data-small" Opacity="0.65" Margin="0,0,8,0"/>
+                                                    <TextBlock Grid.Column="2" Text="→" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,8,0"/>
+                                                    <TextBlock Grid.Column="3" Text="{Binding Will}" Classes="mono-data-small" FontWeight="SemiBold"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Border>
+                                <TextBlock Text="{Binding Camera.UnchangedText}" Classes="hint"/>
+                                <Border Classes="card" BorderBrush="{DynamicResource WarningBrush}" IsVisible="{Binding Camera.HasSkippedText}">
+                                    <TextBlock Text="{Binding Camera.SkippedText}" Classes="hint" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource WarningBrush}"/>
+                                </Border>
+                                <TextBlock Text="{Binding Camera.ReplaceText}" Classes="hint" TextWrapping="Wrap"
+                                           IsVisible="{Binding Camera.HasReplace}"/>
+                                <TextBlock Text="Before writing to the camera" FontSize="16" FontWeight="SemiBold" Margin="0,6,0,0"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock TextWrapping="Wrap" Classes="row">
+                                    <Run Text="Warranty." FontWeight="SemiBold"/>
+                                    <Run Text="Fujifilm says that connecting with non-licensed software can void the limited warranty."/>
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" Classes="row">
+                                    <Run Text="Restore point." FontWeight="SemiBold"/>
+                                    <Run Text="What is now in the slot is saved first, so you can put it back."/>
+                                </TextBlock>
+                                <TextBlock TextWrapping="Wrap" Classes="row">
+                                    <Run Text="Do not unplug" FontWeight="SemiBold"/>
+                                    <Run Text="the cable or turn the camera off while it is writing."/>
+                                </TextBlock>
+                                <TextBlock Classes="hint" Text="{Binding Camera.RestoreFolder, StringFormat='Restore points: {0}'}"/>
+                                <CheckBox IsChecked="{Binding Camera.Acknowledged}" Content="I understand and want to continue"/>
+                            </StackPanel>
+
+                            <!-- 6 · Writing -->
+                            <StackPanel IsVisible="{Binding Camera.IsWriting}" Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Text="{Binding Camera.ProgressTitle}" Classes="hint" TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                                <ProgressBar Minimum="0" Maximum="{Binding Camera.ProgressMax}" Value="{Binding Camera.ProgressValue}"/>
+                                <ItemsControl ItemsSource="{Binding Camera.ProgressItems}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:WriteProgressItem">
+                                            <Grid ColumnDefinitions="22,*" Margin="0,3">
+                                                <materialIcons:MaterialIcon Kind="CheckCircle" Width="16" Height="16" IsVisible="{Binding IsDone}"
+                                                                            Foreground="{DynamicResource SuccessBrush}"/>
+                                                <materialIcons:MaterialIcon Kind="ProgressClock" Width="16" Height="16" IsVisible="{Binding IsActive}"
+                                                                            Foreground="{DynamicResource AccentBrush}"/>
+                                                <materialIcons:MaterialIcon Kind="CircleOutline" Width="16" Height="16" IsVisible="{Binding IsPending}"
+                                                                            Foreground="{DynamicResource TextMutedBrush}"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Label}" Classes="row"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Classes="hint" Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap"
+                                           Text="Do not unplug the cable or turn the camera off."/>
+                            </StackPanel>
+
+                            <!-- 7 · Done -->
+                            <StackPanel IsVisible="{Binding Camera.IsDone}" Spacing="10">
+                                <materialIcons:MaterialIcon Kind="CheckCircle" Width="56" Height="56" Foreground="{DynamicResource SuccessBrush}"
+                                                            HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Camera.DoneTitle}" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="Every setting was read back from the camera and matches." Classes="hint" TextAlignment="Center"/>
+                                <Border Classes="card">
+                                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
+                                        <TextBlock Text="Slot" Classes="hint"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Camera.DoneSlot}" HorizontalAlignment="Right" Classes="mono-data-small"/>
+                                        <TextBlock Grid.Row="1" Text="Verified" Classes="hint"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Camera.DoneVerified}" HorizontalAlignment="Right"
+                                                   Classes="mono-data-small" Foreground="{DynamicResource SuccessBrush}"/>
+                                        <TextBlock Grid.Row="2" Text="Skipped" Classes="hint"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Camera.DoneSkipped}" HorizontalAlignment="Right" Classes="mono-data-small"/>
+                                        <TextBlock Grid.Row="3" Text="Restore point" Classes="hint"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Camera.DoneRestorePoint}" HorizontalAlignment="Right"
+                                                   Classes="mono-data-small" TextTrimming="CharacterEllipsis"/>
+                                    </Grid>
+                                </Border>
+                                <TextBlock Classes="hint" TextWrapping="Wrap" Text="On the camera: hold the Q button, then select the slot."/>
+                            </StackPanel>
+
+                            <!-- 8 · Error -->
+                            <StackPanel IsVisible="{Binding Camera.IsError}" Spacing="10">
+                                <TextBlock Text="{Binding Camera.ErrorText}" Classes="row" TextWrapping="Wrap"/>
+                                <TextBlock Classes="hint" TextWrapping="Wrap"
+                                           Text="Every property that was touched is read back after a restore, so what the camera holds is known."/>
+                            </StackPanel>
+
+                        </Panel>
+                    </ScrollViewer>
+
+                    <!-- Footer actions -->
+                    <Border Grid.Row="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="20,12,20,16">
+                        <Panel>
+                            <Grid ColumnDefinitions="*,8,*" IsVisible="{Binding Camera.IsWarning}">
+                                <Button Classes="secondary" Content="Cancel" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Command="{Binding Camera.CloseCommand}"/>
+                                <Button Grid.Column="2" Classes="cta" Content="Write recipe" HorizontalAlignment="Stretch"
+                                        HorizontalContentAlignment="Center" Command="{Binding Camera.ConfirmWriteCommand}"/>
+                            </Grid>
+                            <Button Classes="secondary" IsVisible="{Binding Camera.IsWriting}" HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center" Content="Stop and restore" Command="{Binding Camera.StopAndRestoreCommand}"/>
+                            <Grid ColumnDefinitions="*,8,*" IsVisible="{Binding Camera.IsDone}">
+                                <Button Classes="secondary" Content="Undo" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Command="{Binding Camera.UndoCommand}" IsEnabled="{Binding Camera.CanUndo}"/>
+                                <Button Grid.Column="2" Classes="cta" Content="Done" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Command="{Binding Camera.CloseCommand}"/>
+                            </Grid>
+                            <StackPanel IsVisible="{Binding Camera.IsError}" Spacing="8">
+                                <Button Classes="cta" Content="Restore previous" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                        Command="{Binding Camera.RestorePreviousCommand}" IsVisible="{Binding Camera.CanRestore}"/>
+                                <Grid ColumnDefinitions="*,8,*">
+                                    <Button Classes="secondary" Content="Retry" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Command="{Binding Camera.RetryCommand}"/>
+                                    <Button Grid.Column="2" Classes="secondary" Content="Copy details" HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center" Click="CopyDetails_Click"/>
+                                </Grid>
+                                <Button Classes="link" Content="Close" HorizontalAlignment="Center" Command="{Binding Camera.CloseCommand}"/>
+                            </StackPanel>
+                        </Panel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Panel>
+    </Panel>
+</UserControl>

@@ -19,6 +19,7 @@ namespace PhSpectre.Android
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
             FileDialogService.GallerySaver = GallerySaver.SaveAsync;
+            PhSpectre.Avalonia.Services.CameraService.TransportFactory = AndroidUsbCameraTransport.OpenFirstFujifilmAsync;
             ImageLoader.FastWorkingCopyDecoder = NativeImageDecoder.TryDecodeWorkingCopy;
 
             // Read the OS's own dark/light setting directly instead of through

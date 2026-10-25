@@ -23,5 +23,6 @@
     <ItemGroup>
         <ProjectReference Include="..\PhSpectre.Avalonia\PhSpectre.Avalonia.csproj"/>
         <ProjectReference Include="..\PhSpectre.Heif\PhSpectre.Heif.csproj"/>
+        <ProjectReference Include="..\PhSpectre.Wpd\PhSpectre.Wpd.csproj"/>
     </ItemGroup>
 </Project>

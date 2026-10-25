@@ -4,5 +4,7 @@
 	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+	<!-- Optional: only used to write recipes into a camera over a USB cable (OTG). -->
+	<uses-feature android:name="android.hardware.usb.host" android:required="false" />
 	<application android:label="PhSpectre" android:icon="@drawable/Icon" />
 </manifest>

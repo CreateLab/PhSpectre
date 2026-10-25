@@ -1068,7 +1068,7 @@ public static class PaletteImageRenderer
 
     // Samples the top-left corner of the photo to decide overlay text color.
     // Uses relative luminance threshold 0.35 on the blended result (overlay at 55%).
-    private static Color GetOverlayTextColor(Image<Rgb24> image)
+    internal static Color GetOverlayTextColor(Image<Rgb24> image)
     {
         int sampleW = Math.Max(1, image.Width  / 4);
         int sampleH = Math.Max(1, image.Height / 6);

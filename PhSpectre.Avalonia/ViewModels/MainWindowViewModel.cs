@@ -364,6 +364,10 @@ public partial class MainWindowViewModel : ViewModelBase
         // actual re-render only happens when the user clicks it.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
         Settings.TopModeHandler = HandleTopMode;
+        Settings.PhotosProvider = () => Files;
+        Settings.CurrentPhotoProvider = () => SelectedFile;
+        Settings.SelectPhotoAction = f => SelectedFile = f;
+        Settings.OpenPhotosCommand = OpenFolderCommand;
 
         SettingsStorage.Apply(Settings, SettingsStorage.Load());
         Settings.PropertyChanged += (_, e) =>
@@ -913,7 +917,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground, qr: qr,
                     showRecipeCard: exportSettings.ShowRecipeCard,
                     compositionGuide: exportSettings.CompositionGuide,
-                    hiddenRecipeFields: exportSettings.HiddenRecipeFields), token);
+                    hiddenRecipeFields: exportSettings.HiddenRecipeFields, metaStyle: exportSettings.MetaStyle), token);
             }
             else
             {
@@ -1017,7 +1021,7 @@ public partial class MainWindowViewModel : ViewModelBase
             metaVerbosity: s.MetaVerbosity, metadataOverride: null,
             labelScale: s.LabelScale, useBlurredBackground: s.UseBlurredBackground, qr: qr,
             showRecipeCard: s.ShowRecipeCard, compositionGuide: s.CompositionGuide,
-            hiddenRecipeFields: s.HiddenRecipeFields);
+            hiddenRecipeFields: s.HiddenRecipeFields, metaStyle: s.MetaStyle);
     }
 
     private async Task RunBatchAsync(string destFolder)

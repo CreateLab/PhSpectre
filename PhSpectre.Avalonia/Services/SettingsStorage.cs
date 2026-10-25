@@ -59,6 +59,8 @@ internal sealed class PersistedSettings
     public AppAppearance Appearance { get; set; } = AppAppearance.System;
     public string SaveFolder { get; set; } = "";
     public bool ShowInFolderAfterSave { get; set; } = false;
+    public bool CameraExperimental { get; set; }
+    public int RestoreKeepLast { get; set; } = 20;
 }
 
 internal static class SettingsStorage
@@ -83,6 +85,7 @@ internal static class SettingsStorage
         nameof(SettingsViewModel.QrNoteText), nameof(SettingsViewModel.ShowRecipeCard),
         nameof(SettingsViewModel.HiddenRecipeFields), nameof(SettingsViewModel.RecipeVisibilityUserSet),
         nameof(SettingsViewModel.Appearance), nameof(SettingsViewModel.SaveFolder), nameof(SettingsViewModel.ShowInFolderAfterSave),
+        nameof(SettingsViewModel.CameraExperimental), nameof(SettingsViewModel.RestoreKeepLast),
     };
 
     public static bool IsPersistedProperty(string propertyName) => PersistedPropertyNames.Contains(propertyName);
@@ -124,6 +127,8 @@ internal static class SettingsStorage
         vm.Appearance            = s.Appearance;
         vm.SaveFolder            = s.SaveFolder;
         vm.ShowInFolderAfterSave = s.ShowInFolderAfterSave;
+        vm.CameraExperimental    = s.CameraExperimental;
+        vm.RestoreKeepLast       = s.RestoreKeepLast;
     }
 
     public static PersistedSettings Capture(SettingsViewModel vm) => new()
@@ -164,6 +169,8 @@ internal static class SettingsStorage
         Appearance          = vm.Appearance,
         SaveFolder          = vm.SaveFolder,
         ShowInFolderAfterSave = vm.ShowInFolderAfterSave,
+        CameraExperimental  = vm.CameraExperimental,
+        RestoreKeepLast     = vm.RestoreKeepLast,
     };
 
     private static string FilePath => Path.Combine(

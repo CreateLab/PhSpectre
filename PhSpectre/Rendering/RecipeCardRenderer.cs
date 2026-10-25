@@ -33,11 +33,12 @@ public static class RecipeCardRenderer
         QrRenderOptions? qr = null,
         bool showRecipeCard = true,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        string? hiddenRecipeFields = null)
+        string? hiddenRecipeFields = null,
+        MetaStyle metaStyle = MetaStyle.FilmStrip)
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
         Save(canvas, outputPath, format);
     }
 
@@ -57,10 +58,11 @@ public static class RecipeCardRenderer
         QrRenderOptions? qr = null,
         bool showRecipeCard = true,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        string? hiddenRecipeFields = null)
+        string? hiddenRecipeFields = null,
+        MetaStyle metaStyle = MetaStyle.FilmStrip)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
         RenderPerfLog.OnStage?.Invoke("BuildCanvas total", sw.ElapsedMilliseconds);
         sw.Restart();
         Save(canvas, outputPath, format);
@@ -82,8 +84,9 @@ public static class RecipeCardRenderer
         QrRenderOptions? qr = null,
         bool showRecipeCard = true,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        string? hiddenRecipeFields = null)
-        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields);
+        string? hiddenRecipeFields = null,
+        MetaStyle metaStyle = MetaStyle.FilmStrip)
+        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
 
     private static void Save(Image<Rgb24> canvas, string outputPath, OutputFormat format)
     {
@@ -110,7 +113,8 @@ public static class RecipeCardRenderer
         QrRenderOptions? qr = null,
         bool showRecipeCard = true,
         CompositionGuide compositionGuide = CompositionGuide.None,
-        string? hiddenRecipeFields = null)
+        string? hiddenRecipeFields = null,
+        MetaStyle metaStyle = MetaStyle.FilmStrip)
     {
         var prepSw = System.Diagnostics.Stopwatch.StartNew();
         // Independent of QR (v3 spec §1a): unchecking "Show recipe card" drops the title +
@@ -133,7 +137,9 @@ public static class RecipeCardRenderer
         int qrBoxSize = QrCodeRenderer.SuggestBoxSize(CardWidth);
         int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin);
         int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize) : 0;
-        bool plateBesideQr = qr != null && CardWidth - (qrImgSize + 2 * margin) >= CardWidth * 0.4;
+        // Overlay draws the camera text over the photo, so it never takes the bottom row or a strip of its own.
+        bool overlay = metaStyle == MetaStyle.Overlay;
+        bool plateBesideQr = !overlay && qr != null && CardWidth - (qrImgSize + 2 * margin) >= CardWidth * 0.4;
         int plateWidth = plateBesideQr ? CardWidth - (qrImgSize + 2 * margin) : CardWidth;
 
         var (metaLines, metaStripH, metaFs, metaFont) = exif != null
@@ -188,10 +194,11 @@ public static class RecipeCardRenderer
 
         // Bottom row (Cards-Recipe): camera plate on the left, QR on the right, both centered in
         // one row of the taller one's height. Without a plate the QR keeps a row of its own.
-        int bottomRowH = plateInRow ? Math.Max(qrBelowH, metaStripH) : qrBelowH + metaStripH;
+        int stripLayoutH = overlay ? 0 : metaStripH;
+        int bottomRowH = plateInRow ? Math.Max(qrBelowH, metaStripH) : qrBelowH + stripLayoutH;
         int titleY   = photoH + margin;
         int canvasH  = photoH + margin + titleH + (gridH > 0 ? margin / 2 + gridH : 0) + margin + bottomRowH;
-        int qrBlockY = plateInRow ? canvasH - bottomRowH : canvasH - metaStripH - qrBelowH;
+        int qrBlockY = plateInRow ? canvasH - bottomRowH : canvasH - stripLayoutH - qrBelowH;
         RenderPerfLog.OnStage?.Invoke("rows+metadata+layout prep", prepSw.ElapsedMilliseconds);
         var canvas = new Image<Rgb24>(CardWidth, canvasH);
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -267,9 +274,10 @@ public static class RecipeCardRenderer
 
             if (metaStripH > 0)
             {
-                int stripY = plateInRow ? qrBlockY + (bottomRowH - metaStripH) / 2 : canvasH - metaStripH;
+                int stripY = overlay ? 0 : plateInRow ? qrBlockY + (bottomRowH - metaStripH) / 2 : canvasH - metaStripH;
                 PaletteImageRenderer.DrawStrip(ctx, metaLines, metaStripH, metaFs, metaFont,
-                    MetaStyle.FilmStrip, theme, x: 0, y: stripY, w: plateInRow ? plateWidth : CardWidth, customBackground: customBackground,
+                    metaStyle, theme, x: 0, y: stripY, w: plateInRow ? plateWidth : CardWidth,
+                    overlayTextColor: overlay ? PaletteImageRenderer.GetOverlayTextColor(original) : null, customBackground: customBackground,
                     useBlurredBackground: useBlurredBackground);
             }
             Stage("DrawStrip");
