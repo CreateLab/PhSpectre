@@ -125,6 +125,25 @@ error-correction level M — legible at normal export sizes without dominating t
 
 Self-contained — no .NET runtime required on the target machine.
 
+### Recipe library and Send to camera (experimental)
+
+- **Camera** is the fourth mode next to Card, Recipe and Collage (it appears once the feature is on). Left: where the
+  recipe comes from, *This photo* (picked for you), *Saved* (the star keeps any recipe) or *Popular* (a bundled set of
+  community recipes: settings only, with the author's name and a link back to the source), with search, chips and
+  groups by film simulation. Middle: the recipe in full. Right: the camera and its slots, **Write to slot**,
+  **Read slot into the app** (saved to *Saved*) and the restore points. The top bar shows the camera status.
+  **Send to camera** in Content → Recipe opens the mode with this photo's recipe (or the setup dialog while the feature is off).
+  It writes the current recipe into a custom slot (C1–C7) of a connected Fujifilm body
+  over USB: Windows (stock driver, no Zadig) and Android (USB host / OTG). Off until you press *Turn on* in the setup dialog.
+  Camera USB mode must be **USB RAW CONV./BACKUP RESTORE**.
+- Safety: the slot is saved to a restore point (`Pictures/PhSpectre/restore`) before anything is written,
+  every setting is read back from the camera, any mismatch rolls the slot back, and a slot that already
+  has a name is never replaced without confirmation. Settings the body cannot store are listed before
+  writing, never approximated.
+- Verified on real hardware: X-T5 (7 slots) and X-M5 (4 slots). Other models can be read, but writing
+  stays disabled until their encodings are checked; the oldest ones show manual steps instead.
+- Fujifilm states that connecting with non-licensed software can void the limited warranty.
+
 ### Keyboard shortcuts
 
 | Key | Action |

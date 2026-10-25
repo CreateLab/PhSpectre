@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PhSpectre.Avalonia.Views.CameraIndicator"
+             x:DataType="vm:SettingsViewModel">
+
+    <!-- Top-bar camera status (DataContext = Settings); only while camera features are on. Click opens the Camera tab. -->
+    <Panel DataContext="{Binding Camera}" x:DataType="vm:CameraDialogViewModel" IsVisible="{Binding IndicatorVisible}">
+        <Button Classes="secondary" Height="36" Padding="12,0" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenCameraCommand}">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <materialIcons:MaterialIcon Kind="Camera" Width="16" Height="16" IsVisible="{Binding !IndicatorWarn}"/>
+                <materialIcons:MaterialIcon Kind="AlertOutline" Width="16" Height="16" IsVisible="{Binding IndicatorWarn}"
+                                            Foreground="{DynamicResource WarningBrush}"/>
+                <TextBlock Text="{Binding IndicatorText}" VerticalAlignment="Center" FontSize="13"/>
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding IndicatorOk}"/>
+                <Ellipse Width="8" Height="8" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding IndicatorIdle}"/>
+                <materialIcons:MaterialIcon Kind="Loading" Width="14" Height="14" IsVisible="{Binding IndicatorBusy}"/>
+            </StackPanel>
+        </Button>
+    </Panel>
+</UserControl>

@@ -1,6 +1,8 @@
 ﻿using System;
 using Avalonia;
 using PhSpectre.Avalonia;
+using PhSpectre.Avalonia.Services;
+using PhSpectre.Wpd;
 using PhSpectre.Heif;
 
 namespace PhSpectre.Desktop;
@@ -19,6 +21,11 @@ sealed class Program
         // since it already decodes HEIC natively through BitmapFactory (see
         // PhSpectre.Android/NativeImageDecoder.cs).
         HeifDesktopSupport.Register();
+
+        // Writing recipes into a camera goes through the stock Windows MTP driver (WPD), so users never swap
+        // drivers. Other desktop OSes get no camera hook yet and the UI hides the camera features.
+        if (OperatingSystem.IsWindows())
+            CameraService.TransportFactory = WpdCameraFactory.OpenFirstFujifilmAsync;
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }

@@ -146,6 +146,14 @@ public partial class MainViewModel : ViewModelBase
         // Mirrors Desktop's MainWindowViewModel: a settings change never re-renders on its
         // own — it only surfaces the Regenerate button. Actual re-render is user-triggered.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.IsCameraMode)) OnPropertyChanged(nameof(ShowTabletExport));
+        };
+        Settings.PhotosProvider = () => RecentPhotos;
+        Settings.CurrentPhotoProvider = () => RecentPhotos.FirstOrDefault(r => r.IsCurrent);
+        Settings.SelectPhotoAction = f => SelectRecentPhotoCommand.Execute(f);
+        Settings.OpenPhotosCommand = PickPhotoCommand;
 
         // Mirrors OnSelectedFileChanged/IngestNewPhotoAsync's "picking new content re-renders
         // immediately" rule: editing the tray (add/remove/reorder) is a content change, not a
@@ -168,6 +176,7 @@ public partial class MainViewModel : ViewModelBase
     // IsWide is set by MainView from the window width (≥ 840 dp → tablet layout with the
     // inspector as a right-hand column; below that the inspector is a bottom sheet).
     [ObservableProperty] private bool _isWide;
+    public bool ShowTabletExport => IsWide && !Settings.IsCameraMode;
     [ObservableProperty] private bool _isSheetOpen;
 
     public bool IsPhone   => !IsWide;
@@ -176,6 +185,7 @@ public partial class MainViewModel : ViewModelBase
     partial void OnIsWideChanged(bool value)
     {
         OnPropertyChanged(nameof(IsPhone));
+        OnPropertyChanged(nameof(ShowTabletExport));
         OnPropertyChanged(nameof(ShowSheet));
     }
     partial void OnIsSheetOpenChanged(bool value) => OnPropertyChanged(nameof(ShowSheet));
@@ -1067,7 +1077,7 @@ public partial class MainViewModel : ViewModelBase
                     labelScale: exportSettings.LabelScale, useBlurredBackground: exportSettings.UseBlurredBackground, qr: recipeQr,
                     showRecipeCard: exportSettings.ShowRecipeCard,
                     compositionGuide: exportSettings.CompositionGuide,
-                    hiddenRecipeFields: exportSettings.HiddenRecipeFields), token);
+                    hiddenRecipeFields: exportSettings.HiddenRecipeFields, metaStyle: exportSettings.MetaStyle), token);
                 LogStage($"RecipeCardRenderer.Render ({exportSettings.Format})");
             }
             else

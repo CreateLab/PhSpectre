@@ -69,6 +69,12 @@
                             <TextBlock Text="Collage"/>
                         </StackPanel>
                     </ListBoxItem>
+                    <ListBoxItem IsVisible="{Binding Settings.ShowCameraMode}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="CameraOutline" Width="16" Height="16"/>
+                            <TextBlock Text="Camera"/>
+                        </StackPanel>
+                    </ListBoxItem>
                 </ListBox>
 
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
@@ -88,6 +94,8 @@
                             <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
                         </Button>
                     </StackPanel>
+
+                    <views:CameraIndicator DataContext="{Binding Settings}" VerticalAlignment="Center"/>
 
                     <!-- Appearance popover (V2-Light) -->
                     <Button Classes="icon-toolbar" Width="36" Height="36" ToolTip.Tip="Appearance">
@@ -114,7 +122,7 @@
                     </Button>
 
                     <!-- Export ▾ -->
-                    <Button Classes="cta" Padding="16,0" Height="36" MinWidth="110">
+                    <Button Classes="cta" Padding="16,0" Height="36" MinWidth="110" IsVisible="{Binding !Settings.IsCameraMode}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
                             <TextBlock Text="Export" VerticalAlignment="Center"/>
@@ -136,7 +144,7 @@
         </Border>
 
         <!-- ═══════════ Body ═══════════ -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,344">
+        <Grid Grid.Row="1" ColumnDefinitions="*,344" IsVisible="{Binding !Settings.IsCameraMode}">
 
             <!-- Stage + filmstrip -->
             <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
@@ -393,6 +401,12 @@
                 </Grid>
             </Border>
         </Grid>
+
+        <!-- Camera mode: replaces the whole body (recipes · recipe · camera) -->
+        <views:CameraModeView Grid.Row="1" DataContext="{Binding Settings}" IsVisible="{Binding IsCameraMode}"/>
+
+        <!-- Camera dialogs (setup, write): modal layer -->
+        <views:CameraOverlay Grid.RowSpan="2" DataContext="{Binding Settings}"/>
     </Grid>
 
 </Window>

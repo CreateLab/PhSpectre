@@ -20,5 +20,10 @@ public sealed record FilmRecipe(
     string? GrainEffect,
     string? ColorChromeEffect,
     string? ColorChromeFxBlue,
-    int? BwAdjustment
+    int? BwAdjustment,
+    // Slot-only settings (never in MakerNote, so the JPEG extractor leaves them null). Optional and last
+    // so existing positional construction and stored JSON keep working.
+    string? GrainSize = null,
+    string? SmoothSkinEffect = null,
+    int? ColorTemperature = null
 );

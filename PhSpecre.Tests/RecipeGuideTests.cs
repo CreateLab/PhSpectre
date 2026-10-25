@@ -34,6 +34,28 @@ public class RecipeGuideTests
                 differs = plain[x, y] != guided[x, y];
         Assert.True(differs);
     }
+
+    [Fact]
+    public void RecipeCard_OverlayStyle_DrawsCameraTextOnThePhoto_NotInAStrip()
+    {
+        using var photo = new Image<Rgb24>(600, 400);
+        photo.Mutate(c => c.BackgroundColor(Color.Black));
+        var metadata = new PaletteImageRenderer.PhotoMetadata(
+            "FUJIFILM X-T5", "XF35mmF1.4 R", "35mm", "52mm eq", "f/1.4", "1/500s", "ISO 400",
+            "2026-01-01", "+0.3 EV", "WB: Auto", "Manual", "S/N: 12345");
+
+        using var strip = RecipeCardRenderer.RenderToImage(photo, Recipe(),
+            metaVerbosity: MetaVerbosity.Default, metadataOverride: metadata, metaStyle: MetaStyle.FilmStrip);
+        using var overlay = RecipeCardRenderer.RenderToImage(photo, Recipe(),
+            metaVerbosity: MetaVerbosity.Default, metadataOverride: metadata, metaStyle: MetaStyle.Overlay);
+
+        Assert.True(overlay.Height < strip.Height);
+        bool textOnPhoto = false;
+        for (int y = 0; y < 150 && !textOnPhoto; y++)
+            for (int x = 0; x < 600 && !textOnPhoto; x++)
+                textOnPhoto = overlay[x, y] != new Rgb24(0, 0, 0);
+        Assert.True(textOnPhoto);
+    }
 }
 
 public class BlurredBackdropRobustnessTests

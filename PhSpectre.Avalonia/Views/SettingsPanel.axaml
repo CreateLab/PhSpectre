@@ -450,6 +450,19 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+
+                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
+                            Margin="0,2,0,0" Content="Save to library" Command="{Binding SaveRecipeToLibraryCommand}"/>
+                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
+                            Margin="0,2,0,0" IsVisible="{Binding CameraSupported}" Command="{Binding OpenCameraCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="Camera" Width="16" Height="16"/>
+                            <TextBlock Text="Send to camera" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Text="{Binding RecipeStatusText}" Classes="hint" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding HasRecipeStatus}"/>
                 </StackPanel>
 
             </StackPanel>
@@ -515,149 +528,13 @@
             </Border>
         </StackPanel>
 
+
+        <!-- ═════════════════════════ CAMERA ═════════════════════════ -->
         </Panel>
         </ScrollViewer>
 
         <!-- Recipe editor: replaces the whole inspector while open (header / scrolling body / sticky footer) -->
-        <Grid x:Name="RecipeEditor" Grid.Row="0" Grid.RowSpan="2" RowDefinitions="Auto,*,Auto"
-              IsVisible="{Binding IsRecipeEditorOpen}" Background="{DynamicResource PanelBrush}">
-            <Grid.Styles>
-                <Style Selector="Grid#RecipeEditor StackPanel.cell">
-                    <Setter Property="Spacing" Value="4"/>
-                    <Setter Property="Margin" Value="6,0,6,12"/>
-                </Style>
-                <Style Selector="Grid#RecipeEditor TextBox, Grid#RecipeEditor ComboBox">
-                    <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-                    <Setter Property="CornerRadius" Value="6"/>
-                    <Setter Property="FontSize" Value="13"/>
-                    <Setter Property="Height" Value="{Binding FieldHeight}"/>
-                    <Setter Property="MinHeight" Value="0"/>
-                    <Setter Property="Padding" Value="12,0"/>
-                    <Setter Property="HorizontalAlignment" Value="Stretch"/>
-                </Style>
-                <Style Selector="Grid#RecipeEditor ComboBox">
-                    <Setter Property="VerticalContentAlignment" Value="Center"/>
-                    <Setter Property="HorizontalContentAlignment" Value="Left"/>
-                </Style>
-                <Style Selector="Grid#RecipeEditor TextBlock.group">
-                    <Setter Property="Margin" Value="0,14,0,10"/>
-                </Style>
-            </Grid.Styles>
-
-            <!-- Header -->
-            <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,6">
-                <Button Classes="link" Width="40" Height="40" Command="{Binding CancelRecipeEditorCommand}"
-                        Foreground="{DynamicResource TextPrimaryBrush}" ToolTip.Tip="Back (Esc)">
-                    <materialIcons:MaterialIcon Kind="ArrowLeft" Width="20" Height="20"/>
-                </Button>
-                <TextBlock Grid.Column="1" Text="Edit recipe" FontSize="16" FontWeight="SemiBold"
-                           VerticalAlignment="Center" Margin="4,0,0,0"
-                           Foreground="{DynamicResource TextPrimaryBrush}"/>
-                <Button Grid.Column="2" Classes="link" Content="Save" Padding="12,0" Height="40"
-                        Command="{Binding SaveRecipeEditsCommand}"/>
-            </Grid>
-
-            <!-- Body: the only part that scrolls -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                          Padding="0,0,12,0">
-                <StackPanel Margin="0,0,0,16">
-                    <StackPanel Classes="cell" Margin="0,0,0,4">
-                        <TextBlock Text="Recipe name" Classes="hint"/>
-                        <TextBox Text="{Binding EditRecipeName}" PlaceholderText="e.g. Kodak Portra 400"/>
-                    </StackPanel>
-
-                    <TextBlock Text="TONE" Classes="section-title group"/>
-                    <UniformGrid x:Name="EditGroup1" Columns="1" Margin="-6,0">
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="White balance" Classes="hint"/>
-                            <ComboBox ItemsSource="{Binding WhiteBalanceOptions}" SelectedItem="{Binding EditWhiteBalance}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Dynamic range" Classes="hint"/>
-                            <ComboBox ItemsSource="{Binding DynamicRangeOptions}" SelectedItem="{Binding EditDynamicRange}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="WB shift (Red)" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditWhiteBalanceShiftRed}" Minimum="-9" Maximum="9" Step="1" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="WB shift (Blue)" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditWhiteBalanceShiftBlue}" Minimum="-9" Maximum="9" Step="1" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Highlight tone" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditHighlightTone}" Minimum="-2" Maximum="4" Step="0.5" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Shadow tone" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditShadowTone}" Minimum="-2" Maximum="4" Step="0.5" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                    </UniformGrid>
-
-                    <TextBlock Text="COLOR &amp; SHARPNESS" Classes="section-title group"/>
-                    <UniformGrid x:Name="EditGroup2" Columns="1" Margin="-6,0">
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Color" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditColor}" Minimum="-4" Maximum="4" Step="1" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Sharpness" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditSharpness}" Minimum="-4" Maximum="4" Step="1" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Noise reduction" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditNoiseReduction}" Minimum="-4" Maximum="4" Step="1" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Clarity" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditClarity}" Minimum="-5" Maximum="5" Step="0.5" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                    </UniformGrid>
-
-                    <TextBlock Text="EFFECTS" Classes="section-title group"/>
-                    <UniformGrid x:Name="EditGroup3" Columns="1" Margin="-6,0">
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Grain effect" Classes="hint"/>
-                            <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditGrainEffect}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Color Chrome" Classes="hint"/>
-                            <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditColorChromeEffect}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="Color Chrome Blue" Classes="hint"/>
-                            <ComboBox ItemsSource="{Binding ThreeLevelOptions}" SelectedItem="{Binding EditColorChromeFxBlue}"/>
-                        </StackPanel>
-                        <StackPanel Classes="cell">
-                            <TextBlock Text="B&amp;W adjustment" Classes="hint"/>
-                            <local:NumberStepper Value="{Binding EditBwAdjustment}" Minimum="-9" Maximum="9" Step="1" ControlHeight="{Binding FieldHeight}"/>
-                        </StackPanel>
-                    </UniformGrid>
-                </StackPanel>
-            </ScrollViewer>
-
-            <!-- Sticky footer -->
-            <Border Grid.Row="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="0,10,0,0">
-                <StackPanel Spacing="8">
-                    <Border IsVisible="{Binding ShowDiscardConfirm}" Background="{DynamicResource SurfaceBrush}"
-                            BorderBrush="{DynamicResource ErrorBrush}" BorderThickness="1" CornerRadius="6" Padding="10,8">
-                        <Grid ColumnDefinitions="*,Auto,Auto">
-                            <TextBlock Text="Discard unsaved changes?" Classes="row" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="link" Content="Keep editing" Margin="8,0"
-                                    Command="{Binding KeepEditingRecipeCommand}"/>
-                            <Button Grid.Column="2" Classes="link" Content="Discard" Foreground="{DynamicResource ErrorBrush}"
-                                    Command="{Binding CancelRecipeEditorCommand}"/>
-                        </Grid>
-                    </Border>
-                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
-                        <Button Grid.Column="0" Classes="ghost" Content="Cancel" Height="44" HorizontalAlignment="Stretch"
-                                Command="{Binding CancelRecipeEditorCommand}"/>
-                        <Button Grid.Column="1" Classes="cta" Content="Save" Height="44" HorizontalAlignment="Stretch"
-                                Command="{Binding SaveRecipeEditsCommand}"/>
-                    </Grid>
-                </StackPanel>
-            </Border>
-        </Grid>
+        <local:RecipeEditorView Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding IsRecipeEditorOpen}"/>
     </Grid>
 
 </UserControl>

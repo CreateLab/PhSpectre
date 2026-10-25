@@ -455,6 +455,7 @@ public partial class SettingsViewModel : ViewModelBase
             ApplyAutoRecipeVisibility(value);
             RaiseRecipeFieldsChanged();
             OnPropertyChanged(nameof(RecipeSourceBadgeText));
+            _library?.PhotoRecipeChanged();
         }
     }
 
@@ -556,6 +557,7 @@ public partial class SettingsViewModel : ViewModelBase
 
     [ObservableProperty] private bool    _isRecipeEditorOpen;
     [ObservableProperty] private string  _editRecipeName          = "";
+    [ObservableProperty] private string  _editFilmSimulation      = "";
     [ObservableProperty] private string  _editWhiteBalance        = "";
     [ObservableProperty] private string  _editDynamicRange        = "";
     [ObservableProperty] private decimal _editHighlightTone;
@@ -574,6 +576,7 @@ public partial class SettingsViewModel : ViewModelBase
     // Dropdown option lists for the manual-entry form — forwarded from the core project's
     // RecipeFieldOptions so SettingsPanel.axaml can bind ItemsSource against an instance
     // property (XAML can't bind directly to a static class member).
+    public IReadOnlyList<string> FilmSimulationOptions => PhSpectre.Camera.FujiSlotCodec.FilmSimulationNames;
     public IReadOnlyList<string> WhiteBalanceOptions  => RecipeFieldOptions.WhiteBalance;
     public IReadOnlyList<string> DynamicRangeOptions  => RecipeFieldOptions.DynamicRange;
     public IReadOnlyList<string> ThreeLevelOptions    => RecipeFieldOptions.ThreeLevel;
@@ -586,15 +589,22 @@ public partial class SettingsViewModel : ViewModelBase
         || name.StartsWith("Show", StringComparison.Ordinal) && name.EndsWith("UI", StringComparison.Ordinal)
         || name is nameof(ActiveTab) or nameof(ActiveTabIndex) or nameof(IsStyleTab) or nameof(IsContentTab)
             or nameof(IsExportTab) or nameof(IsRecipeEditorOpen) or nameof(ShowDiscardConfirm)
-            or nameof(HasPhoto) or nameof(ShowNoRecipeHint) or nameof(IsMetadataEditorExpanded);
+            or nameof(HasPhoto) or nameof(ShowNoRecipeHint) or nameof(IsMetadataEditorExpanded)
+            or nameof(CameraExperimental) or nameof(IsCameraMode) or nameof(RestoreKeepLast) or nameof(RestoreKeepIndex)
+            or nameof(RecipeStatusText) or nameof(HasRecipeStatus);
 
     public string RecipeSourceBadgeText => DetectedRecipe?.Source == RecipeSource.Manual ? "Custom" : "Auto · Fuji";
 
     [RelayCommand]
-    private void OpenRecipeEditor()
+    private void OpenRecipeEditor() => OpenRecipeEditorFor(DetectedRecipe, false);
+
+    /// <summary>Opens the form on a recipe (or empty). From the Camera mode the result is handed back to its picker instead of the photo.</summary>
+    public void OpenRecipeEditorFor(FilmRecipe? r, bool forCamera)
     {
-        var r = DetectedRecipe;
+        _editForCamera = forCamera;
+        _editBase = r;
         EditRecipeName            = r?.RecipeName ?? r?.FilmSimulation ?? "";
+        EditFilmSimulation        = r?.FilmSimulation ?? "";
         EditWhiteBalance          = r?.WhiteBalance ?? WhiteBalanceOptions[0];
         EditDynamicRange          = r?.DynamicRange ?? DynamicRangeOptions[0];
         EditHighlightTone         = r?.HighlightTone ?? 0;
@@ -619,7 +629,10 @@ public partial class SettingsViewModel : ViewModelBase
     private string _editSnapshot = "";
     public double FieldHeight => IsMobile ? 44 : 40;
 
-    private string EditState() => string.Join("|", EditRecipeName, EditWhiteBalance, EditDynamicRange,
+    private bool _editForCamera;
+    private FilmRecipe? _editBase;
+
+    private string EditState() => string.Join("|", EditRecipeName, EditFilmSimulation, EditWhiteBalance, EditDynamicRange,
         EditHighlightTone, EditShadowTone, EditColor, EditSharpness, EditNoiseReduction, EditClarity,
         EditGrainEffect, EditColorChromeEffect, EditColorChromeFxBlue, EditBwAdjustment,
         EditWhiteBalanceShiftRed, EditWhiteBalanceShiftBlue);
@@ -638,13 +651,14 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void SaveRecipeEdits()
     {
-        var prev = DetectedRecipe;
-        DetectedRecipe = new FilmRecipe(
+        var prev = _editBase;
+        var edited = new FilmRecipe(
             Source: RecipeSource.Manual,
             RecipeName: string.IsNullOrWhiteSpace(EditRecipeName) ? null : EditRecipeName.Trim(),
             CameraMake: prev?.CameraMake ?? "",
             CameraModel: prev?.CameraModel ?? "",
-            FilmSimulation: string.IsNullOrWhiteSpace(EditRecipeName) ? prev?.FilmSimulation : EditRecipeName.Trim(),
+            FilmSimulation: !string.IsNullOrWhiteSpace(EditFilmSimulation) ? EditFilmSimulation
+                : prev?.FilmSimulation ?? (string.IsNullOrWhiteSpace(EditRecipeName) ? null : EditRecipeName.Trim()),
             WhiteBalance: EditWhiteBalance,
             WhiteBalanceShift: (EditWhiteBalanceShiftRed, EditWhiteBalanceShiftBlue) == (0, 0) ? null : (EditWhiteBalanceShiftRed, EditWhiteBalanceShiftBlue),
             DynamicRange: EditDynamicRange,
@@ -657,7 +671,13 @@ public partial class SettingsViewModel : ViewModelBase
             GrainEffect: EditGrainEffect,
             ColorChromeEffect: EditColorChromeEffect,
             ColorChromeFxBlue: EditColorChromeFxBlue,
-            BwAdjustment: EditBwAdjustment);
+            BwAdjustment: EditBwAdjustment,
+            // The editor has no fields for these slot-only settings; keep what the recipe already had.
+            GrainSize: prev?.GrainSize,
+            SmoothSkinEffect: prev?.SmoothSkinEffect,
+            ColorTemperature: prev?.ColorTemperature);
+        if (_editForCamera) Library.UseCustom(edited);
+        else DetectedRecipe = edited;
         ShowDiscardConfirm = false;
         IsRecipeEditorOpen = false;
     }
@@ -750,10 +770,20 @@ public partial class SettingsViewModel : ViewModelBase
     }
     public bool IsPaletteSwitchVisible => ExportMode != ExportMode.Recipe;
 
-    // 0 = Card, 1 = Recipe, 2 = Collage. ShowCollageOptions is the desktop's "collage tray is
+    // 0 = Card, 1 = Recipe, 2 = Collage, 3 = Camera. ShowCollageOptions is the desktop's "collage tray is
     // open" flag, so the segment stays on Collage while the tray exists even with one photo.
+    // Camera is a screen of its own, not an ExportMode: switching to it never touches the card preview.
+    [ObservableProperty] private bool _isCameraMode;
+
+    partial void OnIsCameraModeChanged(bool value)
+    {
+        OnPropertyChanged(nameof(TopModeIndex)); OnPropertyChanged(nameof(TopModeSelection));
+        if (value) Library.Enter();
+    }
+
     public int TopModeIndex =>
-        ExportMode == ExportMode.Recipe ? 1
+        IsCameraMode ? 3
+        : ExportMode == ExportMode.Recipe ? 1
         : ShowCollageOptions || ExportMode is ExportMode.Collage or ExportMode.CollageInfoOnly ? 2
         : 0;
 
@@ -775,6 +805,12 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void SelectTopMode(int index)
     {
+        if (index == 3)
+        {
+            if (CameraExperimental && CameraSupported) IsCameraMode = true;
+            return;
+        }
+        IsCameraMode = false;
         if (TopModeHandler != null) { TopModeHandler(index); return; }
         ApplyTopMode(index);
     }

@@ -1,0 +1,609 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PhSpectre.Avalonia.Views.CameraModeView"
+             x:DataType="vm:SettingsViewModel">
+
+    <!--
+        Camera mode (DataContext = Settings), png/V2-Camera-Mode*: recipes on the left (this photo / saved / popular),
+        the chosen recipe in the middle, the camera and its slots on the right. On a phone the same pieces are two
+        steps: the recipe list, then the slots with the write button.
+    -->
+    <UserControl.Styles>
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="Padding" Value="12,10"/>
+        </Style>
+        <Style Selector="Border.card.selected">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Border.recipe-row">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Padding" Value="10,8,6,8"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+        <Style Selector="Border.recipe-row.selected">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Border.recipe-row.photo-card">
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
+            <Setter Property="Padding" Value="12,10,8,10"/>
+        </Style>
+        <Style Selector="Border.recipe-row.photo-card.selected">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+        <Style Selector="Button.fchip">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="CornerRadius" Value="18"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="Button.fchip.active">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="Foreground" Value="{DynamicResource AccentInkBrush}"/>
+        </Style>
+        <Style Selector="ListBox.photos > ListBoxItem">
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Margin" Value="0,0,0,2"/>
+        </Style>
+        <Style Selector="ListBox.photos > ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        </Style>
+        <Style Selector="Ellipse.dot">
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Height" Value="8"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Panel Background="{DynamicResource BackgroundBrush}">
+        <Grid RowDefinitions="Auto,*" IsVisible="{Binding Library.ShowBrowser}">
+            <Border Grid.Row="0" Padding="16,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1"
+                    Background="{DynamicResource PanelBrush}" IsVisible="{Binding Library.ShowBrowseBar}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="No camera connected. You can browse and save recipes." Classes="hint" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Classes="secondary" Height="32" Padding="14,0" HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center" Content="Connect camera" Command="{Binding Library.ConnectCameraCommand}"/>
+                </Grid>
+            </Border>
+        <Grid x:Name="Cols" Grid.Row="1" ColumnDefinitions="320,*,340">
+
+            <!-- ═════════════════ Recipes (left) ═════════════════ -->
+            <Border x:Name="LeftCol" Grid.Column="0" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,1,0"
+                    Background="{DynamicResource PanelBrush}" IsVisible="{Binding Library.ShowRecipeStep}">
+                <Grid RowDefinitions="*,Auto" DataContext="{Binding Library}" x:DataType="vm:RecipeLibraryViewModel">
+                    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16,16,16,0">
+                        <ListBox Classes="seg touch" SelectedIndex="{Binding SourceIndex}">
+                            <ListBoxItem Content="Photos"/>
+                            <ListBoxItem Content="{Binding SavedTabText}"/>
+                            <ListBoxItem Content="Popular"/>
+                        </ListBox>
+
+                        <TextBox Grid.Row="1" Margin="0,12,0,0" Height="36" PlaceholderText="Name, film simulation, author"
+                                 PlaceholderForeground="{DynamicResource TextSecondaryBrush}"
+                                 Text="{Binding Search}" IsVisible="{Binding ShowSearch}"/>
+
+                        <StackPanel Grid.Row="2" Spacing="8" Margin="0,10,0,0" IsVisible="{Binding ShowChips}">
+                            <ItemsControl ItemsSource="{Binding Chips}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6"/></ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:RecipeChip">
+                                        <Button Classes="fchip" Classes.active="{Binding IsActive}" Content="{Binding Label}"
+                                                Command="{Binding Command}" CommandParameter="{Binding Filter}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ComboBox ItemsSource="{Binding FilmOptions}" SelectedItem="{Binding SelectedFilm}" HorizontalAlignment="Stretch"
+                                      Height="36" MinHeight="36">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:FilmOption">
+                                        <TextBlock Text="{Binding Label}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0" IsVisible="{Binding ShowPhotoFilter}">
+                            <Button Classes="fchip" Classes.active="{Binding OnlyWithRecipe}" Content="With recipe"
+                                    Command="{Binding ToggleOnlyWithRecipeCommand}"/>
+                        </StackPanel>
+
+                        <!-- Photos: the shared current photo, virtualized -->
+                        <ListBox x:Name="PhotoList" Grid.Row="3" Margin="0,10,0,0" Classes="photos" ItemsSource="{Binding PhotoRows}"
+                                 SelectedItem="{Binding SelectedPhotoRow}" IsVisible="{Binding ShowPhotoList}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:RecipeRow">
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,2">
+                                        <Border Width="56" Height="40" CornerRadius="5" ClipToBounds="True" Margin="0,0,10,0"
+                                                Background="{DynamicResource SurfaceBrush}">
+                                            <Image Source="{Binding Photo.ThumbnailBitmap}" Stretch="UniformToFill"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                            <TextBlock Text="{Binding Subtitle}" Classes="mono-data-small" TextTrimming="CharacterEllipsis"
+                                                       Opacity="{Binding SubtitleOpacity}"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Grid.Row="3" Margin="2,16,0,0" Classes="hint" Text="No photos match." IsVisible="{Binding ShowNoPhotoMatches}"/>
+                        <StackPanel Grid.Row="3" Margin="0,28,0,0" Spacing="12" HorizontalAlignment="Center" IsVisible="{Binding ShowOpenFolder}">
+                            <materialIcons:MaterialIcon Kind="FolderOutline" Width="36" Height="36" Foreground="{DynamicResource TextMutedBrush}"/>
+                            <TextBlock Text="Open a folder with photos" Classes="hint" TextAlignment="Center"/>
+                            <Button Classes="secondary" Height="40" Padding="18,0" HorizontalAlignment="Center" Content="Open folder"
+                                    Command="{Binding OpenFolderCommand}"/>
+                            <TextBlock Text="Saved and Popular work without photos." Classes="hint" TextAlignment="Center" FontSize="11"/>
+                        </StackPanel>
+
+                        <ScrollViewer Grid.Row="3" Margin="0,10,-8,0" Padding="0,0,8,0" VerticalScrollBarVisibility="Auto" IsVisible="{Binding ShowGroupedList}">
+                            <StackPanel>
+                                <Button Classes="secondary" Height="36" Padding="14,0" HorizontalAlignment="Left" HorizontalContentAlignment="Center"
+                                        VerticalContentAlignment="Center" Margin="0,0,0,4" IsVisible="{Binding ShowAddMenu}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <materialIcons:MaterialIcon Kind="Plus" Width="14" Height="14"/>
+                                        <TextBlock Text="Add" VerticalAlignment="Center"/>
+                                        <materialIcons:MaterialIcon Kind="ChevronDown" Width="14" Height="14"/>
+                                    </StackPanel>
+                                    <Button.Flyout>
+                                        <MenuFlyout Placement="BottomEdgeAlignedLeft">
+                                            <MenuItem Header="By hand" Command="{Binding NewByHandCommand}"/>
+                                            <MenuItem Header="Paste recipe" Click="PasteRecipe_Click"/>
+                                        </MenuFlyout>
+                                    </Button.Flyout>
+                                </Button>
+                                <ItemsControl ItemsSource="{Binding Groups}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:RecipeGroup">
+                                            <StackPanel Margin="0,0,0,8">
+                                                <TextBlock Text="{Binding Header}" Classes="section-title" IsVisible="{Binding HasHeader}"
+                                                           Margin="2,10,0,6"/>
+                                                <ItemsControl ItemsSource="{Binding Rows}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="vm:RecipeRow">
+                                                            <Border Classes="recipe-row" Classes.selected="{Binding IsSelected}"
+                                                                   >
+                                                                <Grid ColumnDefinitions="*,Auto">
+                                                                    <StackPanel VerticalAlignment="Center" Opacity="{Binding TitleOpacity}">
+                                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                                        <TextBlock Text="{Binding Subtitle}" Classes="mono-data-small" Opacity="0.65"
+                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                    </StackPanel>
+                                                                    <Button Grid.ColumnSpan="2" Classes="text" Opacity="0.01" HorizontalAlignment="Stretch"
+                                                                            VerticalAlignment="Stretch" Command="{Binding SelectCommand}"
+                                                                            CommandParameter="{Binding}" IsEnabled="{Binding HasRecipe}"/>
+                                                                    <Button Grid.Column="1" Classes="link" Width="36" Height="36" Padding="0"
+                                                                            IsVisible="{Binding HasRecipe}" Command="{Binding StarCommand}"
+                                                                            CommandParameter="{Binding}" ToolTip.Tip="Keep in Saved">
+                                                                        <Panel>
+                                                                            <materialIcons:MaterialIcon Kind="StarOutline" Width="18" Height="18"
+                                                                                                        IsVisible="{Binding !IsStarred}"
+                                                                                                        Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                                            <materialIcons:MaterialIcon Kind="Star" Width="18" Height="18"
+                                                                                                        IsVisible="{Binding IsStarred}"
+                                                                                                        Foreground="{DynamicResource WarningBrush}"/>
+                                                                        </Panel>
+                                                                    </Button>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Empty states -->
+                                <Border Classes="card" Margin="0,8,0,0" IsVisible="{Binding ShowSavedHelp}">
+                                    <StackPanel Spacing="10">
+                                        <TextBlock Text="No saved recipes yet" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Classes="hint" TextWrapping="Wrap"
+                                                   Text="Tap the star on any recipe, read a slot from the camera, or add one yourself."/>
+                                        <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center" Command="{Binding NewByHandCommand}">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <materialIcons:MaterialIcon Kind="PencilOutline" Width="16" Height="16"/>
+                                                <TextBlock Text="Enter by hand" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center" Click="PasteRecipe_Click">
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <materialIcons:MaterialIcon Kind="ContentPaste" Width="16" Height="16"/>
+                                                <TextBlock Text="Paste recipe" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+                                <TextBlock Classes="hint" Margin="2,12,0,0" Text="No recipes match." IsVisible="{Binding ShowNoMatches}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- Phone, step 1: the footer button is the way forward -->
+                    <StackPanel Grid.Row="1">
+                    <Border Grid.Row="1" Padding="16,12,16,16" IsVisible="{Binding ShowChooseFooter}"
+                            BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
+                        <Button Classes="cta" Height="48" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                VerticalContentAlignment="Center" Content="{Binding ChooseButtonText}" IsEnabled="{Binding HasSelection}"
+                                Command="{Binding UseThisRecipeCommand}"/>
+                    </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═════════════════ The recipe (middle) ═════════════════ -->
+            <Grid x:Name="CenterCol" Grid.Column="1" Grid.ColumnSpan="{Binding CenterSpan}" RowDefinitions="*,Auto" Margin="32,28,32,16"
+                  DataContext="{Binding Library}" x:DataType="vm:RecipeLibraryViewModel" IsVisible="{Binding ShowCenterColumn}">
+                <StackPanel Spacing="20" IsVisible="{Binding HasSelection}">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Border Width="64" Height="64" CornerRadius="8" ClipToBounds="True" Margin="0,0,16,0" VerticalAlignment="Top"
+                                Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding SelectedIsPhoto}">
+                            <Image Source="{Binding SelectedPhoto.ThumbnailBitmap}" Stretch="UniformToFill"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Spacing="4">
+                            <TextBox Text="{Binding SelectedName, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" FontSize="24" FontWeight="SemiBold"
+                                     Background="Transparent" BorderThickness="0" Padding="0,2" MinHeight="0" IsReadOnly="{Binding !IsNameEditable}"
+                                     Watermark="Recipe name" ToolTip.Tip="Name of the recipe (it becomes the slot name)"
+                                     Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Text="{Binding SelectedSubtitle}" Classes="hint" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SelectedFileName}" Classes="mono-data-small" Opacity="0.65" VerticalAlignment="Center"
+                                           IsVisible="{Binding SelectedIsPhoto}"/>
+                                <Button Classes="link" Padding="0" Content="Change photo" IsVisible="{Binding SelectedIsPhoto}"
+                                        Command="{Binding ChangePhotoCommand}"/>
+                                <Button Classes="link" Padding="0" IsVisible="{Binding HasSource}" Command="{Binding OpenSourceCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <TextBlock Text="Source" VerticalAlignment="Center"/>
+                                        <materialIcons:MaterialIcon Kind="OpenInNew" Width="12" Height="12"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+                        <Button Classes="secondary" Height="40" Width="40" Padding="0" Command="{Binding EditSelectedCommand}" ToolTip.Tip="Edit by hand">
+                            <materialIcons:MaterialIcon Kind="PencilOutline" Width="16" Height="16"/>
+                        </Button>
+                        <Button Classes="secondary" Height="40" Width="40" Padding="0" Click="CopyRecipe_Click" ToolTip.Tip="Copy recipe">
+                            <materialIcons:MaterialIcon Kind="ContentCopy" Width="16" Height="16"/>
+                        </Button>
+                        <Button Classes="secondary" Height="40" Padding="16,0" VerticalAlignment="Top"
+                                Command="{Binding SaveSelectedCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <materialIcons:MaterialIcon Kind="StarOutline" Width="16" Height="16" IsVisible="{Binding !SelectedStarred}"/>
+                                <materialIcons:MaterialIcon Kind="Star" Width="16" Height="16" IsVisible="{Binding SelectedStarred}"
+                                                            Foreground="{DynamicResource WarningBrush}"/>
+                                <TextBlock Text="{Binding SaveButtonText}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding Tiles}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ParamTile">
+                                <Border Classes="card" Margin="0,0,10,10" Padding="8,10" Opacity="{Binding Opacity}">
+                                    <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Label}" Classes="hint" FontSize="11" HorizontalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Value}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Classes="card" BorderBrush="{DynamicResource WarningBrush}" HorizontalAlignment="Left"
+                            IsVisible="{Binding HasMutedTiles}">
+                        <StackPanel Orientation="Horizontal" Spacing="10">
+                            <materialIcons:MaterialIcon Kind="AlertOutline" Width="16" Height="16" Foreground="{DynamicResource WarningBrush}"/>
+                            <TextBlock Text="{Binding MutedText}" Classes="hint" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" IsVisible="{Binding NoSelection}">
+                    <materialIcons:MaterialIcon Kind="FilmstripBoxMultiple" Width="40" Height="40" Foreground="{DynamicResource TextMutedBrush}"/>
+                    <TextBlock Text="{Binding NoSelectionText}" Classes="hint" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="320"/>
+                </StackPanel>
+
+                <TextBlock Grid.Row="1" Classes="hint" TextWrapping="Wrap" IsVisible="{Binding ShowCredit}"
+                           Text="Popular recipes are shared by their authors. Settings only, credit and source link kept."/>
+            </Grid>
+
+            <!-- ═════════════════ The camera (right) ═════════════════ -->
+            <Border x:Name="RightCol" Grid.Column="2" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0"
+                    Background="{DynamicResource PanelBrush}" IsVisible="{Binding Library.ShowSlotStep}">
+                <Grid RowDefinitions="*,Auto" DataContext="{Binding Camera}" x:DataType="vm:CameraDialogViewModel">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,8,0">
+                        <StackPanel Spacing="10" Margin="16,16,8,16">
+
+                            <!-- Phone, step 2: the recipe on top, "Change" goes back to the list -->
+                            <Border Classes="card" IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Library.IsNarrow}">
+                                <Grid ColumnDefinitions="*,Auto" DataContext="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Library}"
+                                      x:DataType="vm:RecipeLibraryViewModel">
+                                    <StackPanel>
+                                        <TextBlock Text="RECIPE" Classes="mono-data-small" Opacity="0.65" FontSize="10"/>
+                                        <TextBlock Text="{Binding SelectedTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Classes="link" Content="Change" VerticalAlignment="Center"
+                                            Command="{Binding ChangeRecipeCommand}"/>
+                                </Grid>
+                            </Border>
+
+                            <!-- Camera card -->
+                            <Border Classes="card" IsVisible="{Binding IsTabConnected}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Border Width="40" Height="40" CornerRadius="8" Background="{DynamicResource SurfaceBrush}" Margin="0,0,12,0">
+                                        <materialIcons:MaterialIcon Kind="Camera" Width="20" Height="20" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding CardTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding CardDetail}" Classes="mono-data-small" Opacity="0.7"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Ellipse Classes="dot" Fill="{DynamicResource SuccessBrush}" IsVisible="{Binding BadgeIsOk}"/>
+                                        <Ellipse Classes="dot" Fill="{DynamicResource WarningBrush}" IsVisible="{Binding BadgeIsWarn}"/>
+                                        <Ellipse Classes="dot" Fill="{DynamicResource TextMutedBrush}" IsVisible="{Binding BadgeIsIdle}"/>
+                                        <TextBlock Text="{Binding CameraBadge}" Classes="hint"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- No camera: three steps and the search -->
+
+                            <!-- Model without write: the recipe as a checklist -->
+                            <StackPanel IsVisible="{Binding IsTabReadOnly}" Spacing="10">
+                                <Border Classes="card" BorderBrush="{DynamicResource WarningBrush}">
+                                    <StackPanel Orientation="Horizontal" Spacing="10">
+                                        <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="16" Height="16" VerticalAlignment="Top"
+                                                                    Foreground="{DynamicResource WarningBrush}"/>
+                                        <TextBlock Text="{Binding ReadOnlyText}" Classes="hint" TextWrapping="Wrap" MaxWidth="240"
+                                                   Foreground="{DynamicResource WarningBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                                <StackPanel Spacing="6" IsVisible="{Binding HasRecipe}">
+                                    <Border Classes="card" Padding="8,4">
+                                        <StackPanel>
+                                            <ItemsControl ItemsSource="{Binding ManualSteps}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate x:DataType="vm:ManualStepItem">
+                                                        <CheckBox IsChecked="{Binding IsDone}" Margin="0,2">
+                                                            <Grid ColumnDefinitions="*,Auto" MinWidth="200">
+                                                                <TextBlock Text="{Binding Label}" Classes="row"/>
+                                                                <TextBlock Grid.Column="1" Text="{Binding Value}" Classes="mono-data-small" Margin="12,0,0,0"/>
+                                                            </Grid>
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Button Classes="link" Padding="8,4" HorizontalAlignment="Left" IsVisible="{Binding HasManualMore}"
+                                                    Content="{Binding ManualMoreText}" Command="{Binding ShowAllManualCommand}"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                            Content="Copy as text" Click="CopyManual_Click"/>
+                                </StackPanel>
+                                <Button Classes="link" HorizontalAlignment="Left" Padding="0" Content="Copy camera report"
+                                        IsVisible="{Binding HasReport}" Click="CopyReport_Click"/>
+                            </StackPanel>
+
+                            <!-- Slots -->
+                            <StackPanel IsVisible="{Binding IsTabReady}" Spacing="8" Margin="0,6,0,0">
+                                <TextBlock Text="SLOTS ON THE CAMERA" Classes="section-title"/>
+                                <ItemsControl ItemsSource="{Binding Slots}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:CameraSlotItem">
+                                            <Border Classes="card" Classes.selected="{Binding IsSelected}" Margin="0,0,0,8" Padding="10,0"
+                                                    Background="Transparent" Cursor="Hand">
+                                                <Grid ColumnDefinitions="Auto,*,Auto" MinHeight="48">
+                                                    <Border CornerRadius="6" Width="34" Height="26" Margin="0,0,12,0" VerticalAlignment="Center"
+                                                            Background="{DynamicResource SurfaceBrush}"
+                                                            Classes.sel="{Binding IsSelected}">
+                                                        <TextBlock Text="{Binding Label}" Classes="mono-data-small" HorizontalAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" Opacity="{Binding TitleOpacity}"
+                                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                    </StackPanel>
+                                                    <Panel Grid.Column="2" Width="18" Height="18" VerticalAlignment="Center">
+                                                        <Ellipse Stroke="{DynamicResource TextMutedBrush}" StrokeThickness="1.5"/>
+                                                        <Ellipse Width="10" Height="10" Fill="{DynamicResource AccentBrush}" IsVisible="{Binding IsSelected}"/>
+                                                    </Panel>
+                                                    <Button Grid.ColumnSpan="3" Classes="text" Opacity="0.01" HorizontalAlignment="Stretch"
+                                                            VerticalAlignment="Stretch" Command="{Binding SelectCommand}" CommandParameter="{Binding}"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="{Binding SlotNote}" Classes="hint" TextWrapping="Wrap" IsVisible="{Binding HasSlotNote}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Pinned bottom: write, read, restore points -->
+                    <Border Grid.Row="1" Padding="16,12,16,16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
+                        <StackPanel Spacing="10">
+                            <TextBlock Text="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).RecipeStatusText}"
+                                       Classes="hint" TextWrapping="Wrap" Foreground="{DynamicResource SuccessBrush}"
+                                       IsVisible="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).HasRecipeStatus}"/>
+                            <Button Classes="cta" Height="48" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    VerticalContentAlignment="Center" Content="{Binding WriteButtonText}" IsEnabled="{Binding CanWrite}"
+                                    Command="{Binding ContinueCommand}"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <Button Classes="link" Padding="0" HorizontalAlignment="Left" IsVisible="{Binding CanRead}"
+                                        Command="{Binding ReadSlotCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <materialIcons:MaterialIcon Kind="Export" Width="14" Height="14"/>
+                                        <TextBlock Text="{Binding ReadButtonText}"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Grid.Column="1" Classes="link" Padding="0" Content="{Binding RestorePointsText}" IsVisible="{Binding HasRestorePoints}">
+                                    <Button.Flyout>
+                                        <Flyout Placement="TopEdgeAlignedRight">
+                                            <StackPanel Width="300" Spacing="8" DataContext="{Binding}" x:DataType="vm:CameraDialogViewModel">
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="{Binding RestorePointsText}" Classes="section-title first" Margin="0"/>
+                                                    <Button Grid.Column="1" Classes="link" Padding="0" Content="Open folder"
+                                                            IsVisible="{Binding CanOpenRestoreFolder}" Command="{Binding OpenRestoreFolderCommand}"/>
+                                                </Grid>
+                                                <TextBlock Classes="hint" TextWrapping="Wrap" IsVisible="{Binding !HasRestorePoints}"
+                                                           Text="The slot is saved here before anything is written."/>
+                                                <ScrollViewer MaxHeight="240" VerticalScrollBarVisibility="Auto">
+                                                    <ItemsControl ItemsSource="{Binding RestorePoints}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="vm:RestorePointItem">
+                                                                <Grid ColumnDefinitions="*,Auto" Margin="0,6">
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                                                        <TextBlock Text="{Binding Subtitle}" Classes="mono-data-small" Opacity="0.65"
+                                                                                   TextTrimming="CharacterEllipsis"/>
+                                                                    </StackPanel>
+                                                                    <Button Grid.Column="1" Classes="link" Content="Restore"
+                                                                            Command="{Binding RestoreCommand}" CommandParameter="{Binding}"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+                                                </ScrollViewer>
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <TextBlock Text="Keep last" Classes="row" VerticalAlignment="Center"/>
+                                                    <ListBox Grid.Column="1" Classes="seg" SelectedIndex="{Binding RestoreKeepIndex}">
+                                                        <ListBoxItem Content="5"/>
+                                                        <ListBoxItem Content="20"/>
+                                                        <ListBoxItem Content="All"/>
+                                                    </ListBox>
+                                                </Grid>
+                                                <Button Classes="link" HorizontalAlignment="Left" Padding="0" Content="Turn off camera features"
+                                                        Command="{Binding TurnOffCommand}"/>
+                                            </StackPanel>
+                                        </Flyout>
+                                    </Button.Flyout>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+        </Grid>
+
+        <!-- No camera: one focused screen. Recipes can still be browsed, nothing else is offered. -->
+        <Panel IsVisible="{Binding Library.ShowConnectScreen}" Background="{DynamicResource BackgroundBrush}">
+            <StackPanel DataContext="{Binding Camera}" x:DataType="vm:CameraDialogViewModel" VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="14" Width="380" Margin="24">
+                <Border Width="56" Height="56" CornerRadius="14" Background="{DynamicResource SurfaceBrush}" HorizontalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="CameraOutline" Width="28" Height="28" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                </Border>
+                <TextBlock Text="Connect your camera" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <Grid ColumnDefinitions="30,*"><Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Top" HorizontalAlignment="Left"><TextBlock Text="1" Classes="mono-data-small" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Connect it with a USB cable and turn it on."/></Grid>
+                <Grid ColumnDefinitions="30,*"><Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Top" HorizontalAlignment="Left"><TextBlock Text="2" Classes="mono-data-small" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Set the USB mode to USB RAW CONV./BACKUP RESTORE."/></Grid>
+                <Grid ColumnDefinitions="30,*"><Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Top" HorizontalAlignment="Left"><TextBlock Text="3" Classes="mono-data-small" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+                    <TextBlock Grid.Column="1" Classes="row" TextWrapping="Wrap" Text="Wait a few seconds."/></Grid>
+                <Border Classes="card" BorderThickness="1" Margin="0,4,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                        <materialIcons:MaterialIcon Kind="Loading" Width="14" Height="14"/>
+                        <TextBlock Text="{Binding ConnectStatus}" Classes="hint" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+                <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center" Content="Browse recipes"
+                        Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Library.BrowseRecipesCommand}"/>
+                <Button Classes="link" HorizontalAlignment="Center" Padding="0" Content="Turn off camera features" Command="{Binding TurnOffCommand}"/>
+            </StackPanel>
+        </Panel>
+
+        <!-- Phone: a tapped recipe opens as a sheet; "Use this recipe" goes on to the slots -->
+        <Panel IsVisible="{Binding ShowSheet}" Background="{DynamicResource ScrimBrush}" DataContext="{Binding Library}"
+               x:DataType="vm:RecipeLibraryViewModel">
+            <Button Classes="text" Opacity="0.01" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{Binding CloseSheetCommand}"/>
+            <Border VerticalAlignment="Bottom" CornerRadius="20,20,0,0" Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0" Padding="20,12,20,16">
+                <StackPanel Spacing="14">
+                    <Border Width="40" Height="4" CornerRadius="2" HorizontalAlignment="Center" Background="{DynamicResource CardBorderBrush}"/>
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel>
+                            <TextBlock Text="{Binding SelectedTitle}" FontSize="20" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{Binding SelectedSubtitle}" Classes="hint" TextWrapping="Wrap"/>
+                            <Button Classes="link" Padding="0" HorizontalAlignment="Left" IsVisible="{Binding HasSource}"
+                                    Command="{Binding OpenSourceCommand}" Content="Source ↗"/>
+                        </StackPanel>
+                        <Button Grid.Column="1" Classes="link" Width="40" Height="40" Command="{Binding SaveSelectedCommand}" VerticalAlignment="Top">
+                            <Panel>
+                                <materialIcons:MaterialIcon Kind="StarOutline" Width="20" Height="20" IsVisible="{Binding !SelectedStarred}"/>
+                                <materialIcons:MaterialIcon Kind="Star" Width="20" Height="20" IsVisible="{Binding SelectedStarred}"
+                                                            Foreground="{DynamicResource WarningBrush}"/>
+                            </Panel>
+                        </Button>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Tiles}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:ParamTile">
+                                <Border Classes="card" Margin="0,0,6,6" Padding="4,8" Opacity="{Binding Opacity}">
+                                    <StackPanel Spacing="2" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Label}" Classes="hint" FontSize="10" HorizontalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Text="{Binding Value}" FontSize="15" FontWeight="SemiBold" HorizontalAlignment="Center"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Classes="card" BorderBrush="{DynamicResource WarningBrush}" IsVisible="{Binding HasMutedTiles}">
+                        <TextBlock Text="{Binding MutedText}" Classes="hint" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
+                    </Border>
+                    <Button Classes="cta" Height="48" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center" Content="Use this recipe" IsVisible="{Binding ShowUseButton}" Command="{Binding UseThisRecipeCommand}"/>
+                </StackPanel>
+            </Border>
+        </Panel>
+
+        <!-- Recipe by hand: the same form as in the inspector, as a dialog -->
+        <Panel IsVisible="{Binding IsRecipeEditorOpen}" Background="{DynamicResource ScrimBrush}">
+            <Border MaxWidth="560" Margin="16" Padding="18,14" CornerRadius="16" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1">
+                <local:RecipeEditorView/>
+            </Border>
+        </Panel>
+    </Panel>
+</UserControl>

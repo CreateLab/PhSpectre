@@ -42,10 +42,12 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                         <ListBoxItem Content="Card"/>
                         <ListBoxItem Content="Recipe"/>
                         <ListBoxItem Content="Collage"/>
+                        <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
                     </ListBox>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
                                 HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Panel IsVisible="{Binding IsWide}" VerticalAlignment="Center"><views:CameraIndicator DataContext="{Binding Settings}"/></Panel>
                         <Button Classes="icon-toolbar" Width="40" Height="40" ToolTip.Tip="Appearance">
                             <materialIcons:MaterialIcon Kind="ThemeLightDark" Width="20" Height="20"/>
                             <Button.Flyout>
@@ -75,7 +77,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                 ToolTip.Tip="Pick a photo">
                             <materialIcons:MaterialIcon Kind="FolderOutline" Width="20" Height="20"/>
                         </Button>
-                        <Button Classes="cta" Padding="18,0" Height="40" IsVisible="{Binding IsWide}"
+                        <Button Classes="cta" Padding="18,0" Height="40" IsVisible="{Binding ShowTabletExport}"
                                 Command="{Binding OpenExportCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="18" Height="18"/>
@@ -92,10 +94,11 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                 <ListBoxItem Content="Card"/>
                 <ListBoxItem Content="Recipe"/>
                 <ListBoxItem Content="Collage"/>
+                <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
             </ListBox>
 
             <!-- ═══════════ Body ═══════════ -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" IsVisible="{Binding !Settings.IsCameraMode}">
 
                 <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto,Auto,Auto">
 
@@ -361,7 +364,12 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Grid>
                 </Border>
             </Grid>
+            <views:CameraModeView Grid.Row="2" DataContext="{Binding Settings}" IsVisible="{Binding IsCameraMode}"/>
         </Grid>
+
+
+        <!-- Camera dialogs (setup, write) -->
+        <views:CameraOverlay DataContext="{Binding Settings}"/>
 
         <!-- Temporary on-screen perf overlay (see MainViewModel.DebugPerfText) -->
         <Border IsVisible="{Binding ShowDebugPerfOverlay}"
