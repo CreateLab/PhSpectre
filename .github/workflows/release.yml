@@ -198,6 +198,7 @@ jobs:
   android:
     needs: version
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
