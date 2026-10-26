@@ -28,7 +28,8 @@ public partial class SettingsViewModel
     [ObservableProperty] private string _recipeStatusText = "";
 
     public bool CameraSupported => CameraService.IsSupported;
-    public bool ShowCameraMode => CameraSupported && CameraExperimental;
+    // The tab is always there where the camera is supported; while the feature is off, it opens the setup dialog.
+    public bool ShowCameraMode => CameraSupported;
     public bool HasRecipeStatus => RecipeStatusText.Length > 0;
 
     /// <summary>The shared photo state, supplied by the shell (desktop: Files/SelectedFile, mobile: RecentPhotos).</summary>

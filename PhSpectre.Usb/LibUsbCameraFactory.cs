@@ -13,9 +13,7 @@ public static class LibUsbCameraFactory
         ct.ThrowIfCancellationRequested();
         try
         {
-            return LibUsbTransport.IsPresent()
-                ? (IPtpTransport?)new ContainerPtpTransport(LibUsbTransport.Open())
-                : null;
+            return LibUsbTransport.OpenIfPresent() is { } usb ? (IPtpTransport?)new ContainerPtpTransport(usb) : null;
         }
         catch (Exception ex) when (ex is not PtpException && LibUsbTransport.MissingLibraryHint(ex) is { } hint)
         {

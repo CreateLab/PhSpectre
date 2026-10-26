@@ -550,6 +550,9 @@
                     </StackPanel>
                 </Border>
                 <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center" Content="Copy error" IsVisible="{Binding HasConnectError}"
+                        Click="CopyConnectError_Click"/>
+                <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                         VerticalContentAlignment="Center" Content="Browse recipes"
                         Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).Library.BrowseRecipesCommand}"/>
                 <Button Classes="link" HorizontalAlignment="Center" Padding="0" Content="Turn off camera features" Command="{Binding TurnOffCommand}"/>

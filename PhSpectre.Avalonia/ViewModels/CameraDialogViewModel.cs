@@ -149,6 +149,9 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     // ── tab state ────────────────────────────────────────────────────────────────────────
     [ObservableProperty] private CameraTabState _tabState = CameraTabState.Off;
     [ObservableProperty] private string _connectStatus = "Looking for a camera…";
+    // Full text (message + stack) of the last failed camera check, for "Copy error"; empty when the check is fine.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasConnectError))] private string _connectErrorDetails = "";
+    public bool HasConnectError => ConnectErrorDetails.Length > 0;
     [ObservableProperty] private string _cameraName = "";
     [ObservableProperty] private string _cameraDetail = "";
     [ObservableProperty] private string _readOnlyText = "";
@@ -306,6 +309,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         {
             _snapshot = null;
             _hasError = false;
+            ConnectErrorDetails = "";
             TabState = CameraTabState.Searching;
             ConnectStatus = "Looking for a camera…";
             _monitor = new CancellationTokenSource();
@@ -382,6 +386,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
                     AppLogger.LogError("Camera check failed", e);
                     NoCamera();
                     ConnectStatus = $"Could not talk to the camera: {e.Message}";
+                    ConnectErrorDetails = $"{ConnectStatus}\n{e}";
                 }
             }
 
@@ -398,6 +403,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
 
     private void NoCamera()
     {
+        ConnectErrorDetails = "";
         if (TabState == CameraTabState.Searching && _snapshot == null && Slots.Count == 0) return;
         ClearCamera();
         TabState = CameraTabState.Searching;
@@ -406,6 +412,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
 
     private void Apply(FujiCameraSnapshot snapshot)
     {
+        ConnectErrorDetails = "";
         _needsRefresh = false;
         CameraName = $"FUJIFILM {snapshot.Model}";
         CameraDetail = $"USB · fw {snapshot.Firmware}";
