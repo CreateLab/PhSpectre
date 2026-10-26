@@ -2,6 +2,7 @@
 using Avalonia;
 using PhSpectre.Avalonia;
 using PhSpectre.Avalonia.Services;
+using PhSpectre.Usb;
 using PhSpectre.Wpd;
 using PhSpectre.Heif;
 
@@ -23,9 +24,10 @@ sealed class Program
         HeifDesktopSupport.Register();
 
         // Writing recipes into a camera goes through the stock Windows MTP driver (WPD), so users never swap
-        // drivers. Other desktop OSes get no camera hook yet and the UI hides the camera features.
-        if (OperatingSystem.IsWindows())
-            CameraService.TransportFactory = WpdCameraFactory.OpenFirstFujifilmAsync;
+        // drivers. macOS and Linux talk PTP to the camera directly through libusb.
+        CameraService.TransportFactory = OperatingSystem.IsWindows()
+            ? WpdCameraFactory.OpenFirstFujifilmAsync
+            : LibUsbCameraFactory.OpenFirstFujifilmAsync;
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
