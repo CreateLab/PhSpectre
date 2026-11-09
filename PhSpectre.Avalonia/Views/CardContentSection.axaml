@@ -1,0 +1,231 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
+             x:Class="PhSpectre.Avalonia.Views.CardContentSection"
+             x:DataType="vm:SettingsViewModel">
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/CardInspector.axaml"/>
+    </UserControl.Styles>
+        <StackPanel Margin="0,0,0,28">
+
+            <TextBlock Text="CAMERA PLATE" Classes="section-title first"/>
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Show camera info" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowCameraInfo}"
+                              IsEnabled="{Binding IsCameraInfoToggleEnabled}"/>
+            </Grid>
+
+            <StackPanel IsVisible="{Binding ShowMetaVerbositySectionUI}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Text" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MetaVerbosityIndex}">
+                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="Short"/>
+                        <ComboBoxItem Content="Default"/>
+                        <ComboBoxItem Content="Detail"/>
+                        <ComboBoxItem Content="Full"/>
+                    </ComboBox>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Layout" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MetaStyleIndex}">
+                        <ComboBoxItem Content="Film strip"/>
+                        <ComboBoxItem Content="Overlay"/>
+                    </ComboBox>
+                </Grid>
+            </StackPanel>
+
+            <!-- Photo metadata override (Edit / Hide) -->
+            <StackPanel IsVisible="{Binding ShowPhotoMetadataSectionUI}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Photo metadata" Classes="row-dim"/>
+                    <Button Grid.Column="1" Classes="link" Content="{Binding MetadataEditorToggleLabel}"
+                            Command="{Binding ToggleMetadataEditorCommand}"/>
+                </Grid>
+                <StackPanel Spacing="8" IsVisible="{Binding IsMetadataEditorExpanded}" Margin="0,4,0,0">
+                    <TextBlock Text="Camera" Classes="hint"/>
+                    <TextBox Text="{Binding MetaCameraText}" PlaceholderText="e.g. Canon EOS R5"/>
+                    <TextBlock Text="Lens" Classes="hint"/>
+                    <TextBox Text="{Binding MetaLensText}" PlaceholderText="e.g. RF 24-70mm f/2.8"/>
+                    <TextBlock Text="Focal (mm)" Classes="hint"/>
+                    <NumericUpDown Value="{Binding FocalMm}" Minimum="0" Maximum="2000" Increment="1"
+                                   FormatString="0.#" ParsingNumberStyle="Float"/>
+                    <TextBlock Text="Aperture" Classes="hint"/>
+                    <TextBox Text="{Binding MetaApertureText, UpdateSourceTrigger=LostFocus}" PlaceholderText="e.g. f/2.8"
+                             ToolTip.Tip="Format: f/X.X — invalid values are discarded on commit"/>
+                    <TextBlock Text="Shutter" Classes="hint"/>
+                    <TextBox Text="{Binding MetaShutterText, UpdateSourceTrigger=LostFocus}" PlaceholderText="e.g. 1/200s"
+                             ToolTip.Tip="Format: 1/Xs or Xs — invalid values are discarded on commit"/>
+                    <TextBlock Text="ISO" Classes="hint"/>
+                    <NumericUpDown Value="{Binding IsoValue}" Minimum="0" Maximum="512000" Increment="100"
+                                   FormatString="0" ParsingNumberStyle="Float"/>
+                    <TextBlock Text="Date" Classes="hint"/>
+                    <TextBox Text="{Binding MetaDateText}" PlaceholderText="e.g. 2026-07-05"/>
+                    <Button Classes="secondary" HorizontalAlignment="Left" Content="Reset to photo's EXIF"
+                            Command="{Binding ResetMetadataCommand}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- QR CODE -->
+            <TextBlock Text="QR CODE" Classes="section-title"/>
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Show QR" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowQrCode}"/>
+            </Grid>
+
+            <StackPanel IsVisible="{Binding ShowQrCode}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Caption" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding QrCaptionIndex}">
+                        <ComboBoxItem Content="None"/>
+                        <ComboBoxItem Content="Camera"/>
+                        <ComboBoxItem Content="Camera + lens"/>
+                    </ComboBox>
+                </Grid>
+                <TextBlock Text="Printed beside the code. “Scan for the recipe” always goes under it."
+                           Classes="hint"/>
+
+                <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                    <TextBlock Text="Source" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding QrContentSourceIndex}">
+                        <ComboBoxItem Content="Generated link"/>
+                        <ComboBoxItem Content="Custom URL"/>
+                    </ComboBox>
+                </Grid>
+
+                <StackPanel IsVisible="{Binding !IsQrCustomUrlMode}" Spacing="6" Margin="0,6,0,0">
+                    <TextBlock Text="Content" Classes="row-dim"/>
+                    <ComboBox Width="NaN" HorizontalAlignment="Stretch" SelectedIndex="{Binding QrContentPresetIndex}">
+                        <ComboBoxItem Content="Camera + Recipe"/>
+                        <ComboBoxItem Content="Camera + Lens + Photo info + Recipe"/>
+                        <ComboBoxItem Content="Camera + Photo info + Recipe"/>
+                        <ComboBoxItem Content="Camera + Lens + Photo info"/>
+                        <ComboBoxItem Content="Recipe only"/>
+                    </ComboBox>
+                </StackPanel>
+                <TextBlock Text="May duplicate text already shown on this card"
+                           IsVisible="{Binding ShowQrDuplicateHint}" Classes="hint"/>
+
+                <TextBox Text="{Binding QrCustomUrl}" PlaceholderText="https://example.com/you"
+                         IsVisible="{Binding IsQrCustomUrlMode}" Margin="0,4,0,0"/>
+
+                <StackPanel IsVisible="{Binding !IsQrCustomUrlMode}">
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                        <TextBlock Text="Include note" Classes="row"/>
+                        <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding QrIncludeNote}"/>
+                    </Grid>
+                    <StackPanel IsVisible="{Binding ShowQrNoteTextBox}" Spacing="6" Margin="0,4,0,0">
+                        <Panel>
+                            <TextBox Text="{Binding QrNoteText, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="Note text" MaxLength="80" AcceptsReturn="False"
+                                     TextWrapping="Wrap" MinHeight="68" Padding="12,10,12,26"/>
+                            <TextBlock Text="{Binding QrNoteCounter}" Classes="value" Opacity="0.7"
+                                       FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                       Margin="0,0,12,8" IsHitTestVisible="False"/>
+                        </Panel>
+                        <TextBlock Text="Encoded into the QR. Under the code the card shows “Scan for the recipe”."
+                                   Classes="hint"/>
+                    </StackPanel>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- RECIPE -->
+            <StackPanel IsVisible="{Binding ShowFilmRecipeSectionUI}">
+                <TextBlock Text="RECIPE" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Show recipe card" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowRecipeCard}"/>
+                </Grid>
+
+                <StackPanel Spacing="8" IsVisible="{Binding !HasRecipe}" Margin="0,6,0,0">
+                    <TextBlock Text="Film recipe detection currently works for Fujifilm cameras only."
+                               Classes="hint"/>
+                    <Button Classes="secondary" Content="Set recipe manually" HorizontalAlignment="Left"
+                            Command="{Binding OpenRecipeEditorCommand}"/>
+                </StackPanel>
+
+                <StackPanel Spacing="10" IsVisible="{Binding HasRecipe}" Margin="0,6,0,0">
+                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
+                            BorderThickness="1" CornerRadius="8" Padding="12,10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel>
+                                <TextBlock Text="{Binding RecipeTitleText}" FontSize="16" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding RecipeSourceBadgeText}" Classes="hint"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Classes="link" Content="Edit" VerticalAlignment="Center"
+                                    Command="{Binding OpenRecipeEditorCommand}"/>
+                        </Grid>
+                    </Border>
+                    <!-- Which parameters the card shows: eye per tile, count, presets -->
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,6">
+                        <TextBlock Text="{Binding RecipeVisibilitySummary}" Classes="hint" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Classes="link" Content="Show all" Command="{Binding ApplyRecipePresetCommand}"
+                                CommandParameter="color" IsEnabled="{Binding CanShowAllRecipeFields}"/>
+                    </Grid>
+                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
+                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="Color"
+                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="color"/>
+                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="B&amp;W"
+                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="bw"/>
+                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="Minimal"
+                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="min"/>
+                    </StackPanel>
+                    <ItemsControl ItemsSource="{Binding RecipeFieldItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="{Binding RecipeColumns}"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RecipeFieldItem">
+                                <Border Classes="recipe-plate" Opacity="{Binding TileOpacity}" ToolTip.Tip="{Binding FullLabel}">
+                                    <Grid>
+                                        <StackPanel Spacing="2" VerticalAlignment="Center" Margin="10,0">
+                                            <TextBlock Text="{Binding Label}" Classes="recipe-plate-label" HorizontalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Value}" Classes="recipe-plate-value" HorizontalAlignment="Center"/>
+                                        </StackPanel>
+                                        <!-- Desktop: small eye in the corner; touch: 44 px target -->
+                                        <Button Classes="link" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="0,-4,-6,0" IsVisible="{Binding IsDesktop}"
+                                                Command="{Binding ToggleCommand}" CommandParameter="{Binding Key}"
+                                                Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <Panel>
+                                                <materialIcons:MaterialIcon Kind="Eye" Width="15" Height="15" IsVisible="{Binding IsShown}"/>
+                                                <materialIcons:MaterialIcon Kind="EyeOff" Width="15" Height="15" IsVisible="{Binding IsHidden}"/>
+                                            </Panel>
+                                        </Button>
+                                        <Button Classes="link" Width="44" Height="44" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="-12,-12,-12,0" IsVisible="{Binding IsMobile}"
+                                                Command="{Binding ToggleCommand}" CommandParameter="{Binding Key}"
+                                                Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <Panel>
+                                                <materialIcons:MaterialIcon Kind="Eye" Width="18" Height="18" IsVisible="{Binding IsShown}"/>
+                                                <materialIcons:MaterialIcon Kind="EyeOff" Width="18" Height="18" IsVisible="{Binding IsHidden}"/>
+                                            </Panel>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
+                            Margin="0,2,0,0" Content="Save to library" Command="{Binding SaveRecipeToLibraryCommand}"/>
+                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
+                            Margin="0,2,0,0" IsVisible="{Binding CameraSupported}" Command="{Binding OpenCameraCommand}">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="Camera" Width="16" Height="16"/>
+                            <TextBlock Text="Send to camera" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+
+                    <TextBlock Text="{Binding RecipeStatusText}" Classes="hint" TextWrapping="Wrap"
+                               Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding HasRecipeStatus}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </StackPanel>
+</UserControl>

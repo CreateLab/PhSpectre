@@ -1,0 +1,194 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
+             x:Class="PhSpectre.Avalonia.Views.CardStyleSection"
+             x:DataType="vm:SettingsViewModel">
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/CardInspector.axaml"/>
+    </UserControl.Styles>
+        <StackPanel Margin="0,0,0,28">
+
+            <TextBlock Text="CARD" Classes="section-title first"/>
+
+            <ListBox Classes="chips" SelectedIndex="{Binding CardChoiceIndex}">
+                <ListBoxItem>
+                    <StackPanel Spacing="6">
+                        <Border Height="48" CornerRadius="8" Background="#111113"
+                                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
+                        <TextBlock Text="Dark" FontSize="12" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Spacing="6">
+                        <Border Height="48" CornerRadius="8" Background="#F3F3F3"
+                                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
+                        <TextBlock Text="Light" FontSize="12" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Spacing="6">
+                        <Border Height="48" CornerRadius="8" BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,100%" EndPoint="100%,0%">
+                                    <GradientStop Offset="0" Color="#3A3F2A"/>
+                                    <GradientStop Offset="1" Color="#B9D2F2"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="+" FontSize="18" Foreground="White"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Custom" FontSize="12" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </ListBoxItem>
+            </ListBox>
+
+            <!-- Custom colour: empty field is hidden unless Custom is chosen (V2-Errors). -->
+            <StackPanel IsVisible="{Binding IsCustomBackgroundMode}" Spacing="6" Margin="0,12,0,0">
+                <Grid ColumnDefinitions="Auto,*">
+                    <Border Width="36" Height="36" CornerRadius="8" Margin="0,0,8,0"
+                            Background="{Binding CustomSwatchBrush}"
+                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
+                    <TextBox Grid.Column="1" Text="{Binding CustomBackgroundHex, UpdateSourceTrigger=PropertyChanged}"
+                             PlaceholderText="#RRGGBB" Classes.invalid="{Binding ShowCustomHexError}"
+                             FontFamily="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
+                </Grid>
+                <TextBlock Text="Not a valid color. Use #RRGGBB. The preview keeps the last valid color."
+                           IsVisible="{Binding ShowCustomHexError}" Classes="hint error"/>
+            </StackPanel>
+
+            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                <TextBlock Text="Blurred photo backdrop" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding UseBlurredBackdrop}"
+                              IsEnabled="{Binding IsBlurredBackdropEnabled}"/>
+            </Grid>
+            <TextBlock Text="Not available with a custom color — the backdrop is a flat fill."
+                       IsVisible="{Binding IsCustomBackgroundMode}" Classes="hint"/>
+            <TextBlock Text="Ignored for Collage — falls back to the card theme."
+                       IsVisible="{Binding ShowBlurredIgnoredForCollageHint}" Classes="hint"/>
+
+            <Grid Classes="row" ColumnDefinitions="*,Auto">
+                <TextBlock Text="Guide lines" Classes="row-dim"/>
+                <ComboBox Grid.Column="1" SelectedIndex="{Binding CompositionGuideIndex}">
+                    <ComboBoxItem Content="Off"/>
+                    <ComboBoxItem Content="Thirds"/>
+                    <ComboBoxItem Content="Golden"/>
+                    <ComboBoxItem Content="Diagonal"/>
+                    <ComboBoxItem Content="Cross"/>
+                </ComboBox>
+            </Grid>
+
+            <!-- PALETTE -->
+            <StackPanel IsVisible="{Binding IsPaletteSwitchVisible}">
+                <TextBlock Text="PALETTE" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Show palette" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowPalette}"/>
+                </Grid>
+                <StackPanel IsVisible="{Binding ComputeColors}">
+                    <Grid Classes="row" ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <TextBlock Text="Colors" Classes="row-dim" Margin="0,0,16,0"/>
+                        <ListBox Grid.Column="1" Classes="seg compact" SelectedIndex="{Binding ColorCountSegment}">
+                            <ListBoxItem Content="Auto"/>
+                            <ListBoxItem Content="3"/>
+                            <ListBoxItem Content="4"/>
+                            <ListBoxItem Content="5"/>
+                            <ListBoxItem Content="6"/>
+                            <ListBoxItem Content="8"/>
+                        </ListBox>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <TextBlock Text="Sampling" Classes="row-dim"/>
+                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SamplingModeIndex}">
+                            <ComboBoxItem Content="Vivid"/>
+                            <ComboBoxItem Content="Standard"/>
+                            <ComboBoxItem Content="Contrast"/>
+                        </ComboBox>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <TextBlock Text="Sort" Classes="row-dim"/>
+                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SortOrderIndex}">
+                            <ComboBoxItem Content="Original order"/>
+                            <ComboBoxItem Content="By hue"/>
+                            <ComboBoxItem Content="By luminance"/>
+                            <ComboBoxItem Content="By share"/>
+                        </ComboBox>
+                    </Grid>
+                </StackPanel>
+                <TextBlock Text="Off keeps the photo and camera plate only (the old “Info only”)."
+                           IsVisible="{Binding !ShowPalette}" Classes="hint"/>
+            </StackPanel>
+
+            <!-- COLLAGE -->
+            <StackPanel IsVisible="{Binding ShowCollageSectionUI}">
+                <TextBlock Text="COLLAGE" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Gutter" Classes="row-dim" Margin="0,0,16,0"/>
+                    <Slider Grid.Column="1" Classes="v2" Value="{Binding GutterThickness}"
+                            Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="2" Text="{Binding GutterThickness, StringFormat={}{0} px}"
+                               Classes="value" Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- SWATCHES -->
+            <StackPanel IsVisible="{Binding ShowSwatchesSectionUI}">
+                <TextBlock Text="SWATCHES" Classes="section-title"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Hex labels" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowHex}"/>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Labels below" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding HexBelow}"
+                                  IsEnabled="{Binding ShowHex}"/>
+                </Grid>
+                <TextBlock Text="Turn on Hex labels to choose where they go."
+                           IsVisible="{Binding !ShowHex}" Classes="hint"/>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Percentage" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowPercent}"/>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Shape" Classes="row-dim"/>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding SwatchShapeIndex}">
+                        <ComboBoxItem Content="Rectangle"/>
+                        <ComboBoxItem Content="Rounded"/>
+                        <ComboBoxItem Content="Circle"/>
+                    </ComboBox>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
+                    <Slider Grid.Column="1" Classes="v2" Value="{Binding SwatchScaleIndex}"
+                            Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="2" Text="{Binding SwatchScaleLabel}" Classes="value"
+                               Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                </Grid>
+                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="Label size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
+                    <Slider Grid.Column="1" Classes="v2" Value="{Binding LabelScaleIndex}"
+                            Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                    <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}" Classes="value"
+                               Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                </Grid>
+            </StackPanel>
+
+            <!-- Recipe mode has no swatches: its text size lives here instead. -->
+            <StackPanel IsVisible="{Binding ShowRecipeCard}">
+                <StackPanel IsVisible="{Binding IsRecipeMode}">
+                    <TextBlock Text="TEXT" Classes="section-title"/>
+                    <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
+                        <TextBlock Text="Text size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
+                        <Slider Grid.Column="1" Classes="v2" Value="{Binding LabelScaleIndex}"
+                                Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                        <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}" Classes="value"
+                                   Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </StackPanel>
+</UserControl>

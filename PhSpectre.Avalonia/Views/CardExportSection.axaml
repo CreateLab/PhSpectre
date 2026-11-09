@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
+             x:Class="PhSpectre.Avalonia.Views.CardExportSection"
+             x:DataType="vm:SettingsViewModel">
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/CardInspector.axaml"/>
+    </UserControl.Styles>
+        <StackPanel Margin="0,0,0,28">
+
+            <TextBlock Text="FORMAT" Classes="section-title first"/>
+            <ListBox Classes="seg" SelectedIndex="{Binding OutputFormatIndex}">
+                <ListBoxItem Content="PNG"/>
+                <ListBoxItem Content="JPEG"/>
+            </ListBox>
+            <TextBlock Text="PNG is lossless and larger; JPEG is much smaller and ready to share."
+                       Classes="hint" Margin="0,6,0,0"/>
+
+            <TextBlock Text="SIZE" Classes="section-title"/>
+            <ListBox Classes="options" ItemsSource="{Binding ExportSizeOptions}"
+                     SelectedIndex="{Binding ExportSizeIndex}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ExportSizeOption">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding Label}" Classes="row"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Pixels}" Classes="value" Opacity="0.75"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel IsVisible="{Binding IsMobile}">
+                <TextBlock Text="WORKING QUALITY" Classes="section-title"/>
+                <ListBox Classes="seg" SelectedIndex="{Binding WorkingQualityIndex}">
+                    <ListBoxItem Content="Fast"/>
+                    <ListBoxItem Content="Balanced"/>
+                    <ListBoxItem Content="Best"/>
+                </ListBox>
+                <TextBlock Text="Fast 2000 px · Balanced 3400 px · Best 4800 px. The preview is built from a downscaled copy of the photo."
+                           Classes="hint" Margin="0,6,0,0"/>
+            </StackPanel>
+
+            <TextBlock Text="SAVE TO" Classes="section-title"/>
+            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
+                    BorderThickness="1" CornerRadius="8" Padding="12,0" MinHeight="40">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{Binding SaveFolderDisplay}" Classes="value" TextTrimming="CharacterEllipsis"/>
+                    <Button Grid.Column="1" Classes="link" Content="Change" VerticalAlignment="Center"
+                            IsVisible="{Binding CanChooseSaveFolder}"
+                            Command="{Binding ChangeSaveFolderCommand}"/>
+                </Grid>
+            </Border>
+            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,6,0,0" IsVisible="{Binding CanChooseSaveFolder}">
+                <TextBlock Text="Show in folder after saving" Classes="row"/>
+                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowInFolderAfterSave}"/>
+            </Grid>
+
+        </StackPanel>
+</UserControl>

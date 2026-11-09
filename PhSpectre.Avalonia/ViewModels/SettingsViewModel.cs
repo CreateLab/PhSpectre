@@ -76,7 +76,7 @@ public partial class SettingsViewModel : ViewModelBase
         if (value != ExportMode.Recipe) _paletteMemory = value is ExportMode.Card or ExportMode.Collage;
         OnPropertyChanged(nameof(ShowPalette));
         OnPropertyChanged(nameof(IsPaletteSwitchVisible));
-        OnPropertyChanged(nameof(TopModeIndex)); OnPropertyChanged(nameof(TopModeSelection));
+        RaiseLayoutChanged();
         OnPropertyChanged(nameof(ComputeColors));
         OnPropertyChanged(nameof(EffectiveShowCameraInfo));
         OnPropertyChanged(nameof(IsCameraInfoToggleEnabled));
@@ -231,7 +231,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnShowCollageOptionsChanged(bool value)
     {
         OnPropertyChanged(nameof(SaveButtonLabel));
-        OnPropertyChanged(nameof(TopModeIndex)); OnPropertyChanged(nameof(TopModeSelection));
+        RaiseLayoutChanged();
         RaiseSectionVisibilityChanged();
         OnPropertyChanged(nameof(ShowBlurredIgnoredForCollageHint));
     }
@@ -455,6 +455,7 @@ public partial class SettingsViewModel : ViewModelBase
             ApplyAutoRecipeVisibility(value);
             RaiseRecipeFieldsChanged();
             OnPropertyChanged(nameof(RecipeSourceBadgeText));
+            EnforceFrameAvailability();
             _library?.PhotoRecipeChanged();
         }
     }
@@ -555,7 +556,7 @@ public partial class SettingsViewModel : ViewModelBase
     // Photo Metadata editor fields above: not [ObservableProperty]-persisted settings, just
     // scratch state for a form the user explicitly opens and saves.
 
-    [ObservableProperty] private bool    _isRecipeEditorOpen;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CardTabsVisible))] private bool    _isRecipeEditorOpen;
     [ObservableProperty] private string  _editRecipeName          = "";
     [ObservableProperty] private string  _editFilmSimulation      = "";
     [ObservableProperty] private string  _editWhiteBalance        = "";
@@ -740,6 +741,7 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnActiveTabChanged(InspectorTab value)
     {
         OnPropertyChanged(nameof(ActiveTabIndex));
+        OnPropertyChanged(nameof(CardTopIndex)); OnPropertyChanged(nameof(CardShowsOptions)); OnPropertyChanged(nameof(CardTabsVisible)); OnPropertyChanged(nameof(ShowRecipeCardReasonInFrame)); OnPropertyChanged(nameof(ShowLegacyExport));
         OnPropertyChanged(nameof(IsStyleTab));
         OnPropertyChanged(nameof(IsContentTab));
         OnPropertyChanged(nameof(IsExportTab));
@@ -770,22 +772,19 @@ public partial class SettingsViewModel : ViewModelBase
     }
     public bool IsPaletteSwitchVisible => ExportMode != ExportMode.Recipe;
 
-    // 0 = Card, 1 = Recipe, 2 = Collage, 3 = Camera. ShowCollageOptions is the desktop's "collage tray is
+    // Top bar: 0 = Edit, 1 = Collage, 2 = Camera. ShowCollageOptions is the desktop's "collage tray is
     // open" flag, so the segment stays on Collage while the tray exists even with one photo.
     // Camera is a screen of its own, not an ExportMode: switching to it never touches the card preview.
     [ObservableProperty] private bool _isCameraMode;
 
     partial void OnIsCameraModeChanged(bool value)
     {
-        OnPropertyChanged(nameof(TopModeIndex)); OnPropertyChanged(nameof(TopModeSelection));
+        RaiseLayoutChanged();
         if (value) Library.Enter();
+        else if (IsProcessMode) Process.Refresh();
     }
 
-    public int TopModeIndex =>
-        IsCameraMode ? 3
-        : ExportMode == ExportMode.Recipe ? 1
-        : ShowCollageOptions || ExportMode is ExportMode.Collage or ExportMode.CollageInfoOnly ? 2
-        : 0;
+    public int TopModeIndex => IsCameraMode ? 2 : IsCollageLike ? 1 : 0;
 
     public int TopModeSelection
     {
@@ -805,14 +804,17 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void SelectTopMode(int index)
     {
-        if (index == 3)
+        if (index == 2)
         {
             if (CameraExperimental && CameraSupported) IsCameraMode = true;
             return;
         }
         IsCameraMode = false;
-        if (TopModeHandler != null) { TopModeHandler(index); return; }
-        ApplyTopMode(index);
+        // The shells speak a legacy index: 0 Card, 1 Recipe, 2 Collage.
+        int legacy = index == 1 ? 2 : FrameType == FrameType.RecipeCard ? 1 : 0;
+        if (TopModeHandler != null) TopModeHandler(legacy); else ApplyTopMode(legacy);
+        RaiseLayoutChanged();
+        if (index == 0) NotifyPhotoChanged();
     }
 
     public void ApplyTopMode(int index) => ExportMode = index switch

@@ -6,6 +6,62 @@ using PhSpectre.Rendering;
 
 HeifDesktopSupport.Register();
 
+// phspectre lut <in.jpg> <look.cube> [out.jpg] [--strength 0..1]
+// Grades a photo with a .cube LUT (applied as-is; picking a suitable LUT is up to the caller).
+if (args.Length > 0 && args[0] == "lut")
+{
+    if (args.Length < 3)
+    {
+        Console.Error.WriteLine("Usage: phspectre lut <in.jpg> <look.cube> [out.jpg] [--strength 0..1]");
+        return 1;
+    }
+
+    string inPath = args[1], cubePath = args[2], outPath = "";
+    float strength = 1f;
+    for (int i = 3; i < args.Length; i++)
+    {
+        if (args[i] == "--strength" && i + 1 < args.Length
+            && float.TryParse(args[i + 1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out strength))
+            i++;
+        else if (!args[i].StartsWith("--") && outPath == "") outPath = args[i];
+        else { Console.Error.WriteLine($"Unknown argument: {args[i]}"); return 1; }
+    }
+    if (outPath == "")
+        outPath = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(inPath))!,
+            Path.GetFileNameWithoutExtension(inPath) + "_" + Path.GetFileNameWithoutExtension(cubePath) + ".jpg");
+
+    try
+    {
+        bool isXmp = Path.GetExtension(cubePath).Equals(".xmp", StringComparison.OrdinalIgnoreCase);
+        PhSpectre.ColorGrading.CubeLut? lut = null;
+        PhSpectre.ColorGrading.LrPreset? preset = null;
+        if (isXmp)
+        {
+            preset = PhSpectre.ColorGrading.LrPreset.Load(cubePath);
+            Console.WriteLine($"Preset: {preset.Name}{(preset.Skipped.Count > 0 ? " (not supported: " + string.Join(", ", preset.Skipped) + ")" : "")}");
+        }
+        else
+        {
+            lut = PhSpectre.ColorGrading.CubeLut.Load(cubePath);
+            Console.WriteLine($"LUT: {(lut.Is3D ? "3D" : "1D")} size {lut.Size}");
+        }
+
+        using var img = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(inPath);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        if (preset != null) PhSpectre.ColorGrading.LrPresetApplier.Apply(img, preset, strength);
+        else PhSpectre.ColorGrading.LutApplier.Apply(img, lut!, strength);
+        Console.WriteLine($"Graded {img.Width}x{img.Height} in {sw.ElapsedMilliseconds} ms");
+        SixLabors.ImageSharp.ImageExtensions.SaveAsJpeg(img, outPath, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 95 });
+        Console.WriteLine($"Saved: {outPath}");
+        return 0;
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"LUT failed: {ex.Message}");
+        return 1;
+    }
+}
+
 if (args.Length == 0)
 {
     Console.Error.WriteLine("Usage: phspectre <image.jpg> [--colors <n>] [--no-hex] [--hex-below]");

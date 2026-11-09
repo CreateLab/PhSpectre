@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — Edit · Look (desktop)</title><link rel="stylesheet" href="mock.css"></head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo"><i></i>PhSpectre</div>
+    <div class="seg" role="tablist" aria-label="Mode">
+      <button role="tab" aria-selected="true">Edit</button>
+      <button role="tab" aria-selected="false">Collage</button>
+      <button role="tab" aria-selected="false">Camera</button>
+    </div>
+    <button class="iconbtn" aria-label="Undo" title="Undo (Ctrl+Z)"><span data-i="undo"></span></button>
+    <button class="iconbtn" aria-label="Redo" title="Redo (Ctrl+Y)"><span data-i="redo"></span></button>
+    <button class="iconbtn" aria-label="More: appearance, updates, about"><span data-i="more"></span></button>
+    <button class="btn primary">Export</button>
+  </header>
+
+  <div class="body">
+    <main class="stage">
+      <div class="photo f-warm" role="img" aria-label="Current photo with Moody applied"></div>
+      <span class="chip-name">DSCF0412.JPG</span>
+      <div class="canvasbar" role="toolbar" aria-label="Canvas">
+        <button class="on" title="Hold \ to compare">Before</button>
+        <button title="Composition grid"><span data-i="grid"></span></button>
+        <button>Fit</button>
+      </div>
+    </main>
+
+    <aside class="insp" aria-label="Inspector">
+      <nav class="tabs" role="tablist">
+        <button role="tab" aria-selected="true"><span data-i="look"></span>Look</button>
+        <button role="tab" aria-selected="false"><span data-i="frame"></span>Frame</button>
+        <button role="tab" aria-selected="false"><span data-i="export"></span>Export</button>
+      </nav>
+
+      <div class="pane">
+        <section class="amount" aria-label="Amount">
+          <div class="row"><h3>Amount</h3><span class="mono">80%</span></div>
+          <input type="range" min="0" max="100" value="80" aria-label="Amount">
+          <div class="layers">
+            <span class="pill"><b>Preset</b> Moody 80% ✕</span>
+            <span class="pill"><b>LUT</b> Teal Orange 100% ✕</span>
+          </div>
+          <div class="warn">Not applied from this preset: Clarity, Dehaze</div>
+        </section>
+
+        <input class="search" placeholder="Search looks" aria-label="Search looks">
+        <div class="row" style="gap:8px">
+          <div class="chips" role="group" aria-label="Filter">
+            <button class="chip" aria-pressed="true">All</button>
+            <button class="chip" aria-pressed="false">Favorites</button>
+            <button class="chip" aria-pressed="false">Presets</button>
+            <button class="chip" aria-pressed="false">LUTs</button>
+            <button class="chip" aria-pressed="false">Mine</button>
+          </div>
+          <button class="iconbtn" aria-label="Import presets or LUTs" title="Import .xmp, .cube or .zip"><span data-i="plus"></span></button>
+        </div>
+
+        <div class="grid3" role="listbox" aria-label="Looks">
+          <button class="tile" role="option" aria-selected="false"><div class="thumb photo"></div><span>Original</span></button>
+          <button class="tile" role="option" aria-selected="true"><div class="thumb photo f-warm"></div><span>Moody</span><i class="kind">PRESET</i><i class="star">★</i></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb photo f-teal"></div><span>Teal Orange</span><i class="kind">LUT</i></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb photo f-mono"></div><span>Mono Soft</span><i class="kind">LUT</i></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb photo f-fade"></div><span>Faded Film</span><i class="kind">PRESET</i><i class="star">★</i></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb photo f-pop"></div><span>Pop</span><i class="kind">PRESET</i></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb photo f-cool"></div><span>Cool Dusk</span><i class="kind">LUT</i></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb skel"></div><span>Loading…</span></button>
+          <button class="tile" role="option" aria-selected="false"><div class="thumb skel"></div><span>Loading…</span></button>
+        </div>
+
+        <details>
+          <summary>Adjust (reserved)</summary>
+          <p class="hint">Space reserved for future exposure / contrast / temperature controls. Hidden today.</p>
+        </details>
+      </div>
+
+      <div class="foot"><button class="btn block">Export JPEG…</button></div>
+    </aside>
+  </div>
+
+  <footer class="film" aria-label="Photos">
+    <button class="open"><span data-i="folder"></span> Open</button>
+    <div class="f photo" aria-selected="true"></div><div class="f photo f-cool"></div><div class="f photo f-pop"></div>
+    <div class="f photo f-mono"></div><div class="f photo f-fade"></div><div class="f photo f-teal"></div><div class="f photo f-warm"></div>
+  </footer>
+</div>
+<button class="btn toggle-theme">Theme</button>
+<script src="mock.js"></script>
+</body></html>

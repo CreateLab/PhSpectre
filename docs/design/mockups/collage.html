@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — Collage</title><link rel="stylesheet" href="mock.css">
+<style>.tray{display:flex;gap:var(--s2);padding:var(--s3) var(--s4);background:var(--panel);border-bottom:1px solid var(--border);align-items:center}
+.tray .f{width:84px;height:56px;border-radius:var(--r-sm);outline:1px solid var(--border)}
+.collage{width:min(100%,700px);aspect-ratio:4/3;display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:8px;background:#111;padding:8px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+.collage .a{grid-row:1/3}.collage div{border-radius:2px}
+.stage .collage .photo{width:auto;aspect-ratio:auto;min-width:0;min-height:0;box-shadow:none}
+.app.c{grid-template-rows:48px auto 1fr 88px}</style></head>
+<body>
+<div class="app c">
+  <header class="top"><div class="logo"><i></i>PhSpectre</div>
+    <div class="seg" role="tablist"><button role="tab" aria-selected="false">Edit</button><button role="tab" aria-selected="true">Collage</button><button role="tab" aria-selected="false">Camera</button></div>
+    <button class="iconbtn" aria-label="More"><span data-i="more"></span></button><button class="btn primary">Export</button></header>
+  <div class="tray" aria-label="Collage photos"><b style="font-size:var(--f-small)">3 in collage</b>
+    <div class="f photo"></div><div class="f photo f-cool"></div><div class="f photo f-pop"></div><span class="hint">Tick photos in the strip below · drag to reorder</span></div>
+  <div class="body">
+    <main class="stage"><div class="collage"><div class="a photo f-warm"></div><div class="photo f-cool"></div><div class="photo f-pop"></div></div>
+      <div class="canvasbar"><button>Regenerate</button><button>Fit</button></div></main>
+    <aside class="insp">
+      <nav class="tabs" role="tablist">
+        <button role="tab" aria-selected="true"><span data-i="grid"></span>Layout</button>
+        <button role="tab" aria-selected="false"><span data-i="adjust"></span>Content</button>
+        <button role="tab" aria-selected="false"><span data-i="export"></span>Export</button>
+      </nav>
+      <div class="pane">
+        <h3>Layout</h3>
+        <div class="grid3"><button class="tile" aria-selected="true"><div class="thumb" style="background:var(--surface)"></div><span>Hero + 2</span></button><button class="tile"><div class="thumb" style="background:var(--surface)"></div><span>Grid</span></button><button class="tile"><div class="thumb" style="background:var(--surface)"></div><span>Strip</span></button></div>
+        <div class="row"><span>Gutter</span><span class="mono">8 px</span></div><input type="range" min="0" max="40" value="8" aria-label="Gutter">
+        <div class="row"><span>Ratio</span><span class="mono">4:3 ▾</span></div>
+        <p class="hint">Idea: “Apply this Look to all photos” (see 04-ideas).</p>
+      </div>
+      <div class="foot"><button class="btn block">Export collage…</button></div>
+    </aside>
+  </div>
+  <footer class="film"><button class="open"><span data-i="folder"></span> Open</button>
+    <div class="f photo" aria-selected="true"></div><div class="f photo f-cool" aria-selected="true"></div><div class="f photo f-pop" aria-selected="true"></div><div class="f photo f-mono"></div></footer>
+</div>
+<button class="btn toggle-theme">Theme</button><script src="mock.js"></script></body></html>

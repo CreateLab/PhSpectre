@@ -6,6 +6,15 @@
              x:DataType="vm:SettingsViewModel">
 
     <!-- Top-bar camera status (DataContext = Settings); only while camera features are on. Click opens the Camera tab. -->
+    <StackPanel>
+    <!-- Not turned on yet: a plain entry point that opens the camera setup -->
+    <Button Classes="secondary" Height="36" Padding="12,0" IsVisible="{Binding CameraOffer}" Command="{Binding OpenCameraCommand}"
+            AutomationProperties.Name="Connect camera">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+            <materialIcons:MaterialIcon Kind="CameraOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+            <TextBlock Text="Camera" VerticalAlignment="Center" FontSize="13"/>
+        </StackPanel>
+    </Button>
     <Panel DataContext="{Binding Camera}" x:DataType="vm:CameraDialogViewModel" IsVisible="{Binding IndicatorVisible}">
         <Button Classes="secondary" Height="36" Padding="12,0" Command="{Binding $parent[UserControl].((vm:SettingsViewModel)DataContext).OpenCameraCommand}">
             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -19,4 +28,5 @@
             </StackPanel>
         </Button>
     </Panel>
+    </StackPanel>
 </UserControl>

@@ -12,16 +12,16 @@
             <SolidColorBrush x:Key="BackgroundBrush"        Color="#0E0E10"/>   
             <SolidColorBrush x:Key="SurfaceBrush"           Color="#18181B"/>   
             <SolidColorBrush x:Key="CardBorderBrush"        Color="#26262A"/>   
-            <SolidColorBrush x:Key="CardBorderPrimaryBrush" Color="#4A4A52"/>   
+            <SolidColorBrush x:Key="CardBorderPrimaryBrush" Color="#6E6E78"/>   
             <SolidColorBrush x:Key="TextPrimaryBrush"       Color="#F2F2F3"/>
             <SolidColorBrush x:Key="TextSecondaryBrush"     Color="#A0A0A8"/>   
-            <SolidColorBrush x:Key="TextMutedBrush"         Color="#7A7A82"/>   
+            <SolidColorBrush x:Key="TextMutedBrush"         Color="#8A8A93"/>   
             <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#0E0E10"/>
             <SolidColorBrush x:Key="ErrorBrush"             Color="#FF8C70"/>
             <SolidColorBrush x:Key="HoverOverlayBrush"      Color="#14FFFFFF"/>
             <SolidColorBrush x:Key="PressedOverlayBrush"    Color="#22FFFFFF"/>
             <SolidColorBrush x:Key="DisabledFillBrush"      Color="#28FFFFFF"/>
-            <SolidColorBrush x:Key="StageBrush"             Color="#0A0A0B"/>   
+            <SolidColorBrush x:Key="StageBrush"             Color="#1A1A1C"/>   
             <SolidColorBrush x:Key="PanelBrush"             Color="#141416"/>   
             <SolidColorBrush x:Key="FilmstripBrush"         Color="#101012"/>
             <SolidColorBrush x:Key="FieldBorderBrush"       Color="#34343A"/>
@@ -39,16 +39,16 @@
             <SolidColorBrush x:Key="BackgroundBrush"        Color="#F6F6F7"/>
             <SolidColorBrush x:Key="SurfaceBrush"           Color="#FFFFFF"/>
             <SolidColorBrush x:Key="CardBorderBrush"        Color="#DEDEE2"/>
-            <SolidColorBrush x:Key="CardBorderPrimaryBrush" Color="#8A8A92"/>
+            <SolidColorBrush x:Key="CardBorderPrimaryBrush" Color="#7C7C85"/>
             <SolidColorBrush x:Key="TextPrimaryBrush"       Color="#141416"/>
             <SolidColorBrush x:Key="TextSecondaryBrush"     Color="#55555C"/>
-            <SolidColorBrush x:Key="TextMutedBrush"         Color="#8A8A92"/>
+            <SolidColorBrush x:Key="TextMutedBrush"         Color="#6B6B73"/>
             <SolidColorBrush x:Key="ToolbarBackgroundBrush" Color="#F6F6F7"/>
-            <SolidColorBrush x:Key="ErrorBrush"             Color="#C23B1E"/>
+            <SolidColorBrush x:Key="ErrorBrush"             Color="#B5341A"/>
             <SolidColorBrush x:Key="HoverOverlayBrush"      Color="#14000000"/>
             <SolidColorBrush x:Key="PressedOverlayBrush"    Color="#22000000"/>
             <SolidColorBrush x:Key="DisabledFillBrush"      Color="#28000000"/>
-            <SolidColorBrush x:Key="StageBrush"             Color="#EDEDEF"/>
+            <SolidColorBrush x:Key="StageBrush"             Color="#1A1A1C"/>
             <SolidColorBrush x:Key="PanelBrush"             Color="#FFFFFF"/>
             <SolidColorBrush x:Key="FilmstripBrush"         Color="#F0F0F2"/>
             <SolidColorBrush x:Key="FieldBorderBrush"       Color="#C9C9D0"/>
@@ -58,8 +58,8 @@
             <SolidColorBrush x:Key="AccentBrush"            Color="#2F5F8A"/>   
             <SolidColorBrush x:Key="AccentInkBrush"         Color="#FFFFFF"/>
             <SolidColorBrush x:Key="AccentSoftBrush"        Color="#1A2F5F8A"/>
-            <SolidColorBrush x:Key="SuccessBrush"           Color="#1E9F6A"/>
-            <SolidColorBrush x:Key="WarningBrush"           Color="#9A7B00"/>
+            <SolidColorBrush x:Key="SuccessBrush"           Color="#15784F"/>
+            <SolidColorBrush x:Key="WarningBrush"           Color="#7A5F00"/>
             <SolidColorBrush x:Key="ScrimBrush"             Color="#66000000"/>
         </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>

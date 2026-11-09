@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — Camera</title><link rel="stylesheet" href="mock.css">
+<style>
+.cam{display:grid;grid-template-columns:320px 1fr 340px;min-height:0}
+.col{background:var(--panel);padding:var(--s4);display:grid;gap:var(--s3);align-content:start;overflow:auto}
+.col + .col{border-left:1px solid var(--border)}
+.mid{background:var(--bg)}
+.params{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s2)}
+.param{background:var(--surface);border-radius:var(--r-md);padding:var(--s3);display:grid;gap:2px}
+.param small{color:var(--text-muted);font-size:var(--f-caption)} .param b{font-size:var(--f-title)}
+.status{display:inline-flex;gap:6px;align-items:center;font-size:var(--f-small);color:var(--success)}
+.status i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.slot{display:flex;justify-content:space-between;padding:var(--s3);background:var(--surface);border-radius:var(--r-sm)}
+.slot[aria-selected="true"]{outline:2px solid var(--accent)}
+.recipe-row{padding:var(--s3);border-radius:var(--r-sm);display:grid;gap:2px}.recipe-row[aria-selected="true"]{background:var(--accent-soft)}
+</style></head>
+<body>
+<div class="app" style="grid-template-rows:48px 1fr">
+  <header class="top">
+    <div class="logo"><i></i>PhSpectre</div>
+    <div class="seg"><button aria-selected="false">Edit</button><button aria-selected="false">Collage</button><button aria-selected="true">Camera</button></div>
+    <button class="iconbtn" aria-label="More"><span data-i="more"></span></button>
+  </header>
+  <div class="cam">
+    <section class="col" aria-label="Recipes">
+      <div class="seg" style="margin:0"><button aria-selected="true">Photos</button><button aria-selected="false">Saved</button><button aria-selected="false">Popular</button></div>
+      <input class="search" placeholder="Search recipes">
+      <div class="chips"><button class="chip" aria-pressed="true">All</button><button class="chip" aria-pressed="false">Classic Chrome</button><button class="chip" aria-pressed="false">B&amp;W</button></div>
+      <div class="recipe-row" aria-selected="true"><b>Kodak Portra look</b><span class="hint">Classic Neg. · from photo</span></div>
+      <div class="recipe-row"><b>Street Mono</b><span class="hint">Acros · saved</span></div>
+      <div class="recipe-row"><b>Summer Chrome</b><span class="hint">Classic Chrome · popular</span></div>
+    </section>
+    <main class="col mid" aria-label="Recipe">
+      <div><h2 style="margin:0;font-size:var(--f-display)">Kodak Portra look</h2><span class="hint">Classic Neg. · from DSCF0412.JPG</span></div>
+      <div class="params">
+        <div class="param"><small>Film Simulation</small><b>Classic Neg.</b></div><div class="param"><small>Dynamic Range</small><b>DR400</b></div><div class="param"><small>White Balance</small><b>Daylight</b></div>
+        <div class="param"><small>Highlight</small><b>−1</b></div><div class="param"><small>Shadow</small><b>+1</b></div><div class="param"><small>Color</small><b>+2</b></div>
+        <div class="param"><small>Grain</small><b>Weak</b></div><div class="param"><small>Color Chrome</small><b>Strong</b></div><div class="param"><small>Clarity</small><b>0</b></div>
+      </div>
+      <div style="display:flex;gap:8px"><button class="btn">Edit</button><button class="btn">★ Save</button></div>
+    </main>
+    <section class="col" aria-label="Camera">
+      <div class="row"><h3>X-T5</h3><span class="status"><i></i>Connected</span></div>
+      <h3>Slots</h3>
+      <div class="slot" aria-selected="true"><span>C1 · Kodak Portra look</span><span class="hint">will replace</span></div>
+      <div class="slot"><span>C2 · Street Mono</span></div><div class="slot"><span>C3 · —</span></div>
+      <button class="btn primary block">Write recipe to C1</button>
+      <button class="btn block">Restore points ▾</button>
+      <p class="note">Same layout and states as today (Warning · Writing · Done · Error). Only the shell and styles change.</p>
+    </section>
+  </div>
+</div>
+<button class="btn toggle-theme">Theme</button>
+<script src="mock.js"></script>
+</body></html>

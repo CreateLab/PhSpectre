@@ -1,0 +1,439 @@
+[
+    {
+        "id":  "bundled-lut-soft-gold",
+        "name":  "Soft Gold",
+        "kind":  "lut",
+        "category":  "Film",
+        "file":  "luts/lut-soft-gold.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-cool-negative",
+        "name":  "Cool Negative",
+        "kind":  "lut",
+        "category":  "Film",
+        "file":  "luts/lut-cool-negative.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-faded-matte",
+        "name":  "Faded Matte",
+        "kind":  "lut",
+        "category":  "Film",
+        "file":  "luts/lut-faded-matte.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-vivid-slide",
+        "name":  "Vivid Slide",
+        "kind":  "lut",
+        "category":  "Film",
+        "file":  "luts/lut-vivid-slide.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-muted-pastel",
+        "name":  "Muted Pastel",
+        "kind":  "lut",
+        "category":  "Film",
+        "file":  "luts/lut-muted-pastel.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-teal-and-orange",
+        "name":  "Teal and Orange",
+        "kind":  "lut",
+        "category":  "Cinema",
+        "file":  "luts/lut-teal-and-orange.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-bleach-bypass",
+        "name":  "Bleach Bypass",
+        "kind":  "lut",
+        "category":  "Cinema",
+        "file":  "luts/lut-bleach-bypass.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-night-blue",
+        "name":  "Night Blue",
+        "kind":  "lut",
+        "category":  "Cinema",
+        "file":  "luts/lut-night-blue.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-warm-dusk",
+        "name":  "Warm Dusk",
+        "kind":  "lut",
+        "category":  "Cinema",
+        "file":  "luts/lut-warm-dusk.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-green-shadows",
+        "name":  "Green Shadows",
+        "kind":  "lut",
+        "category":  "Cinema",
+        "file":  "luts/lut-green-shadows.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-classic-bandw",
+        "name":  "Classic B&W",
+        "kind":  "lut",
+        "category":  "B&W",
+        "file":  "luts/lut-classic-bandw.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-high-contrast-bandw",
+        "name":  "High Contrast B&W",
+        "kind":  "lut",
+        "category":  "B&W",
+        "file":  "luts/lut-high-contrast-bandw.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-soft-silver",
+        "name":  "Soft Silver",
+        "kind":  "lut",
+        "category":  "B&W",
+        "file":  "luts/lut-soft-silver.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-red-filter-bandw",
+        "name":  "Red Filter B&W",
+        "kind":  "lut",
+        "category":  "B&W",
+        "file":  "luts/lut-red-filter-bandw.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-sepia-tone",
+        "name":  "Sepia Tone",
+        "kind":  "lut",
+        "category":  "B&W",
+        "file":  "luts/lut-sepia-tone.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-cross-cyan",
+        "name":  "Cross Cyan",
+        "kind":  "lut",
+        "category":  "Creative",
+        "file":  "luts/lut-cross-cyan.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-magenta-haze",
+        "name":  "Magenta Haze",
+        "kind":  "lut",
+        "category":  "Creative",
+        "file":  "luts/lut-magenta-haze.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-golden-hour",
+        "name":  "Golden Hour",
+        "kind":  "lut",
+        "category":  "Creative",
+        "file":  "luts/lut-golden-hour.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-cyan-shadows",
+        "name":  "Cyan Shadows",
+        "kind":  "lut",
+        "category":  "Creative",
+        "file":  "luts/lut-cyan-shadows.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-lo-fi-fade",
+        "name":  "Lo-Fi Fade",
+        "kind":  "lut",
+        "category":  "Creative",
+        "file":  "luts/lut-lo-fi-fade.cube",
+        "skipped":  []
+    },
+    {
+        "id":  "bundled-lut-chrome-to-neg",
+        "name":  "Chrome to Neg",
+        "kind":  "lut",
+        "category":  "Film",
+        "file":  "luts/lut-chrome-to-neg.cube",
+        "skipped":  [
+
+                    ]
+    },
+    {
+        "id":  "bundled-preset-albumen-print",
+        "name":  "Albumen Print",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-albumen-print.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-autochrome",
+        "name":  "Autochrome",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-autochrome.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-bromoil",
+        "name":  "Bromoil",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-bromoil.xmp",
+        "skipped":  [
+                        "Texture",
+                        "Clarity2012",
+                        "Dehaze",
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-bw-infrared",
+        "name":  "BW Infrared",
+        "kind":  "preset",
+        "category":  "Film",
+        "file":  "presets/preset-bw-infrared.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-calotype",
+        "name":  "Calotype",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-calotype.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-cross-process-c41-e6",
+        "name":  "Cross Process C41→E6",
+        "kind":  "preset",
+        "category":  "Film",
+        "file":  "presets/preset-cross-process-c41-e6.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-cross-process-e6-c41",
+        "name":  "Cross Process E6→C41",
+        "kind":  "preset",
+        "category":  "Film",
+        "file":  "presets/preset-cross-process-e6-c41.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-cyanotype-classic",
+        "name":  "Cyanotype Classic",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-cyanotype-classic.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-cyanotype-tea-toned",
+        "name":  "Cyanotype Tea-Toned",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-cyanotype-tea-toned.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-daguerreotype",
+        "name":  "Daguerreotype",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-daguerreotype.xmp",
+        "skipped":  [
+                        "Texture",
+                        "Clarity2012",
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-diana-f",
+        "name":  "Diana F+",
+        "kind":  "preset",
+        "category":  "Toy camera",
+        "file":  "presets/preset-diana-f.xmp",
+        "skipped":  [
+                        "Texture",
+                        "Clarity2012",
+                        "Dehaze",
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-film-soup",
+        "name":  "Film Soup",
+        "kind":  "preset",
+        "category":  "Film",
+        "file":  "presets/preset-film-soup.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-gum-bichromate",
+        "name":  "Gum Bichromate",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-gum-bichromate.xmp",
+        "skipped":  [
+                        "Texture",
+                        "Clarity2012",
+                        "Dehaze",
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-holga",
+        "name":  "Holga",
+        "kind":  "preset",
+        "category":  "Toy camera",
+        "file":  "presets/preset-holga.xmp",
+        "skipped":  [
+                        "Texture",
+                        "Clarity2012",
+                        "Dehaze",
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-lith-print",
+        "name":  "Lith Print",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-lith-print.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-lomo-lc-a",
+        "name":  "Lomo LC-A",
+        "kind":  "preset",
+        "category":  "Toy camera",
+        "file":  "presets/preset-lomo-lc-a.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-palladium-print",
+        "name":  "Palladium Print",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-palladium-print.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-pinhole",
+        "name":  "Pinhole",
+        "kind":  "preset",
+        "category":  "Toy camera",
+        "file":  "presets/preset-pinhole.xmp",
+        "skipped":  [
+                        "Texture",
+                        "Clarity2012",
+                        "Dehaze",
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-platinum-print",
+        "name":  "Platinum Print",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-platinum-print.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-redscale",
+        "name":  "Redscale",
+        "kind":  "preset",
+        "category":  "Film",
+        "file":  "presets/preset-redscale.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-salt-print",
+        "name":  "Salt Print",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-salt-print.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-solarization",
+        "name":  "Solarization",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-solarization.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-van-dyke-brown",
+        "name":  "Van Dyke Brown",
+        "kind":  "preset",
+        "category":  "Alt process",
+        "file":  "presets/preset-van-dyke-brown.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-wet-plate-ambrotype",
+        "name":  "Wet Plate Ambrotype",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-wet-plate-ambrotype.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    },
+    {
+        "id":  "bundled-preset-wet-plate-tintype",
+        "name":  "Wet Plate Tintype",
+        "kind":  "preset",
+        "category":  "Historic",
+        "file":  "presets/preset-wet-plate-tintype.xmp",
+        "skipped":  [
+                        "Sharpness"
+                    ]
+    }
+]

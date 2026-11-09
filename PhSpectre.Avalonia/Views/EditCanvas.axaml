@@ -1,0 +1,64 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PhSpectre.Avalonia.Views.EditCanvas"
+             x:DataType="vm:ProcessViewModel">
+
+    <!-- Edit canvas (DataContext = Settings.Process): the neutral stage with the graded photo. -->
+    <Grid Background="{DynamicResource StageBrush}">
+        <Image Source="{Binding Shown}" Stretch="Uniform" Margin="32,28,32,84" IsVisible="{Binding HasPhoto}"/>
+
+        <Button IsVisible="{Binding ShowEmpty}" Command="{Binding OpenPhotosCommand}" Background="Transparent"
+                BorderThickness="0" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="40,28"
+                Cursor="Hand" AutomationProperties.Name="Open photos">
+            <StackPanel Spacing="10">
+                <materialIcons:MaterialIcon Kind="ImageOutline" Width="40" Height="40" HorizontalAlignment="Center"
+                                            Foreground="{DynamicResource TextMutedBrush}"/>
+                <TextBlock Text="Drop a photo or open a folder" HorizontalAlignment="Center" FontSize="15"
+                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                <TextBlock Text="Click here, or pick a photo from the strip below." HorizontalAlignment="Center" Classes="hint"/>
+            </StackPanel>
+        </Button>
+        <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+            <materialIcons:MaterialIcon Kind="AlertCircleOutline" Width="36" Height="36" HorizontalAlignment="Center"
+                                        Foreground="{DynamicResource ErrorBrush}"/>
+            <TextBlock Text="{Binding ErrorText}" HorizontalAlignment="Center" Foreground="{DynamicResource ErrorBrush}"/>
+            <TextBlock Text="{Binding PhotoName}" HorizontalAlignment="Center" Classes="hint"/>
+        </StackPanel>
+
+        <!-- Canvas toolbar -->
+        <StackPanel IsVisible="{Binding HasPhoto}" Orientation="Horizontal" Spacing="6"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20">
+            <ToggleButton Classes="mode-chip" IsChecked="{Binding ShowOriginal}" Padding="14,0" Height="32"
+                          ToolTip.Tip="Show the original (hold \)" AutomationProperties.Name="Before">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <materialIcons:MaterialIcon Kind="CompareHorizontal" Width="16" Height="16" VerticalAlignment="Center"/>
+                    <TextBlock Text="Before" VerticalAlignment="Center"/>
+                </StackPanel>
+            </ToggleButton>
+        </StackPanel>
+
+        <Border IsVisible="{Binding HasPhoto}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="24,0,0,20"
+                Background="{DynamicResource ScrimBrush}" CornerRadius="6" Padding="8,3">
+            <TextBlock Text="{Binding PhotoName}" FontSize="12" Foreground="White"/>
+        </Border>
+
+        <!-- Why the frame type changed on its own -->
+        <Border IsVisible="{Binding Settings.HasFrameNotice}" HorizontalAlignment="Center" VerticalAlignment="Top"
+                Margin="16" Padding="14,10" CornerRadius="8" Background="{DynamicResource SurfaceBrush}"
+                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <TextBlock Text="{Binding Settings.FrameNotice}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <Button Classes="link" Content="Undo" IsVisible="{Binding Settings.CanUndoFrameSwitch}"
+                        Command="{Binding Settings.UndoFrameSwitchCommand}"/>
+                <Button Classes="icon-toolbar" Width="28" Height="28" AutomationProperties.Name="Dismiss"
+                        Command="{Binding Settings.DismissFrameNoticeCommand}">
+                    <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
+                </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

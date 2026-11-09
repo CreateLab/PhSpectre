@@ -29,6 +29,8 @@ public partial class SettingsViewModel
 
     public bool CameraSupported => CameraService.IsSupported;
     public bool ShowCameraMode => CameraSupported && CameraExperimental;
+    /// <summary>Camera is available on this device but not turned on yet: the top bar offers a way to set it up.</summary>
+    public bool CameraOffer => CameraSupported && !CameraExperimental;
     public bool HasRecipeStatus => RecipeStatusText.Length > 0;
 
     /// <summary>The shared photo state, supplied by the shell (desktop: Files/SelectedFile, mobile: RecentPhotos).</summary>
@@ -47,6 +49,7 @@ public partial class SettingsViewModel
     {
         if (CameraSupported) Camera.SetEnabled(value);
         OnPropertyChanged(nameof(ShowCameraMode));
+        OnPropertyChanged(nameof(CameraOffer));
         if (!value) IsCameraMode = false;
         else if (Camera.SetupOpen)
         {
