@@ -1,6 +1,6 @@
 namespace PhSpectre.Rendering;
 
-public enum FrameType { None, Border, Card, RecipeCard }
+public enum FrameType { None, Border, Card, RecipeCard, Film }
 
 public readonly record struct FrameAvailabilityResult(bool Available, string? Reason);
 

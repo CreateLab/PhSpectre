@@ -79,7 +79,7 @@ public partial class ProcessViewModel : ViewModelBase
     public Bitmap? Shown => ShowOriginal || Graded == null ? Original : Graded;
     public string? PhotoPath => _loadedPath;
 
-    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
+    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
     partial void OnGradedChanged(Bitmap? value) => OnPropertyChanged(nameof(Shown));
     partial void OnShowOriginalChanged(bool value) => OnPropertyChanged(nameof(Shown));
     partial void OnErrorTextChanged(string value) { OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(ShowEmpty)); }
@@ -89,6 +89,7 @@ public partial class ProcessViewModel : ViewModelBase
     {
         if (!_libraryBuilt) RefreshLibrary(); else if (Items.Any(i => i.Thumb == null)) ScheduleThumbs();
         if (Frames.Count == 0) LoadFrames();
+        if (FilmStyles.Count == 0) LoadFilmStyles();
         var entry = _settings.CurrentPhotoProvider?.Invoke();
         if (entry == null)
         {
@@ -553,9 +554,10 @@ public partial class ProcessViewModel : ViewModelBase
     }
 
     // Grade, then frame. Returns a new image; the source is untouched.
-    private static Image<Rgb24> RenderAll(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame)
+    private static Image<Rgb24> RenderAll(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film = null)
     {
         using var graded = stack.IsEmpty ? null : stack.Render(src);
+        if (film != null) return FilmFrameRenderer.Render(graded ?? src, film.Style, film.Meta, film.Number, film.LookName, film.Label);
         return frame is { IsNoOp: false } ? frame.Render(graded ?? src) : (graded ?? src).Clone();
     }
 
@@ -569,12 +571,13 @@ public partial class ProcessViewModel : ViewModelBase
         if (src == null) return;
         var stack = BuildStack();
         var frame = CurrentFrame();
-        if (stack.IsEmpty && (frame == null || frame.IsNoOp)) { Graded = null; return; }
+        var film = CurrentFilm(_loadedPath, useSettingsMetadata: true);
+        if (stack.IsEmpty && (frame == null || frame.IsNoOp) && film == null) { Graded = null; return; }
         var cts = _renderCts = new CancellationTokenSource();
-        _ = RenderAsync(src, stack, frame, cts.Token);
+        _ = RenderAsync(src, stack, frame, film, cts.Token);
     }
 
-    private async Task RenderAsync(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, CancellationToken ct)
+    private async Task RenderAsync(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, CancellationToken ct)
     {
         try
         {
@@ -584,7 +587,7 @@ public partial class ProcessViewModel : ViewModelBase
                 ct.ThrowIfCancellationRequested();
                 // _source is only replaced on the UI thread together with a new render, and a
                 // stale result is dropped below, so reading it here is safe.
-                using var graded = RenderAll(src, stack, frame);
+                using var graded = RenderAll(src, stack, frame, film);
                 return ToBitmapBytes(graded);
             }, ct);
             if (ct.IsCancellationRequested || !ReferenceEquals(src, _source)) return;
@@ -719,7 +722,7 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnIsExportingChanged(bool value) { OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
 
     public string SuggestedExportName =>
-        Path.GetFileNameWithoutExtension(PhotoName) + (HasLayers || FrameEnabled ? "_graded" : "") + (ExportFormatIndex == 1 ? ".png" : ".jpg");
+        Path.GetFileNameWithoutExtension(PhotoName) + (HasLayers || FrameEnabled || FilmEnabled ? "_graded" : "") + (ExportFormatIndex == 1 ? ".png" : ".jpg");
 
     public string DefaultExportDir =>
         _loadedPath != null ? Path.GetDirectoryName(_loadedPath)! : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
@@ -735,6 +738,8 @@ public partial class ProcessViewModel : ViewModelBase
         if (files == null || files.Count == 0) return;
         var stack = BuildStack();
         var frame = CurrentFrame();
+        var filmStyle = FilmEnabled ? CurrentFilmStyle() : null;
+        var lookName = CurrentLookName();
         int quality = (int)Math.Round(ExportQuality);
         bool png = ExportFormatIndex == 1;
         IsExporting = true;
@@ -752,7 +757,10 @@ public partial class ProcessViewModel : ViewModelBase
                     {
                         using var img = Image.Load<Rgb24>(f.FullPath);
                         img.Mutate(x => x.AutoOrient());
-                        using var final = RenderAll(img, stack, frame);
+                        // Each photo gets its own metadata and frame number.
+                        var film = filmStyle == null ? null
+                            : new FilmLayer(filmStyle, PaletteImageRenderer.ReadMetadata(f.FullPath), files.IndexOf(f) + 1, lookName, FrameLabelFor(f.FullPath, files.IndexOf(f)));
+                        using var final = RenderAll(img, stack, frame, film);
                         if (png) final.SaveAsPng(dest);
                         else final.SaveAsJpeg(dest, new JpegEncoder { Quality = quality });
                     });
@@ -783,6 +791,7 @@ public partial class ProcessViewModel : ViewModelBase
         }
         var stack = BuildStack();
         var frame = CurrentFrame();
+        var film = CurrentFilm(src, useSettingsMetadata: true);
         int quality = (int)Math.Round(ExportQuality);
         IsExporting = true;
         ExportStatus = "Saving…";
@@ -792,7 +801,7 @@ public partial class ProcessViewModel : ViewModelBase
             {
                 using var img = Image.Load<Rgb24>(src);
                 img.Mutate(x => x.AutoOrient());
-                using var final = RenderAll(img, stack, frame);
+                using var final = RenderAll(img, stack, frame, film);
                 if (Path.GetExtension(outPath).Equals(".png", StringComparison.OrdinalIgnoreCase))
                     final.SaveAsPng(outPath);
                 else

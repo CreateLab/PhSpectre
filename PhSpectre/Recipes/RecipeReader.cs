@@ -35,7 +35,7 @@ public static class RecipeReader
 
     public static FilmRecipe? Read(Image image) => Read(image.Metadata.ExifProfile);
 
-    private static FilmRecipe? Read(ExifProfile? profile)
+    public static FilmRecipe? Read(ExifProfile? profile)
     {
         if (profile == null) return null;
         try

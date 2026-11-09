@@ -22,7 +22,7 @@ The app has three modes: **Edit** (one photo, three tabs: Look · Frame · Expor
 **Everything above is available on Android too** — the same Edit, Collage and Camera modes, looks and recipe writing over USB (OTG), with the layout adapted for tablets and phones.
 
 - **Look** — 46 bundled looks sorted into categories (Historic, Alt process, Film, Cinema, B&W, Toy camera, Creative): 25 Lightroom-style presets and 21 `.cube` LUTs, every tile rendered on *your* photo. A single Amount slider blends the look in. Import your own `.xmp` presets, `.cube` LUTs or a `.zip` of them; imports are kept between sessions, and favourites are one click away.
-- **Frame** — None, a plain **Border**, a **Card** (palette swatches, camera info plate, QR) or a **Recipe** card. Border and Card are built on the graded photo, so a Look carries through to the export.
+- **Frame** — None, a plain **Border**, a **Card** (palette swatches, camera info plate, QR), a **Recipe** card or a **Film** edge (sprocket holes with the shot data printed on them). Border, Card and Film are built on the graded photo, so a Look carries through to the export.
 - **Export** — JPEG or PNG, original size, half size or a social preset (square, IG post, story, TG landscape). One Export button for everything, and "Export all" for a whole folder.
 - **Palette** — dominant colors from any JPEG or HEIF/HEIC photo, k-means++ in HSL space, auto or fixed color count.
 - **Recipe** — auto-detects a Fujifilm JPEG/HEIF's in-camera film simulation recipe straight from the MakerNote (white balance + shift, dynamic range, tone curve, sharpness, grain, color chrome, all of it) and renders it as its own card.
@@ -46,6 +46,12 @@ and the card is built from the graded photo, so the palette matches the look. It
 **Recipe** renders the Fujifilm recipe as a full card (available for photos that carry one, while no Look is applied):
 
 ![Edit — Recipe frame, parameter grid from the photo's MakerNote](screens/edit-frame-recipe.png)
+
+**Film** puts the photo on a film edge: sprocket holes, grain, uneven light, dust and rounded frame corners, with the shot data printed the way it is on real stock — shutter, aperture, ISO, focal length, exposure compensation, colour profile and a frame number. Each spot on the edge (top, bottom, the sides, between the sprocket holes) holds one short value, so the edge never turns into a block of text. Ten ready-made edges (Camera LED, Grey strip, Dark strip, Cine amber, Amber negative, Golden negative, Olive negative, Slide strip, Roll 120, Expired roll) and your own, saved by name:
+
+![Film frames — three edges on the same photo](screens/film-frames.jpg)
+
+Nothing on the edge is made up. The name is the **Look** you applied (LUT or preset) or, without one, the film simulation read from a Fujifilm photo; if there is neither, that spot stays empty. The frame number is the one you type (or step with − / +), else the digits of the file name (`DSCF6601.JPG` → 6601), else the EXIF image number. "Film feel", "Dust" and "Corners" control how worn the edge looks, and the photo itself is never resampled — only its four corners are trimmed.
 
 Export picks the format and size and saves where you tell it:
 
@@ -133,8 +139,9 @@ photos underneath, and one inspector on the right with three tabs.
   grain and vignette settings are applied, and anything the engine can't reproduce (for example
   Texture, Clarity, Dehaze, Sharpening) is listed under the preset as *Not applied*. LUTs are `.cube` files.
   The bundled looks are read-only; your imports can be renamed, favourited, categorised and deleted.
-- **Frame** — None, Border, Card or Recipe. Card is built from the graded photo and carries the palette, the camera
-  info plate and an optional QR code (details below).
+- **Frame** — None, Border, Card, Recipe or Film. Card is built from the graded photo and carries the palette, the camera
+  info plate and an optional QR code (details below). Film draws a film edge with sprocket holes and the shot data around the
+  graded photo; pick an edge, choose what is printed in each spot and how worn it looks, and save your own.
 - **Export** — format, size and destination. For a card the same tab holds the card's size presets.
 
 **Collage mode** (desktop and Android) checks several photos into a tray and renders one

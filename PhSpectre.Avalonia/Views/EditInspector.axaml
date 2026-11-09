@@ -187,6 +187,7 @@
                         <ListBoxItem Content="Border"/>
                         <ListBoxItem Content="Card"/>
                         <ListBoxItem Content="Recipe" IsEnabled="{Binding Settings.RecipeCardAvailable}"/>
+                        <ListBoxItem Content="Film"/>
                     </ListBox>
                     <TextBlock Text="{Binding Settings.RecipeCardReason}" Classes="hint" TextWrapping="Wrap"
                                IsVisible="{Binding Settings.ShowRecipeCardReason}"/>
@@ -194,7 +195,7 @@
                                FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Settings.HasFrameNotice}"/>
 
                     <TextBlock Text="Card and Recipe card add a palette, camera info or the film recipe under the photo."
-                               Classes="hint" TextWrapping="Wrap" IsVisible="{Binding !Settings.FrameIsBorder}"/>
+                               Classes="hint" TextWrapping="Wrap" IsVisible="{Binding Settings.ShowCardHint}"/>
 
                     <!-- Border -->
                     <StackPanel Spacing="10" IsVisible="{Binding Settings.FrameIsBorder}">
@@ -260,6 +261,196 @@
                                     <Button Grid.Column="2" Classes="icon-toolbar" Width="32" Height="32"
                                             Command="{Binding DeleteFrameCommand}" IsEnabled="{Binding CanDeleteFrame}"
                                             ToolTip.Tip="Delete saved border" AutomationProperties.Name="Delete saved border">
+                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+
+                    <!-- Film: shot data printed on a film edge, laid out per zone -->
+                    <StackPanel Spacing="10" IsVisible="{Binding Settings.FrameIsFilm}">
+                        <ComboBox ItemsSource="{Binding FilmStyles}" SelectedItem="{Binding SelectedFilm}"
+                                  PlaceholderText="Custom" HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="Film style">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="rend:FilmStyle">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <TextBlock Text="Each spot on the film edge prints one short piece of data. Anything the photo doesn't carry is left blank."
+                                   Classes="hint" TextWrapping="Wrap"/>
+                        <Expander Header="Data on the edge" IsExpanded="False" HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="8" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Top left" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopLeftIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Top left of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Top right" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopRightIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Top right of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Top" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopCenterIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Top of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Bottom left" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomLeftIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Bottom left of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomCenterIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Bottom centre of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Bottom right" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomRightIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Bottom right of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Left side" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideLeftIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Left side of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Right side" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideRightIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Right side of the edge"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Between holes" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmHoleGapsIndex}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Between the sprocket holes (needs sprockets)"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*,Auto,Auto,Auto" ColumnSpacing="4">
+                                    <TextBlock Text="Frame no." Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding FilmFrameText}" Watermark="{Binding FilmFrameWatermark}" MaxLength="6"
+                                             AutomationProperties.Name="Frame number printed on the edge (empty = automatic)"/>
+                                    <Button Grid.Column="2" Classes="secondary" Width="30" Height="32" Padding="0" Content="−"
+                                            Command="{Binding FilmFrameStepCommand}" CommandParameter="-1"
+                                            ToolTip.Tip="Previous number" AutomationProperties.Name="Decrease frame number"/>
+                                    <Button Grid.Column="3" Classes="secondary" Width="30" Height="32" Padding="0" Content="+"
+                                            Command="{Binding FilmFrameStepCommand}" CommandParameter="1"
+                                            ToolTip.Tip="Next number" AutomationProperties.Name="Increase frame number"/>
+                                    <Button Grid.Column="4" Classes="secondary" Height="32" Padding="8,0" Content="Auto"
+                                            Command="{Binding FilmFrameAutoResetCommand}" IsEnabled="{Binding FilmFrameIsManual}"
+                                            ToolTip.Tip="Take the number from the file name again" AutomationProperties.Name="Automatic frame number"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="84,*">
+                                    <TextBlock Text="Custom text" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding FilmCustomText}" Watermark="e.g. Portra 400" MaxLength="40"
+                                             AutomationProperties.Name="Custom text printed on the edge"/>
+                                </Grid>
+                            </StackPanel>
+                        </Expander>
+                        <Expander Header="Look of the edge" IsExpanded="False" HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="10" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Sides" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FilmSide}"
+                                            AutomationProperties.Name="Side edge width"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilmSideText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Top" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FilmTop}"
+                                            AutomationProperties.Name="Top edge height"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilmTopText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FilmBottom}"
+                                            AutomationProperties.Name="Bottom edge height"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilmBottomText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Film feel" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding FilmRealism}"
+                                            AutomationProperties.Name="Film feel: grain, uneven light, soft holes"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilmRealismText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Dust" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding FilmDust}"
+                                            AutomationProperties.Name="Dust and scratches"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilmDustText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Corners" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="4" Value="{Binding FilmCorner}"
+                                            AutomationProperties.Name="Rounded photo corners"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FilmCornerText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*">
+                                    <TextBlock Text="Sprockets" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmPerforationLabels}"
+                                              SelectedIndex="{Binding FilmPerforationIndex}" HorizontalAlignment="Stretch"
+                                              AutomationProperties.Name="Sprocket holes"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*">
+                                    <TextBlock Text="Edge" Classes="hint" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Width="28" Height="28" Background="#0B0B0B" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#0B0B0B"
+                                                    AutomationProperties.Name="Black"/>
+                                            <Button Width="28" Height="28" Background="#16100C" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#16100C"
+                                                    AutomationProperties.Name="Dark brown"/>
+                                            <Button Width="28" Height="28" Background="#8E9298" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#8E9298"
+                                                    AutomationProperties.Name="Grey"/>
+                                            <Button Width="28" Height="28" Background="#F4F1EA" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#F4F1EA"
+                                                    AutomationProperties.Name="Cream"/>
+                                        </StackPanel>
+                                        <TextBox Text="{Binding FilmEdgeHex}" Watermark="#RRGGBB" MaxLength="7"
+                                                 AutomationProperties.Name="Edge color hex"/>
+                                        <TextBlock Text="Use #RRGGBB" IsVisible="{Binding FilmEdgeInvalid}"
+                                                   Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*">
+                                    <TextBlock Text="Text" Classes="hint" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Width="28" Height="28" Background="#F2F2F2" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmTextColorCommand}" CommandParameter="#F2F2F2"
+                                                    AutomationProperties.Name="White"/>
+                                            <Button Width="28" Height="28" Background="#FFB020" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmTextColorCommand}" CommandParameter="#FFB020"
+                                                    AutomationProperties.Name="Amber"/>
+                                            <Button Width="28" Height="28" Background="#2A2C30" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFilmTextColorCommand}" CommandParameter="#2A2C30"
+                                                    AutomationProperties.Name="Dark grey"/>
+                                        </StackPanel>
+                                        <TextBox Text="{Binding FilmTextHex}" Watermark="#RRGGBB" MaxLength="7"
+                                                 AutomationProperties.Name="Text color hex"/>
+                                        <TextBlock Text="Use #RRGGBB" IsVisible="{Binding FilmTextInvalid}"
+                                                   Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                                <CheckBox Content="Glow (backlit look)" IsChecked="{Binding FilmGlow}"/>
+                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                    <TextBox Text="{Binding FilmName}" Watermark="Save as…"
+                                             AutomationProperties.Name="Name for the custom film style"/>
+                                    <Button Grid.Column="1" Classes="secondary" Height="32" Padding="10,0" Content="Save"
+                                            Command="{Binding SaveFilmCommand}"/>
+                                    <Button Grid.Column="2" Classes="icon-toolbar" Width="32" Height="32"
+                                            Command="{Binding DeleteFilmCommand}" IsEnabled="{Binding CanDeleteFilm}"
+                                            ToolTip.Tip="Delete saved film style" AutomationProperties.Name="Delete saved film style">
                                         <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14"/>
                                     </Button>
                                 </Grid>
