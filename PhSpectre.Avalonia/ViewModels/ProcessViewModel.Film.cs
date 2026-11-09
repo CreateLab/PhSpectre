@@ -50,6 +50,7 @@ public partial class ProcessViewModel
     private FilmStyleStore FilmStore => _filmStore ??= new FilmStyleStore(Path.Combine(LibraryRoot, "film-styles.json"));
     private bool _applyingFilm;
     private string _filmHole = "#000000";   // hole colour of the last chosen style (not edited in the UI)
+    private FilmGauge _filmGauge;           // stock of the last chosen style (real hole geometry / strip direction)
 
     public ObservableCollection<FilmStyle> FilmStyles { get; } = [];
 
@@ -155,7 +156,7 @@ public partial class ProcessViewModel
         {
             SidePercent = (float)FilmSide, TopPercent = (float)FilmTop, BottomPercent = (float)FilmBottom,
             EdgeColorHex = ValidHex(FilmEdgeHex, "#0B0B0B"), TextColorHex = ValidHex(FilmTextHex, "#F2F2F2"),
-            HoleColorHex = _filmHole,
+            HoleColorHex = _filmHole, Gauge = _filmGauge,
             Realism = (float)FilmRealism, Dust = (float)FilmDust, CornerPercent = (float)FilmCorner,
             Glow = FilmGlow, Perforation = (FilmPerforation)Math.Clamp(FilmPerforationIndex, 0, 2),
             CustomText = FilmCustomText ?? "", Zones = zones
@@ -250,7 +251,7 @@ public partial class ProcessViewModel
     {
         OnPropertyChanged(nameof(CanDeleteFilm));
         if (value == null || _applyingFilm) return;
-        _filmHole = value.HoleColorHex;
+        _filmHole = value.HoleColorHex; _filmGauge = value.Gauge;
         _applyingFilm = true;
         try
         {

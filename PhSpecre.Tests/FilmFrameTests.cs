@@ -27,9 +27,9 @@ public class FilmFrameTests
     {
         var style = new FilmStyle { SidePercent = 500, TopPercent = -3, BottomPercent = float.NaN };
         var (w, h, x, y) = FilmFrameRenderer.Layout(style, 1000, 1000);
-        Assert.Equal(300, x);
+        Assert.Equal(350, x);
         Assert.Equal(0, y);
-        Assert.Equal(1600, w);
+        Assert.Equal(1700, w);
         Assert.Equal(1000, h);
     }
 
@@ -141,7 +141,7 @@ public class FilmFrameTests
     [Fact]
     public void Rendering_is_deterministic_for_the_same_frame_number()
     {
-        var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-expired");   // heaviest texture + dust
+        var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-half-amber") with { Realism = 95, Dust = 90 };   // heavy texture + dust
         using var photo = new Image<Rgb24>(300, 200, new Rgb24(90, 90, 90));
         using var a = FilmFrameRenderer.Render(photo, style, Meta(), 3);
         using var b = FilmFrameRenderer.Render(photo, style, Meta(), 3);
@@ -188,7 +188,7 @@ public class FilmFrameTests
     public void Hole_gaps_print_each_token_between_sprockets()
     {
         var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-grey");
-        Assert.Equal("1/60s  f/2.8  -0.7 EV", FilmFrameRenderer.ZoneText(style, FilmZone.HoleGaps, Meta(), 1));
+        Assert.Equal("f/2.8", FilmFrameRenderer.ZoneText(style, FilmZone.HoleGaps, Meta(), 1));
         // The gap text really lands on the sheet: the strip carries ink that a style without gaps doesn't.
         var noGaps = style with { Zones = style.Zones.Where(z => z.Key != FilmZone.HoleGaps).ToDictionary(z => z.Key, z => z.Value), Realism = 0, Dust = 0 };
         var withGaps = style with { Realism = 0, Dust = 0 };
@@ -196,7 +196,7 @@ public class FilmFrameTests
         using var a = FilmFrameRenderer.Render(photo, noGaps, Meta(), 1);
         using var b = FilmFrameRenderer.Render(photo, withGaps, Meta(), 1);
         int changed = 0;
-        for (int yy = b.Height - 40; yy < b.Height; yy++) for (int xx = 0; xx < b.Width; xx++) if (a[xx, yy] != b[xx, yy]) changed++;
+        for (int yy = b.Height - 114; yy < b.Height; yy++) for (int xx = 0; xx < b.Width; xx++) if (a[xx, yy] != b[xx, yy]) changed++;
         Assert.True(changed > 50);
     }
 
@@ -247,5 +247,48 @@ public class FilmFrameTests
         d[155] = 5;
         "sRGB"u8.CopyTo(d.AsSpan(156));
         Assert.Equal("sRGB", PaletteImageRenderer.IccDescription(d));
+    }
+
+    [Fact]
+    public void Film135_margins_follow_the_real_strip_whatever_the_photo_orientation()
+    {
+        var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-dark");          // vertical strip, 135
+        // Portrait 2400x3600 (24 mm across): 5.5 mm of rebate each side = 550 px, 1 mm between frames = 100 px.
+        var (pw, ph, px, py) = FilmFrameRenderer.Layout(style, 2400, 3600);
+        Assert.Equal((2400 + 2 * 550, 3600 + 2 * 100, 550, 100), (pw, ph, px, py));
+        // Landscape: the strip is turned so the holes still run along the long side.
+        var (lw, lh, lx, ly) = FilmFrameRenderer.Layout(style, 3600, 2400);
+        Assert.Equal((3600 + 2 * 100, 2400 + 2 * 550), (lw, lh));
+        Assert.Equal((100, 550), (lx, ly));
+        using var photo = new Image<Rgb24>(360, 240, new Rgb24(200, 200, 200));
+        using var framed = FilmFrameRenderer.Render(photo, style, null, 1);
+        Assert.Equal((FilmFrameRenderer.Layout(style, 360, 240).Width, FilmFrameRenderer.Layout(style, 360, 240).Height), (framed.Width, framed.Height));
+    }
+
+    [Fact]
+    public void Film135_hole_pitch_is_4_75_mm_on_a_24_mm_picture()
+    {
+        var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-dark") with { Zones = new(), Realism = 0, Dust = 0, CornerPercent = 0 };
+        using var photo = new Image<Rgb24>(480, 720, new Rgb24(128, 128, 128));   // 20 px per mm
+        using var framed = FilmFrameRenderer.Render(photo, style, null, 1);
+        int x = (int)Math.Round((2.01 + 1.981 / 2) * 20);                         // hole centre line, left strip
+        var holeColor = new Rgb24(0xD9, 0xD6, 0xCE);
+        int starts = 0;
+        for (int y = 1; y < framed.Height; y++)
+            if (framed[x, y] == holeColor && framed[x, y - 1] != holeColor) starts++;
+        // 720 + 2 mm of strip = 38 mm at 4.75 mm = 8 holes, give or take the ends.
+        Assert.InRange(starts, 7, 9);
+    }
+
+    [Fact]
+    public void Half_frame_strip_runs_along_the_short_side()
+    {
+        var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-half");
+        // 24 x 18 mm at 100 px/mm: the 24 mm side lies across the strip (5.5 mm rebate on each side), 0.5 mm between frames.
+        var (w, h, x, y) = FilmFrameRenderer.Layout(style, 2400, 1800);
+        Assert.Equal((2400 + 2 * 550, 1800 + 2 * 50, 550, 50), (w, h, x, y));
+        // A portrait photo is turned so the holes still sit along its short edges (top and bottom).
+        var (pw, ph, px, py) = FilmFrameRenderer.Layout(style, 1800, 2400);
+        Assert.Equal((1800 + 2 * 50, 2400 + 2 * 550, 50, 550), (pw, ph, px, py));
     }
 }

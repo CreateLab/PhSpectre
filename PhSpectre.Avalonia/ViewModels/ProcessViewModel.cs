@@ -81,7 +81,14 @@ public partial class ProcessViewModel : ViewModelBase
 
     partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
     partial void OnGradedChanged(Bitmap? value) => OnPropertyChanged(nameof(Shown));
-    partial void OnShowOriginalChanged(bool value) => OnPropertyChanged(nameof(Shown));
+    partial void OnShowOriginalChanged(bool value) { OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex)); }
+
+    // Result | Original segment (same control as the pill on the Main screen).
+    public int CompareIndex
+    {
+        get => ShowOriginal ? 1 : 0;
+        set => ShowOriginal = value == 1;
+    }
     partial void OnErrorTextChanged(string value) { OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(ShowEmpty)); }
 
     // Picks up the photo that is current in the shell; cheap when it has not changed.

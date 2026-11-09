@@ -214,13 +214,8 @@
 
                     <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
                             Margin="0,2,0,0" Content="Save to library" Command="{Binding SaveRecipeToLibraryCommand}"/>
-                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
-                            Margin="0,2,0,0" IsVisible="{Binding CameraSupported}" Command="{Binding OpenCameraCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <materialIcons:MaterialIcon Kind="Camera" Width="16" Height="16"/>
-                            <TextBlock Text="Send to camera" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                    <local:ActionButton Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
+                            Margin="0,2,0,0" IsVisible="{Binding CameraSupported}" Command="{Binding OpenCameraCommand}" Icon="Camera" IconSize="16" Text="Send to camera"/>
 
                     <TextBlock Text="{Binding RecipeStatusText}" Classes="hint" TextWrapping="Wrap"
                                Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding HasRecipeStatus}"/>

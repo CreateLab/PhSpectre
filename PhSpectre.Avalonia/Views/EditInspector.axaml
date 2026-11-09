@@ -57,36 +57,10 @@
                     </StackPanel>
 
                     <!-- Layers -->
-                    <Border IsVisible="{Binding HasPreset}" Background="{DynamicResource SurfaceBrush}"
-                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <ToggleButton Classes="switch" IsChecked="{Binding PresetEnabled}"
-                                          AutomationProperties.Name="Preset on or off"/>
-                            <StackPanel Grid.Column="1" Margin="10,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="Preset" Classes="hint" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding PresetName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <Button Grid.Column="2" Classes="icon-toolbar" Width="28" Height="28" Command="{Binding ClearPresetCommand}"
-                                    ToolTip.Tip="Remove preset" AutomationProperties.Name="Remove preset">
-                                <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
-                            </Button>
-                        </Grid>
-                    </Border>
-                    <Border IsVisible="{Binding HasLut}" Background="{DynamicResource SurfaceBrush}"
-                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6">
-                        <Grid ColumnDefinitions="Auto,*,Auto">
-                            <ToggleButton Classes="switch" IsChecked="{Binding LutEnabled}"
-                                          AutomationProperties.Name="LUT on or off"/>
-                            <StackPanel Grid.Column="1" Margin="10,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                <TextBlock Text="LUT" Classes="hint" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding LutName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <Button Grid.Column="2" Classes="icon-toolbar" Width="28" Height="28" Command="{Binding ClearLutCommand}"
-                                    ToolTip.Tip="Remove LUT" AutomationProperties.Name="Remove LUT">
-                                <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
-                            </Button>
-                        </Grid>
-                    </Border>
+                    <local:LayerRow IsVisible="{Binding HasPreset}" Kind="Preset" IsOn="{Binding PresetEnabled}" LayerName="{Binding PresetName}"
+                                ClearCommand="{Binding ClearPresetCommand}"/>
+                    <local:LayerRow IsVisible="{Binding HasLut}" Kind="LUT" IsOn="{Binding LutEnabled}" LayerName="{Binding LutName}"
+                                ClearCommand="{Binding ClearLutCommand}"/>
                     <TextBlock Text="{Binding SkippedText}" IsVisible="{Binding HasSkipped}"
                                Foreground="{DynamicResource WarningBrush}" FontSize="12" TextWrapping="Wrap"/>
                     <TextBlock Text="Applying a Look turns off Recipe card." Classes="hint"
@@ -103,12 +77,7 @@
                             </StackPanel>
                         </Button>
                     </Grid>
-                    <ListBox Classes="seg" SelectedIndex="{Binding LibraryTab}">
-                        <ListBoxItem Content="All"/>
-                        <ListBoxItem Content="Fav"/>
-                        <ListBoxItem Content="Presets"/>
-                        <ListBoxItem Content="LUTs"/>
-                    </ListBox>
+                    <local:SegmentedControl Labels="All|Fav|Presets|LUTs" SelectedIndex="{Binding LibraryTab}"/>
 
                     <Border IsVisible="{Binding HasImportStatus}" Background="{DynamicResource ControlBrush}"
                             CornerRadius="8" Padding="10,8">
@@ -234,18 +203,10 @@
                                     <TextBlock Text="Color" Classes="hint" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Button Width="28" Height="28" Background="#FFFFFF" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#FFFFFF"
-                                                    AutomationProperties.Name="White"/>
-                                            <Button Width="28" Height="28" Background="#F4F1EA" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#F4F1EA"
-                                                    AutomationProperties.Name="Cream"/>
-                                            <Button Width="28" Height="28" Background="#808080" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#808080"
-                                                    AutomationProperties.Name="Grey"/>
-                                            <Button Width="28" Height="28" Background="#000000" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#000000"
-                                                    AutomationProperties.Name="Black"/>
+                                            <local:ColorSwatch Color="#FFFFFF" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="White"/>
+                                            <local:ColorSwatch Color="#F4F1EA" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="Cream"/>
+                                            <local:ColorSwatch Color="#808080" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="Grey"/>
+                                            <local:ColorSwatch Color="#000000" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="Black"/>
                                         </StackPanel>
                                         <TextBox Text="{Binding FrameColorHex}" Watermark="#RRGGBB" MaxLength="7"
                                                  AutomationProperties.Name="Border color hex"/>
@@ -253,17 +214,8 @@
                                                    Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
-                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
-                                    <TextBox Text="{Binding FrameName}" Watermark="Save as…"
-                                             AutomationProperties.Name="Name for the custom border"/>
-                                    <Button Grid.Column="1" Classes="secondary" Height="32" Padding="10,0" Content="Save"
-                                            Command="{Binding SaveFrameCommand}"/>
-                                    <Button Grid.Column="2" Classes="icon-toolbar" Width="32" Height="32"
-                                            Command="{Binding DeleteFrameCommand}" IsEnabled="{Binding CanDeleteFrame}"
-                                            ToolTip.Tip="Delete saved border" AutomationProperties.Name="Delete saved border">
-                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14"/>
-                                    </Button>
-                                </Grid>
+                                <local:SaveRow Text="{Binding FrameName}" NameLabel="Name for the custom border" SaveCommand="{Binding SaveFrameCommand}"
+                                    DeleteCommand="{Binding DeleteFrameCommand}" CanDelete="{Binding CanDeleteFrame}" DeleteTip="Delete saved border"/>
                             </StackPanel>
                         </Expander>
                     </StackPanel>
@@ -283,51 +235,24 @@
                                    Classes="hint" TextWrapping="Wrap"/>
                         <Expander Header="Data on the edge" IsExpanded="False" HorizontalAlignment="Stretch">
                             <StackPanel Spacing="8" Margin="0,8,0,0">
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Top left" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopLeftIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Top left of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Top right" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopRightIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Top right of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Top" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopCenterIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Top of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Bottom left" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomLeftIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Bottom left of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomCenterIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Bottom centre of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Bottom right" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomRightIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Bottom right of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Left side" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideLeftIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Left side of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Right side" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideRightIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Right side of the edge"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Between holes" Classes="hint" VerticalAlignment="Center"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmHoleGapsIndex}"
-                                              HorizontalAlignment="Stretch" AutomationProperties.Name="Between the sprocket holes (needs sprockets)"/>
-                                </Grid>
+                                <local:ChoiceRow Label="Top left" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopLeftIndex}"
+                                                AccessibleName="Top left of the edge"/>
+                                <local:ChoiceRow Label="Top right" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopRightIndex}"
+                                                AccessibleName="Top right of the edge"/>
+                                <local:ChoiceRow Label="Top" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopCenterIndex}"
+                                                AccessibleName="Top of the edge"/>
+                                <local:ChoiceRow Label="Bottom left" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomLeftIndex}"
+                                                AccessibleName="Bottom left of the edge"/>
+                                <local:ChoiceRow Label="Bottom" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomCenterIndex}"
+                                                AccessibleName="Bottom centre of the edge"/>
+                                <local:ChoiceRow Label="Bottom right" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomRightIndex}"
+                                                AccessibleName="Bottom right of the edge"/>
+                                <local:ChoiceRow Label="Left side" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideLeftIndex}"
+                                                AccessibleName="Left side of the edge"/>
+                                <local:ChoiceRow Label="Right side" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideRightIndex}"
+                                                AccessibleName="Right side of the edge"/>
+                                <local:ChoiceRow Label="Between holes" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmHoleGapsIndex}"
+                                                AccessibleName="Between the sprocket holes (needs sprockets)"/>
                                 <Grid ColumnDefinitions="84,*,Auto,Auto,Auto" ColumnSpacing="4">
                                     <TextBlock Text="Frame no." Classes="hint" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding FilmFrameText}" Watermark="{Binding FilmFrameWatermark}" MaxLength="6"
@@ -353,21 +278,21 @@
                             <StackPanel Spacing="10" Margin="0,8,0,0">
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Sides" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FilmSide}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" Value="{Binding FilmSide}"
                                             AutomationProperties.Name="Side edge width"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmSideText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Top" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FilmTop}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" Value="{Binding FilmTop}"
                                             AutomationProperties.Name="Top edge height"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmTopText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FilmBottom}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" Value="{Binding FilmBottom}"
                                             AutomationProperties.Name="Bottom edge height"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmBottomText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -403,18 +328,10 @@
                                     <TextBlock Text="Edge" Classes="hint" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Button Width="28" Height="28" Background="#0B0B0B" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#0B0B0B"
-                                                    AutomationProperties.Name="Black"/>
-                                            <Button Width="28" Height="28" Background="#16100C" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#16100C"
-                                                    AutomationProperties.Name="Dark brown"/>
-                                            <Button Width="28" Height="28" Background="#8E9298" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#8E9298"
-                                                    AutomationProperties.Name="Grey"/>
-                                            <Button Width="28" Height="28" Background="#F4F1EA" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmEdgeColorCommand}" CommandParameter="#F4F1EA"
-                                                    AutomationProperties.Name="Cream"/>
+                                            <local:ColorSwatch Color="#0B0B0B" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Black"/>
+                                            <local:ColorSwatch Color="#16100C" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Dark brown"/>
+                                            <local:ColorSwatch Color="#8E9298" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Grey"/>
+                                            <local:ColorSwatch Color="#F4F1EA" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Cream"/>
                                         </StackPanel>
                                         <TextBox Text="{Binding FilmEdgeHex}" Watermark="#RRGGBB" MaxLength="7"
                                                  AutomationProperties.Name="Edge color hex"/>
@@ -426,15 +343,9 @@
                                     <TextBlock Text="Text" Classes="hint" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <Button Width="28" Height="28" Background="#F2F2F2" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmTextColorCommand}" CommandParameter="#F2F2F2"
-                                                    AutomationProperties.Name="White"/>
-                                            <Button Width="28" Height="28" Background="#FFB020" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmTextColorCommand}" CommandParameter="#FFB020"
-                                                    AutomationProperties.Name="Amber"/>
-                                            <Button Width="28" Height="28" Background="#2A2C30" BorderBrush="{DynamicResource FieldBorderBrush}"
-                                                    BorderThickness="1" Command="{Binding SetFilmTextColorCommand}" CommandParameter="#2A2C30"
-                                                    AutomationProperties.Name="Dark grey"/>
+                                            <local:ColorSwatch Color="#F2F2F2" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="White"/>
+                                            <local:ColorSwatch Color="#FFB020" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="Amber"/>
+                                            <local:ColorSwatch Color="#2A2C30" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="Dark grey"/>
                                         </StackPanel>
                                         <TextBox Text="{Binding FilmTextHex}" Watermark="#RRGGBB" MaxLength="7"
                                                  AutomationProperties.Name="Text color hex"/>
@@ -443,17 +354,8 @@
                                     </StackPanel>
                                 </Grid>
                                 <CheckBox Content="Glow (backlit look)" IsChecked="{Binding FilmGlow}"/>
-                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
-                                    <TextBox Text="{Binding FilmName}" Watermark="Save as…"
-                                             AutomationProperties.Name="Name for the custom film style"/>
-                                    <Button Grid.Column="1" Classes="secondary" Height="32" Padding="10,0" Content="Save"
-                                            Command="{Binding SaveFilmCommand}"/>
-                                    <Button Grid.Column="2" Classes="icon-toolbar" Width="32" Height="32"
-                                            Command="{Binding DeleteFilmCommand}" IsEnabled="{Binding CanDeleteFilm}"
-                                            ToolTip.Tip="Delete saved film style" AutomationProperties.Name="Delete saved film style">
-                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14"/>
-                                    </Button>
-                                </Grid>
+                                <local:SaveRow Text="{Binding FilmName}" NameLabel="Name for the custom film style" SaveCommand="{Binding SaveFilmCommand}"
+                                    DeleteCommand="{Binding DeleteFilmCommand}" CanDelete="{Binding CanDeleteFilm}" DeleteTip="Delete saved film style"/>
                             </StackPanel>
                         </Expander>
                     </StackPanel>
@@ -509,14 +411,9 @@
                     </StackPanel>
 
                     <!-- Write recipes into a Fujifilm camera over USB (desktop and Android) -->
-                    <Button Classes="secondary" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                    <local:ActionButton Classes="secondary" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             IsVisible="{Binding Settings.CameraSupported}" Command="{Binding Settings.OpenCameraCommand}"
-                            AutomationProperties.Name="Connect camera">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <materialIcons:MaterialIcon Kind="CameraOutline" Width="16" Height="16" VerticalAlignment="Center"/>
-                            <TextBlock Text="Write recipes to camera…" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                            AutomationProperties.Name="Connect camera" Icon="CameraOutline" IconSize="16" Text="Write recipes to camera…"/>
                 </StackPanel>
             </ScrollViewer>
             <local:RecipeEditorView Grid.RowSpan="2" DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel"

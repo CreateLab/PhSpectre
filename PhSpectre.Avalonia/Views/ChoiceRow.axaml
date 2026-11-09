@@ -1,0 +1,9 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="PhSpectre.Avalonia.Views.ChoiceRow">
+    <!-- A captioned drop-down: small grey label on the left, ComboBox filling the rest. -->
+    <Grid x:Name="Row" ColumnDefinitions="84,*">
+        <TextBlock x:Name="Caption" Classes="hint" VerticalAlignment="Center"/>
+        <ComboBox x:Name="Combo" Grid.Column="1" HorizontalAlignment="Stretch"/>
+    </Grid>
+</UserControl>

@@ -19,9 +19,26 @@ public static class FilmFrameRenderer
     // Sprocket holes take this share of a margin (the part next to the photo); text uses the rest.
     private const float HoleLane = 0.66f;
 
+    // A real strip runs along the long side of the picture. A style made for a vertical strip is turned a quarter
+    // for a landscape photo (and a horizontal one for a portrait photo): the photo is turned, framed, and turned back.
+    // Half-frame is the exception: its strip runs along the short side (18 mm), so the picture is turned the other way.
+    private static bool NeedsTurn(FilmStyle s, int w, int h) =>
+        s.Gauge != FilmGauge.Free && w != h && s.VerticalStrip == (s.Gauge == FilmGauge.Mm135Half ? h > w : w > h);
+
     public static (int Width, int Height, int PhotoX, int PhotoY) Layout(FilmStyle style, int photoW, int photoH)
     {
         var s = style.Normalized();
+        if (NeedsTurn(s, photoW, photoH))
+        {
+            // Framed as (photoH x photoW), then the whole canvas turned 90 degrees clockwise.
+            var (cw, ch, x, y) = LayoutCore(s, photoH, photoW);
+            return (ch, cw, ch - y - photoW, x);
+        }
+        return LayoutCore(s, photoW, photoH);
+    }
+
+    private static (int Width, int Height, int PhotoX, int PhotoY) LayoutCore(FilmStyle s, int photoW, int photoH)
+    {
         int shortSide = Math.Min(photoW, photoH);
         int side = (int)Math.Round(shortSide * s.SidePercent / 100f);
         int top = (int)Math.Round(shortSide * s.TopPercent / 100f);
@@ -72,6 +89,16 @@ public static class FilmFrameRenderer
     {
         ArgumentNullException.ThrowIfNull(photo);
         var s = style.Normalized();
+        if (!NeedsTurn(s, photo.Width, photo.Height)) return RenderCore(photo, s, meta, frameNumber, lookName, frameLabel);
+        using var turned = photo.Clone(c => c.Rotate(RotateMode.Rotate270));
+        var framed = RenderCore(turned, s, meta, frameNumber, lookName, frameLabel);
+        framed.Mutate(c => c.Rotate(RotateMode.Rotate90));
+        return framed;
+    }
+
+    private static Image<Rgb24> RenderCore(Image<Rgb24> photo, FilmStyle s, PaletteImageRenderer.PhotoMetadata? meta, int frameNumber,
+        string? lookName, string? frameLabel)
+    {
         var (w, h, px, py) = Layout(s, photo.Width, photo.Height);
         int side = px, top = py, bottom = h - photo.Height - py;
         int shortSide = Math.Min(photo.Width, photo.Height);
@@ -90,20 +117,23 @@ public static class FilmFrameRenderer
         bool sideHoles = s.Perforation == FilmPerforation.Sides && side > 0;
         bool rowHoles = s.Perforation == FilmPerforation.Rows;
         bool hasGaps = gapTokens.Count > 0;
+        bool real135 = s.IsMm135;
+        // Share of a holed margin left for text on the outer side of the holes.
+        float outerShare = real135 ? FilmStyle.Mm135HoleEdge / FilmStyle.Mm135Across : 1 - HoleLane;
         HoleRun? gapRun = null;
         if (sideHoles)
         {
-            var left = DrawHoleRun(canvas, hole, vertical: true, margin: side, origin: 0, length: h, hasGaps, real, rng, mirror: false);
-            DrawHoleRun(canvas, hole, vertical: true, margin: side, origin: w - side, length: h, hasGaps, real, rng, mirror: true);
+            var left = DrawHoleRun(canvas, hole, vertical: true, margin: side, origin: 0, length: h, hasGaps, real, rng, mirror: false, real135);
+            DrawHoleRun(canvas, hole, vertical: true, margin: side, origin: w - side, length: h, hasGaps, real, rng, mirror: true, real135);
             gapRun = left;
         }
-        if (rowHoles && top > 0) DrawHoleRun(canvas, hole, vertical: false, margin: top, origin: 0, length: w, hasGaps, real, rng, mirror: false);
-        if (rowHoles && bottom > 0) gapRun = DrawHoleRun(canvas, hole, vertical: false, margin: bottom, origin: h - bottom, length: w, hasGaps, real, rng, mirror: true);
+        if (rowHoles && top > 0) DrawHoleRun(canvas, hole, vertical: false, margin: top, origin: 0, length: w, hasGaps, real, rng, mirror: false, real135);
+        if (rowHoles && bottom > 0) gapRun = DrawHoleRun(canvas, hole, vertical: false, margin: bottom, origin: h - bottom, length: w, hasGaps, real, rng, mirror: true, real135);
         else if (rowHoles && gapRun == null) gapRun = null;
 
-        float topLane = rowHoles ? top * (1 - HoleLane) : top;
-        float bottomLane = rowHoles ? bottom * (1 - HoleLane) : bottom;
-        float sideLane = sideHoles ? side * (1 - HoleLane) : side;
+        float topLane = rowHoles ? top * outerShare : top;
+        float bottomLane = rowHoles ? bottom * outerShare : bottom;
+        float sideLane = sideHoles ? side * outerShare : side;
         float topCy = topLane / 2;                                 // text sits on the outer-edge side of its margin
         float bottomCy = h - bottomLane / 2;
 
@@ -127,7 +157,7 @@ public static class FilmFrameRenderer
                 int g = Math.Clamp((int)Math.Round((j + 1) * (double)run.Count / (n + 1)) - 1, 0, gaps - 1);
                 float along = run.Start + (g + 0.5f) * run.Pitch;
                 float cx = run.Vertical ? run.Center : along, cy = run.Vertical ? along : run.Center;
-                DrawText(canvas, gapTokens[j], text, s.Glow, real, cx, cy, run.Lane * 0.46f, run.Pitch - run.HoleLength * 1.25f,
+                DrawText(canvas, gapTokens[j], text, s.Glow, real, cx, cy, run.Lane * 0.46f, run.Pitch - run.HoleLength * (real135 ? 1.08f : 1.25f),
                     run.Vertical ? 270 : 0);
             }
         }
@@ -203,7 +233,7 @@ public static class FilmFrameRenderer
     // A row/column of rounded-rectangle holes along a margin, next to the photo. `mirror` puts the lane on the
     // far side (right column / bottom row). With data in the gaps the holes are spread further apart.
     private static HoleRun DrawHoleRun(Image<Rgb24> canvas, Color hole, bool vertical, int margin, int origin, int length,
-        bool hasGaps, float real, Random rng, bool mirror)
+        bool hasGaps, float real, Random rng, bool mirror, bool real135)
     {
         float lane = margin * HoleLane;
         var rim = Color.White.WithAlpha(0.10f + 0.12f * real);
@@ -211,11 +241,25 @@ public static class FilmFrameRenderer
         float thick = lane * 0.86f, along = thick * 1.2f;
         float pitch = along * (hasGaps ? 3.4f : 1.5f);
         // The lane hugs the photo: inner edge of a left/top margin, near edge of a right/bottom one.
-        float center = vertical
-            ? (mirror ? origin + lane / 2f : origin + margin - lane / 2f)
-            : (mirror ? origin + lane / 2f : origin + margin - lane / 2f);
-        int n = Math.Max(0, (int)((length - along) / pitch));
-        float start = n > 0 ? (length - (n - 1) * pitch) / 2f : 0;
+        float center = mirror ? origin + lane / 2f : origin + margin - lane / 2f;
+        if (real135)
+        {
+            // True KS perforation: the margin is 5.5 mm, so one mm is margin / 5.5 pixels. Holes sit 2.01 mm in from
+            // the film edge (the outer edge is the origin of a left/top margin and the far end of a right/bottom one).
+            float mm = margin / FilmStyle.Mm135Across;
+            thick = FilmStyle.Mm135HoleAcross * mm; along = FilmStyle.Mm135HoleAlong * mm; pitch = FilmStyle.Mm135Pitch * mm;
+            lane = thick * 1.3f;
+            float fromEdge = (FilmStyle.Mm135HoleEdge + FilmStyle.Mm135HoleAcross / 2) * mm;
+            center = mirror ? origin + margin - fromEdge : origin + fromEdge;
+        }
+        // The row is centred, then carried on to both ends of the strip: the outermost holes are cut by the edge of
+        // the canvas, as on a real strip, instead of leaving bare corners.
+        int whole = Math.Max(0, (int)((length - along) / pitch));
+        float centred = whole > 0 ? (length - (whole - 1) * pitch) / 2f : length / 2f;
+        int first = (int)Math.Floor(-(centred + along / 2) / pitch) + 1;
+        int last = (int)Math.Ceiling((length + along / 2 - centred) / pitch) - 1;
+        int n = Math.Max(0, last - first + 1);
+        float start = centred + first * pitch;
 
         canvas.Mutate(c =>
         {

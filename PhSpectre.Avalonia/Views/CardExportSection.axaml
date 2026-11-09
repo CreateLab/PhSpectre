@@ -11,10 +11,7 @@
         <StackPanel Margin="0,0,0,28">
 
             <TextBlock Text="FORMAT" Classes="section-title first"/>
-            <ListBox Classes="seg" SelectedIndex="{Binding OutputFormatIndex}">
-                <ListBoxItem Content="PNG"/>
-                <ListBoxItem Content="JPEG"/>
-            </ListBox>
+            <local:SegmentedControl Labels="PNG|JPEG" SelectedIndex="{Binding OutputFormatIndex}"/>
             <TextBlock Text="PNG is lossless and larger; JPEG is much smaller and ready to share."
                        Classes="hint" Margin="0,6,0,0"/>
 
@@ -33,11 +30,7 @@
 
             <StackPanel IsVisible="{Binding IsMobile}">
                 <TextBlock Text="WORKING QUALITY" Classes="section-title"/>
-                <ListBox Classes="seg" SelectedIndex="{Binding WorkingQualityIndex}">
-                    <ListBoxItem Content="Fast"/>
-                    <ListBoxItem Content="Balanced"/>
-                    <ListBoxItem Content="Best"/>
-                </ListBox>
+                <local:SegmentedControl Labels="Fast|Balanced|Best" SelectedIndex="{Binding WorkingQualityIndex}"/>
                 <TextBlock Text="Fast 2000 px · Balanced 3400 px · Best 4800 px. The preview is built from a downscaled copy of the photo."
                            Classes="hint" Margin="0,6,0,0"/>
             </StackPanel>

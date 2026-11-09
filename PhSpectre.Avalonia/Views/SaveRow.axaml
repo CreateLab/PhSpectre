@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
+             x:Class="PhSpectre.Avalonia.Views.SaveRow">
+    <!-- Name box + Save + delete, for the user's own saved styles. -->
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+        <TextBox x:Name="NameBox" Watermark="Save as…"/>
+        <Button x:Name="SaveButton" Grid.Column="1" Classes="secondary" Height="32" Padding="10,0" Content="Save"/>
+        <local:IconButton x:Name="DeleteButton" Grid.Column="2" Width="32" Height="32" Icon="TrashCanOutline" IconSize="14"/>
+    </Grid>
+</UserControl>

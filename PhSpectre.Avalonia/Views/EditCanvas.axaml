@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PhSpectre.Avalonia.Views.EditCanvas"
@@ -28,16 +29,11 @@
         </StackPanel>
 
         <!-- Canvas toolbar -->
-        <StackPanel IsVisible="{Binding HasPhoto}" Orientation="Horizontal" Spacing="6"
-                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,20">
-            <ToggleButton Classes="mode-chip" IsChecked="{Binding ShowOriginal}" Padding="14,0" Height="32"
-                          ToolTip.Tip="Show the original (hold \)" AutomationProperties.Name="Before">
-                <StackPanel Orientation="Horizontal" Spacing="6">
-                    <materialIcons:MaterialIcon Kind="CompareHorizontal" Width="16" Height="16" VerticalAlignment="Center"/>
-                    <TextBlock Text="Before" VerticalAlignment="Center"/>
-                </StackPanel>
-            </ToggleButton>
-        </StackPanel>
+        <Border Classes="pill" IsVisible="{Binding HasPhoto}" Padding="10,6"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18">
+            <local:CompareSwitch SelectedIndex="{Binding CompareIndex}"
+                     ToolTip.Tip="Compare with the original (hold \)" AutomationProperties.Name="Result or original"/>
+        </Border>
 
         <Border IsVisible="{Binding HasPhoto}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="24,0,0,20"
                 Background="{DynamicResource ScrimBrush}" CornerRadius="6" Padding="8,3">
@@ -53,10 +49,8 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
                 <Button Classes="link" Content="Undo" IsVisible="{Binding Settings.CanUndoFrameSwitch}"
                         Command="{Binding Settings.UndoFrameSwitchCommand}"/>
-                <Button Classes="icon-toolbar" Width="28" Height="28" AutomationProperties.Name="Dismiss"
-                        Command="{Binding Settings.DismissFrameNoticeCommand}">
-                    <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
-                </Button>
+                <local:IconButton Width="28" Height="28" AutomationProperties.Name="Dismiss"
+                        Command="{Binding Settings.DismissFrameNoticeCommand}" Icon="Close" IconSize="14"/>
                 </StackPanel>
             </Grid>
         </Border>
