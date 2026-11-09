@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PhSpectre.Avalonia.Views.LayerRow">
+    <!-- One applied layer (Preset / LUT): on-off switch, kind + name, remove button. -->
+    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
+            BorderThickness="1" CornerRadius="8" Padding="10,6">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+            <ToggleButton x:Name="Toggle" Classes="switch"/>
+            <StackPanel Grid.Column="1" Margin="10,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock x:Name="KindText" Classes="hint" VerticalAlignment="Center"/>
+                <TextBlock x:Name="NameText" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+            </StackPanel>
+            <Button x:Name="Clear" Grid.Column="2" Classes="icon-toolbar" Width="28" Height="28">
+                <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
+            </Button>
+        </Grid>
+    </Border>
+</UserControl>

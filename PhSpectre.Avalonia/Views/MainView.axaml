@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
@@ -72,17 +73,10 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                 </Flyout>
                             </Button.Flyout>
                         </Button>
-                        <Button Classes="icon-toolbar" Width="40" Height="40" Command="{Binding PickMainPhotoCommand}"
-                                ToolTip.Tip="Pick a photo">
-                            <materialIcons:MaterialIcon Kind="FolderOutline" Width="20" Height="20"/>
-                        </Button>
-                        <Button Classes="cta" Padding="18,0" Height="40" IsVisible="{Binding ShowTabletExport}"
-                                Command="{Binding OpenExportCommand}">
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="18" Height="18"/>
-                                <TextBlock Text="Export" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
+                        <local:IconButton Width="40" Height="40" Command="{Binding PickMainPhotoCommand}"
+                                ToolTip.Tip="Pick a photo" Icon="FolderOutline" IconSize="20"/>
+                        <local:ActionButton Classes="cta" Padding="18,0" Height="40" IsVisible="{Binding ShowTabletExport}"
+                                Command="{Binding OpenExportCommand}" Icon="TrayArrowDown" IconSize="18" Text="Export"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -217,18 +211,9 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                     <ProgressBar IsIndeterminate="True" Width="36" Height="3"/>
                                     <TextBlock Text="Updating…" FontSize="12" Foreground="{DynamicResource WarningBrush}"/>
                                 </StackPanel>
-                                <ListBox Classes="seg" Width="170" IsVisible="{Binding CanCompare}"
-                                         SelectedIndex="{Binding CompareIndex}">
-                                    <ListBoxItem Content="Result"/>
-                                    <ListBoxItem Content="Original"/>
-                                </ListBox>
-                            <Button Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
-                                    Command="{Binding RegenerateCommand}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14"/>
-                                    <TextBlock Text="{Binding RegenerateButtonLabel}"/>
-                                </StackPanel>
-                            </Button>
+                                <local:CompareSwitch Width="170" IsVisible="{Binding CanCompare}" SelectedIndex="{Binding CompareIndex}"/>
+                            <local:ActionButton Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
+                                    Command="{Binding RegenerateCommand}" Icon="Refresh" IconSize="14" Text="{Binding RegenerateButtonLabel}"/>
                             </StackPanel>
                         </Border>
 

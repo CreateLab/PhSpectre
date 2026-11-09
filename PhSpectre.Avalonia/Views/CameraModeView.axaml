@@ -224,20 +224,10 @@
                                         <TextBlock Text="No saved recipes yet" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                                         <TextBlock Classes="hint" TextWrapping="Wrap"
                                                    Text="Tap the star on any recipe, read a slot from the camera, or add one yourself."/>
-                                        <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                                VerticalContentAlignment="Center" Command="{Binding NewByHandCommand}">
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <materialIcons:MaterialIcon Kind="PencilOutline" Width="16" Height="16"/>
-                                                <TextBlock Text="Enter by hand" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
-                                        <Button Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                                VerticalContentAlignment="Center" Click="PasteRecipe_Click">
-                                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                                <materialIcons:MaterialIcon Kind="ContentPaste" Width="16" Height="16"/>
-                                                <TextBlock Text="Paste recipe" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </Button>
+                                        <local:ActionButton Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center" Command="{Binding NewByHandCommand}" Icon="PencilOutline" IconSize="16" Text="Enter by hand"/>
+                                        <local:ActionButton Classes="secondary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                VerticalContentAlignment="Center" Click="PasteRecipe_Click" Icon="ContentPaste" IconSize="16" Text="Paste recipe"/>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Classes="hint" Margin="2,12,0,0" Text="No recipes match." IsVisible="{Binding ShowNoMatches}"/>

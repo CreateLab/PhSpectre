@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
         xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
         xmlns:models="using:PhSpectre.Avalonia.Models"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -83,10 +84,8 @@
                                 <TextBlock Text="{Binding UpdateBannerText}" FontSize="12" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
-                        <Button Classes="icon-toolbar" Width="24" Height="24" Command="{Binding DismissUpdateCommand}"
-                                ToolTip.Tip="Dismiss">
-                            <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
-                        </Button>
+                        <local:IconButton Width="24" Height="24" Command="{Binding DismissUpdateCommand}"
+                                ToolTip.Tip="Dismiss" Icon="Close" IconSize="12"/>
                     </StackPanel>
 
                     <views:CameraIndicator DataContext="{Binding Settings}" VerticalAlignment="Center"/>
@@ -118,14 +117,10 @@
                     <!-- Edit: Undo / Redo and a single Export -->
                     <StackPanel Orientation="Horizontal" Spacing="2" IsVisible="{Binding Settings.IsProcessMode}"
                                 VerticalAlignment="Center">
-                        <Button Classes="icon-toolbar" Width="36" Height="36" Command="{Binding Settings.Process.UndoCommand}"
-                                ToolTip.Tip="Undo (Ctrl+Z)" AutomationProperties.Name="Undo">
-                            <materialIcons:MaterialIcon Kind="UndoVariant" Width="18" Height="18"/>
-                        </Button>
-                        <Button Classes="icon-toolbar" Width="36" Height="36" Command="{Binding Settings.Process.RedoCommand}"
-                                ToolTip.Tip="Redo (Ctrl+Y)" AutomationProperties.Name="Redo">
-                            <materialIcons:MaterialIcon Kind="RedoVariant" Width="18" Height="18"/>
-                        </Button>
+                        <local:IconButton Width="36" Height="36" Command="{Binding Settings.Process.UndoCommand}"
+                                ToolTip.Tip="Undo (Ctrl+Z)" AutomationProperties.Name="Undo" Icon="UndoVariant" IconSize="18"/>
+                        <local:IconButton Width="36" Height="36" Command="{Binding Settings.Process.RedoCommand}"
+                                ToolTip.Tip="Redo (Ctrl+Y)" AutomationProperties.Name="Redo" Icon="RedoVariant" IconSize="18"/>
                     </StackPanel>
                     <Button x:Name="EditExportButton" Classes="cta" Padding="16,0" Height="36" MinWidth="110"
                             IsVisible="{Binding Settings.IsEditMode}" IsEnabled="{Binding Settings.Process.CanExport}">
@@ -287,18 +282,9 @@
                                 <ProgressBar IsIndeterminate="True" Width="40" Height="3"/>
                                 <TextBlock Text="Updating…" FontSize="12" Foreground="{DynamicResource WarningBrush}"/>
                             </StackPanel>
-                            <ListBox Classes="seg" Width="190" IsVisible="{Binding CanCompare}"
-                                     SelectedIndex="{Binding CompareIndex}">
-                                <ListBoxItem Content="Result"/>
-                                <ListBoxItem Content="Original"/>
-                            </ListBox>
-                            <Button Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
-                                    Command="{Binding RegenerateCommand}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <materialIcons:MaterialIcon Kind="Refresh" Width="14" Height="14"/>
-                                    <TextBlock Text="{Binding RegenerateButtonLabel}"/>
-                                </StackPanel>
-                            </Button>
+                            <local:CompareSwitch Width="190" IsVisible="{Binding CanCompare}" SelectedIndex="{Binding CompareIndex}"/>
+                            <local:ActionButton Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
+                                    Command="{Binding RegenerateCommand}" Icon="Refresh" IconSize="14" Text="{Binding RegenerateButtonLabel}"/>
                         </StackPanel>
                     </Border>
 
