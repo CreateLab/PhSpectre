@@ -49,7 +49,6 @@ public partial class ProcessViewModel
     private FilmStyleStore? _filmStore;
     private FilmStyleStore FilmStore => _filmStore ??= new FilmStyleStore(Path.Combine(LibraryRoot, "film-styles.json"));
     private bool _applyingFilm;
-    private string _filmHole = "#000000";   // hole colour of the last chosen style (not edited in the UI)
     private FilmGauge _filmGauge;           // stock of the last chosen style (real hole geometry / strip direction)
 
     public ObservableCollection<FilmStyle> FilmStyles { get; } = [];
@@ -74,6 +73,7 @@ public partial class ProcessViewModel
     [ObservableProperty] private int _filmSideLeftIndex;
     [ObservableProperty] private int _filmSideRightIndex;
     [ObservableProperty] private int _filmHoleGapsIndex;
+    [ObservableProperty] private int _filmHoleIndex;   // sprocket holes: 0 black, 1 white
     [ObservableProperty] private double _filmRealism = 60;
     [ObservableProperty] private double _filmDust = 30;
     [ObservableProperty] private double _filmCorner = 1;
@@ -84,7 +84,7 @@ public partial class ProcessViewModel
         nameof(FilmGlow), nameof(FilmPerforationIndex), nameof(FilmCustomText), nameof(FilmTopCenterIndex),
         nameof(FilmBottomLeftIndex), nameof(FilmBottomCenterIndex), nameof(FilmBottomRightIndex),
         nameof(FilmSideLeftIndex), nameof(FilmSideRightIndex), nameof(FilmHoleGapsIndex), nameof(FilmTopLeftIndex), nameof(FilmTopRightIndex),
-        nameof(FilmRealism), nameof(FilmDust), nameof(FilmCorner)
+        nameof(FilmRealism), nameof(FilmDust), nameof(FilmCorner), nameof(FilmHoleIndex)
     ];
 
     public bool FilmEdgeInvalid => !HexColorInput.TryParse(FilmEdgeHex, out _);
@@ -156,7 +156,7 @@ public partial class ProcessViewModel
         {
             SidePercent = (float)FilmSide, TopPercent = (float)FilmTop, BottomPercent = (float)FilmBottom,
             EdgeColorHex = ValidHex(FilmEdgeHex, "#0B0B0B"), TextColorHex = ValidHex(FilmTextHex, "#F2F2F2"),
-            HoleColorHex = _filmHole, Gauge = _filmGauge,
+            HoleColorHex = FilmHoleIndex == 1 ? "#FFFFFF" : "#000000", Gauge = _filmGauge,
             Realism = (float)FilmRealism, Dust = (float)FilmDust, CornerPercent = (float)FilmCorner,
             Glow = FilmGlow, Perforation = (FilmPerforation)Math.Clamp(FilmPerforationIndex, 0, 2),
             CustomText = FilmCustomText ?? "", Zones = zones
@@ -251,7 +251,7 @@ public partial class ProcessViewModel
     {
         OnPropertyChanged(nameof(CanDeleteFilm));
         if (value == null || _applyingFilm) return;
-        _filmHole = value.HoleColorHex; _filmGauge = value.Gauge;
+        _filmGauge = value.Gauge;
         _applyingFilm = true;
         try
         {
@@ -267,6 +267,7 @@ public partial class ProcessViewModel
             FilmHoleGapsIndex = ContentIndex(value, FilmZone.HoleGaps);
             FilmTopLeftIndex = ContentIndex(value, FilmZone.TopLeft);
             FilmTopRightIndex = ContentIndex(value, FilmZone.TopRight);
+            FilmHoleIndex = string.Equals(value.HoleColorHex, "#FFFFFF", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
             FilmRealism = value.Realism; FilmDust = value.Dust; FilmCorner = value.CornerPercent;
             FilmName = value.IsBuiltIn ? "" : value.Name;
         }

@@ -253,17 +253,17 @@
                                                 AccessibleName="Right side of the edge"/>
                                 <local:ChoiceRow Label="Between holes" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmHoleGapsIndex}"
                                                 AccessibleName="Between the sprocket holes (needs sprockets)"/>
-                                <Grid ColumnDefinitions="84,*,Auto,Auto,Auto" ColumnSpacing="4">
+                                <Grid ColumnDefinitions="84,*,Auto,Auto,Auto" ColumnSpacing="6">
                                     <TextBlock Text="Frame no." Classes="hint" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding FilmFrameText}" Watermark="{Binding FilmFrameWatermark}" MaxLength="6"
                                              AutomationProperties.Name="Frame number printed on the edge (empty = automatic)"/>
-                                    <Button Grid.Column="2" Classes="secondary" Width="30" Height="32" Padding="0" Content="−"
+                                    <Button Grid.Column="2" Classes="secondary" Width="40" Height="40" Padding="0" FontSize="18" Content="−"
                                             Command="{Binding FilmFrameStepCommand}" CommandParameter="-1"
                                             ToolTip.Tip="Previous number" AutomationProperties.Name="Decrease frame number"/>
-                                    <Button Grid.Column="3" Classes="secondary" Width="30" Height="32" Padding="0" Content="+"
+                                    <Button Grid.Column="3" Classes="secondary" Width="40" Height="40" Padding="0" FontSize="18" Content="+"
                                             Command="{Binding FilmFrameStepCommand}" CommandParameter="1"
                                             ToolTip.Tip="Next number" AutomationProperties.Name="Increase frame number"/>
-                                    <Button Grid.Column="4" Classes="secondary" Height="32" Padding="8,0" Content="Auto"
+                                    <Button Grid.Column="4" Classes="secondary" Height="40" Padding="12,0" Margin="2,0,0,0" Content="Auto"
                                             Command="{Binding FilmFrameAutoResetCommand}" IsEnabled="{Binding FilmFrameIsManual}"
                                             ToolTip.Tip="Take the number from the file name again" AutomationProperties.Name="Automatic frame number"/>
                                 </Grid>
@@ -325,7 +325,15 @@
                                               AutomationProperties.Name="Sprocket holes"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Edge" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Holes" Classes="hint" VerticalAlignment="Center"/>
+                                    <ListBox Grid.Column="1" Classes="seg" SelectedIndex="{Binding FilmHoleIndex}"
+                                             AutomationProperties.Name="Sprocket hole colour">
+                                        <ListBoxItem Content="Black"/>
+                                        <ListBoxItem Content="White"/>
+                                    </ListBox>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*">
+                                    <TextBlock Text="Edge" Classes="hint" VerticalAlignment="Top" Margin="0,6,0,0"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <local:ColorSwatch Color="#0B0B0B" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Black"/>
@@ -340,7 +348,7 @@
                                     </StackPanel>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Text" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Text" Classes="hint" VerticalAlignment="Top" Margin="0,6,0,0"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <local:ColorSwatch Color="#F2F2F2" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="White"/>
@@ -384,8 +392,8 @@
                     </ListBox>
                     <StackPanel Spacing="4" IsVisible="{Binding ExportIsJpeg}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Quality" Classes="section-title first"/>
-                            <TextBlock Grid.Column="1" Text="{Binding ExportQualityText}" Classes="mono-data"/>
+                            <TextBlock Text="Quality" Classes="section-title first" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ExportQualityText}" Classes="mono-data" VerticalAlignment="Center"/>
                         </Grid>
                         <Slider Classes="v2" Minimum="50" Maximum="100" Value="{Binding ExportQuality}"
                                 AutomationProperties.Name="JPEG quality"/>

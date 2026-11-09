@@ -30,7 +30,12 @@ public partial class MainView : UserControl
         insets.SafeAreaChanged += (_, e) => ApplySafeArea(e.SafeAreaPadding);
     }
 
-    private void ApplySafeArea(Thickness padding) => RootPanel.Margin = padding;
+    // On Android the activity window is already laid out inside the system bars (the view starts 94 px
+    // below the top and ends 45 px above the bottom), and Avalonia reports the same insets in SafeAreaPadding
+    // — in px, which then got applied as dp as well. Net effect: bars ~4x too thick. So on Android the
+    // window already did the job and no extra margin is wanted; other platforms still use the reported area.
+    private void ApplySafeArea(Thickness padding) =>
+        RootPanel.Margin = OperatingSystem.IsAndroid() ? default : padding;
 
     // Tablet layout (inspector as a right-hand column) from 840 dp up; below that the inspector
     // is a bottom sheet. Breakpoint is an estimate — confirm on real devices.
@@ -39,6 +44,8 @@ public partial class MainView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
+        // Bottom sheet: ~60% of the screen (the photo strip hides while it is open); the preview above keeps the rest.
+        SheetBorder.Height = Math.Clamp(e.NewSize.Height * 0.5, 320, 560);
         if (DataContext is MainViewModel vm) vm.IsWide = e.NewSize.Width >= WideBreakpoint;
     }
 

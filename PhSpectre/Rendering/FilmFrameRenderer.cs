@@ -238,8 +238,8 @@ public static class FilmFrameRenderer
         float lane = margin * HoleLane;
         var rim = Color.White.WithAlpha(0.10f + 0.12f * real);
         // Hole across the margin (thickness) and along it (len).
-        float thick = lane * 0.86f, along = thick * 1.2f;
-        float pitch = along * (hasGaps ? 3.4f : 1.5f);
+        float thick = lane * 0.86f, along = thick * 0.72f;
+        float pitch = thick * 1.2f * (hasGaps ? 3.4f : 1.5f);
         // The lane hugs the photo: inner edge of a left/top margin, near edge of a right/bottom one.
         float center = mirror ? origin + lane / 2f : origin + margin - lane / 2f;
         if (real135)
