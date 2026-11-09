@@ -156,7 +156,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Border>
 
                     <!-- Stage -->
-                    <views:EditCanvas Grid.Row="1" MinHeight="200" DataContext="{Binding Settings.Process}"
+                    <views:EditCanvas Grid.Row="1" MinHeight="150" DataContext="{Binding Settings.Process}"
                                       IsVisible="{Binding Settings.IsProcessMode}"/>
                     <Panel Grid.Row="1" Background="{DynamicResource StageBrush}" ClipToBounds="True" MinHeight="200"
                            IsVisible="{Binding Settings.ShowCardBody}">
@@ -235,7 +235,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Panel>
 
                     <!-- Filmstrip (single-photo modes): this session's photos -->
-                    <Border Grid.Row="2" IsVisible="{Binding !IsCollageMode}" Background="{DynamicResource FilmstripBrush}"
+                    <Border Grid.Row="2" IsVisible="{Binding ShowFilmstrip}" Background="{DynamicResource FilmstripBrush}"
                             Padding="16,8,16,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -299,7 +299,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Grid>
 
                     <!-- Phone: bottom sheet (Adjust / Export). The stage above stays visible and live. -->
-                    <Border Grid.Row="4" IsVisible="{Binding ShowSheet}" Background="{DynamicResource PanelBrush}"
+                    <Border x:Name="SheetBorder" Grid.Row="4" IsVisible="{Binding ShowSheet}" Background="{DynamicResource PanelBrush}"
                             BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0"
                             CornerRadius="20,20,0,0" Height="430">
                         <Grid RowDefinitions="Auto,*,Auto">

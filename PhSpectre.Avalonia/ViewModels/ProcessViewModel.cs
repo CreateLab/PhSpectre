@@ -74,12 +74,18 @@ public partial class ProcessViewModel : ViewModelBase
     private Image<Rgb24>? _source; // downscaled, EXIF-oriented working copy
 
     public bool HasPhoto => Original != null;
+    private bool _compareHidden;
+    /// <summary>Phone: the Result | Original switch steps aside while the Adjust sheet covers the stage.</summary>
+    public bool CompareHidden { get => _compareHidden; set { if (_compareHidden == value) return; _compareHidden = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(StageMargin)); } }
+    /// <summary>Room around the photo; the bottom strip is only reserved while the compare switch floats there.</summary>
+    public global::Avalonia.Thickness StageMargin => _compareHidden ? new(32, 28, 32, 16) : new(32, 28, 32, 84);
+    public bool ShowCompare => HasPhoto && !_compareHidden;
     public bool HasError => ErrorText.Length > 0;
     public bool ShowEmpty => !HasPhoto && !HasError;
     public Bitmap? Shown => ShowOriginal || Graded == null ? Original : Graded;
     public string? PhotoPath => _loadedPath;
 
-    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
+    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
     partial void OnGradedChanged(Bitmap? value) => OnPropertyChanged(nameof(Shown));
     partial void OnShowOriginalChanged(bool value) { OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex)); }
 
@@ -570,6 +576,9 @@ public partial class ProcessViewModel : ViewModelBase
 
     // ── Live preview ───────────────────────────────────────────────────────────────────
     private CancellationTokenSource? _renderCts;
+    private bool _isRendering;
+    /// <summary>A preview render is in flight (shown as an "Updating…" chip so a slow phone doesn't look frozen).</summary>
+    public bool IsRendering { get => _isRendering; private set { if (_isRendering == value) return; _isRendering = value; OnPropertyChanged(); } }
 
     private void ScheduleRender()
     {
@@ -579,7 +588,8 @@ public partial class ProcessViewModel : ViewModelBase
         var stack = BuildStack();
         var frame = CurrentFrame();
         var film = CurrentFilm(_loadedPath, useSettingsMetadata: true);
-        if (stack.IsEmpty && (frame == null || frame.IsNoOp) && film == null) { Graded = null; return; }
+        if (stack.IsEmpty && (frame == null || frame.IsNoOp) && film == null) { Graded = null; IsRendering = false; return; }
+        IsRendering = true;
         var cts = _renderCts = new CancellationTokenSource();
         _ = RenderAsync(src, stack, frame, film, cts.Token);
     }
@@ -603,6 +613,7 @@ public partial class ProcessViewModel : ViewModelBase
         }
         catch (OperationCanceledException) { }
         catch (ObjectDisposedException) { } // photo changed mid-render
+        finally { if (!ct.IsCancellationRequested) IsRendering = false; }
     }
 
     private static byte[] ToBitmapBytes(Image<Rgb24> img)
@@ -739,7 +750,8 @@ public partial class ProcessViewModel : ViewModelBase
     public bool CanExportAll => PhotoCount > 1 && !IsExporting;
     public string ExportAllText => $"Export all {PhotoCount} photos…";
 
-    public async Task ExportAllAsync(string folder)
+    // gallery: mobile heads hand each finished file to the system gallery instead of a folder.
+    public async Task ExportAllAsync(string folder, Func<string, string, Task<bool>>? gallery = null)
     {
         var files = _settings.PhotosProvider?.Invoke().ToList();
         if (files == null || files.Count == 0) return;
@@ -753,6 +765,7 @@ public partial class ProcessViewModel : ViewModelBase
         int done = 0, failed = 0;
         try
         {
+            if (gallery != null) folder = Path.Combine(Path.GetTempPath(), "phspectre-export");
             Directory.CreateDirectory(folder);
             foreach (var f in files)
             {
@@ -771,10 +784,15 @@ public partial class ProcessViewModel : ViewModelBase
                         if (png) final.SaveAsPng(dest);
                         else final.SaveAsJpeg(dest, new JpegEncoder { Quality = quality });
                     });
+                    if (gallery != null)
+                    {
+                        try { if (!await gallery(dest, Path.GetFileName(dest))) throw new IOException("gallery refused the file"); }
+                        finally { try { File.Delete(dest); } catch { /* temp */ } }
+                    }
                     done++;
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or UnknownImageFormatException
-                                               or InvalidImageContentException)
+                                               or InvalidImageContentException || gallery != null)
                 { failed++; }
             }
             ExportStatus = failed == 0 ? $"Saved {done} photos." : $"Saved {done}, {failed} failed.";
@@ -787,7 +805,7 @@ public partial class ProcessViewModel : ViewModelBase
     }
 
     // Re-reads the original file, grades it at full size and writes it; the source is never modified.
-    public async Task ExportAsync(string outPath)
+    public async Task ExportAsync(string outPath, Func<string, string, Task<bool>>? gallery = null)
     {
         var src = _loadedPath;
         if (src == null) return;
@@ -814,10 +832,19 @@ public partial class ProcessViewModel : ViewModelBase
                 else
                     final.SaveAsJpeg(outPath, new JpegEncoder { Quality = quality });
             });
-            ExportStatus = $"Saved {Path.GetFileName(outPath)}";
+            if (gallery != null)
+            {
+                var name = Path.GetFileName(outPath);
+                try
+                {
+                    ExportStatus = await gallery(outPath, name) ? $"Saved {name} to Pictures/PhSpectre" : "Couldn't save to the gallery.";
+                }
+                finally { try { File.Delete(outPath); } catch { /* temp */ } }
+            }
+            else ExportStatus = $"Saved {Path.GetFileName(outPath)}";
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or UnknownImageFormatException
-                                       or InvalidImageContentException)
+                                       or InvalidImageContentException || gallery != null)
         {
             ExportStatus = $"Couldn't save: {ex.Message}";
         }

@@ -182,14 +182,21 @@ public partial class MainViewModel : ViewModelBase
 
     public bool IsPhone   => !IsWide;
     public bool ShowSheet => IsSheetOpen && !IsWide;
+    /// <summary>Phone: the photo strip steps aside while the sheet is open, so the sheet gets the room.</summary>
+    private void SyncSheetState()
+    {
+        OnPropertyChanged(nameof(ShowSheet)); OnPropertyChanged(nameof(ShowFilmstrip));
+        Settings.Process.CompareHidden = ShowSheet;
+    }
+    public bool ShowFilmstrip => !IsCollageMode && !ShowSheet;
 
     partial void OnIsWideChanged(bool value)
     {
         OnPropertyChanged(nameof(IsPhone));
         OnPropertyChanged(nameof(ShowTabletExport));
-        OnPropertyChanged(nameof(ShowSheet));
+        SyncSheetState();
     }
-    partial void OnIsSheetOpenChanged(bool value) => OnPropertyChanged(nameof(ShowSheet));
+    partial void OnIsSheetOpenChanged(bool value) { SyncSheetState(); }
 
     [RelayCommand]
     private void OpenAdjust()
@@ -520,7 +527,7 @@ public partial class MainViewModel : ViewModelBase
 
     partial void OnIsCollageModeChanged(bool value)
     {
-        OnPropertyChanged(nameof(ShowRegenerate)); OnPropertyChanged(nameof(ShowPill));
+        OnPropertyChanged(nameof(ShowRegenerate)); OnPropertyChanged(nameof(ShowFilmstrip)); OnPropertyChanged(nameof(ShowPill));
         SavePngCommand.NotifyCanExecuteChanged();
         RaiseShellTextsChanged();
         OnPropertyChanged(nameof(CanCompare)); OnPropertyChanged(nameof(ShowPill));

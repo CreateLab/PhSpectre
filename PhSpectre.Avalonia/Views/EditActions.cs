@@ -1,3 +1,4 @@
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using global::Avalonia.Controls;
@@ -28,6 +29,12 @@ public static class EditActions
     public static async Task ExportAllAsync(TopLevel? top, ProcessViewModel vm)
     {
         if (top == null || !vm.CanExportAll) return;
+        // Mobile: files go straight to Pictures/PhSpectre, no folder to pick.
+        if (FileDialogService.GallerySaver is { } gallery)
+        {
+            await vm.ExportAllAsync("", gallery);
+            return;
+        }
         var folder = await FileDialogService.PickExportFolderAsync(top, vm.DefaultExportDir);
         if (folder != null) await vm.ExportAllAsync(folder);
     }
@@ -35,6 +42,11 @@ public static class EditActions
     public static async Task ExportAsync(TopLevel? top, ProcessViewModel vm)
     {
         if (top == null || !vm.CanExport) return;
+        if (FileDialogService.GallerySaver is { } gallery)
+        {
+            await vm.ExportAsync(Path.Combine(Path.GetTempPath(), vm.SuggestedExportName), gallery);
+            return;
+        }
         var path = await FileDialogService.SavePngAsync(top, vm.SuggestedExportName, vm.DefaultExportDir);
         if (path != null) await vm.ExportAsync(path);
     }

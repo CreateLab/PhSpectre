@@ -271,8 +271,8 @@ public class FilmFrameTests
         var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-dark") with { Zones = new(), Realism = 0, Dust = 0, CornerPercent = 0 };
         using var photo = new Image<Rgb24>(480, 720, new Rgb24(128, 128, 128));   // 20 px per mm
         using var framed = FilmFrameRenderer.Render(photo, style, null, 1);
-        int x = (int)Math.Round((2.01 + 1.981 / 2) * 20);                         // hole centre line, left strip
-        var holeColor = new Rgb24(0xD9, 0xD6, 0xCE);
+        int x = (int)Math.Round((2.36 + 2.794 / 2) * 20);                         // hole centre line, left strip
+        var holeColor = new Rgb24(0xFF, 0xFF, 0xFF);
         int starts = 0;
         for (int y = 1; y < framed.Height; y++)
             if (framed[x, y] == holeColor && framed[x, y - 1] != holeColor) starts++;

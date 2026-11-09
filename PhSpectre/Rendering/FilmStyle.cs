@@ -29,8 +29,8 @@ public sealed record FilmStyle
     public const float MaxCornerPercent = 4f;
 
     // 135 (35 mm, KS perforations, ISO 491 / SMPTE ST 139), in mm. The frame is 36 x 24, so the strip is 11 mm
-    // wider than the picture: 5.5 mm each side, with the holes 2.01 mm from the film edge. Frames sit 2 mm apart.
-    public const float Mm135Across = 5.5f, Mm135HoleEdge = 2.01f, Mm135HoleAcross = 1.981f, Mm135HoleAlong = 2.794f,
+    // wider than the picture: 5.5 mm each side, with the holes ~0.35 mm off the picture (long side across the strip). Frames sit 2 mm apart.
+    public const float Mm135Across = 5.5f, Mm135HoleEdge = 2.36f, Mm135HoleAcross = 2.794f, Mm135HoleAlong = 1.981f,
         Mm135Pitch = 4.75f, Mm135Frame = 24f, Mm135Gap = 2f, HalfFrameShort = 18f;
     // 120 roll: ~61 mm film, 56 mm picture (6x6 / 6x9), no holes; about 2.5 mm of rebate each side and ~5 mm between frames.
     public const float Roll120Across = 2.5f, Roll120Frame = 56f, Roll120Gap = 5f;
@@ -96,22 +96,22 @@ public sealed record FilmStyle
         Edge("film-led", "Camera LED", "#050505", "#000000", "#F4F4F4", 1.5f, 1.5f, 6f, FilmPerforation.None, true, 35, 15, 0,
             new() { [FilmZone.BottomLeft] = [Sh, Ap], [FilmZone.BottomCenter] = [Ev], [FilmZone.BottomRight] = [FilmToken.Focal, Iso] }),
         // Grey base, the look's name over the sprockets, exposure printed between them.
-        Edge("film-grey", "Grey strip", "#8A8F96", "#F3F1EE", "#2A2C30", 4.17f, 22.92f, 22.92f, FilmPerforation.Rows, false, 70, 45, 0.8f,
+        Edge("film-grey", "Grey strip", "#8A8F96", "#FFFFFF", "#2A2C30", 4.17f, 22.92f, 22.92f, FilmPerforation.Rows, false, 70, 45, 0.8f,
             new() { [FilmZone.TopCenter] = [Look], [FilmZone.HoleGaps] = [Ap], [FilmZone.BottomCenter] = [Iso] }, FilmGauge.Mm135),
-        Edge("film-dark", "Dark strip", "#0E0E0E", "#D9D6CE", "#E8E4D8", 22.92f, 4.17f, 4.17f, FilmPerforation.Sides, false, 80, 55, 1f,
+        Edge("film-dark", "Dark strip", "#0E0E0E", "#FFFFFF", "#E8E4D8", 22.92f, 4.17f, 4.17f, FilmPerforation.Sides, false, 80, 55, 1f,
             new() { [FilmZone.SideLeft] = [Look], [FilmZone.SideRight] = [Fn], [FilmZone.HoleGaps] = [Ap] }, FilmGauge.Mm135),
         // Cine edge: orange backlit marks, name and frame number up the sides, sprockets on both.
         Edge("film-cine", "Cine amber", "#16100C", "#000000", "#FFB020", 22.92f, 4.17f, 4.17f, FilmPerforation.Sides, true, 60, 35, 1.2f,
             new() { [FilmZone.SideLeft] = [Look, Iso], [FilmZone.SideRight] = [Fn], [FilmZone.TopCenter] = [Sh, Ap], [FilmZone.BottomCenter] = [Sh, Ap] }, FilmGauge.Mm135),
         // Slide / reversal strip: thick black edge, big white sprockets, name top-left, frame numbers right and a short code.
-        Edge("film-slide", "Slide strip", "#0B0B0B", "#F4F2EC", "#F2A93B", 4.17f, 22.92f, 22.92f, FilmPerforation.Rows, false, 55, 35, 0,
+        Edge("film-slide", "Slide strip", "#0B0B0B", "#FFFFFF", "#F2A93B", 4.17f, 22.92f, 22.92f, FilmPerforation.Rows, false, 55, 35, 0,
             new() { [FilmZone.TopLeft] = [Look], [FilmZone.TopRight] = [Fn], [FilmZone.BottomLeft] = [FilmToken.FrameNumberA], [FilmZone.BottomRight] = [Fn] }, FilmGauge.Mm135),
         // Half-frame (18 x 24): the film runs along the short side, so the 24 mm side lies across the strip.
-        Edge("film-half", "Half-frame", "#15120E", "#E6E0D2", "#E8E4D8", 30.56f, 2.78f, 2.78f, FilmPerforation.Sides, false, 70, 45, 1f,
+        Edge("film-half", "Half-frame", "#15120E", "#FFFFFF", "#E8E4D8", 30.56f, 2.78f, 2.78f, FilmPerforation.Sides, false, 70, 45, 1f,
             new() { [FilmZone.SideLeft] = [Look], [FilmZone.SideRight] = [Fn], [FilmZone.HoleGaps] = [Ap] }, FilmGauge.Mm135Half),
-        Edge("film-half-amber", "Half-frame amber", "#4A2A14", "#1A0E06", "#F2A93B", 30.56f, 2.78f, 2.78f, FilmPerforation.Sides, false, 65, 40, 1f,
+        Edge("film-half-amber", "Half-frame amber", "#4A2A14", "#000000", "#F2A93B", 30.56f, 2.78f, 2.78f, FilmPerforation.Sides, false, 65, 40, 1f,
             new() { [FilmZone.SideLeft] = [Look], [FilmZone.SideRight] = [Fn], [FilmZone.HoleGaps] = [Ap] }, FilmGauge.Mm135Half),
-        Edge("film-half-slide", "Half-frame slide", "#0B0B0B", "#F4F2EC", "#F2A93B", 30.56f, 2.78f, 2.78f, FilmPerforation.Sides, false, 55, 35, 0,
+        Edge("film-half-slide", "Half-frame slide", "#0B0B0B", "#FFFFFF", "#F2A93B", 30.56f, 2.78f, 2.78f, FilmPerforation.Sides, false, 55, 35, 0,
             new() { [FilmZone.SideLeft] = [Look], [FilmZone.SideRight] = [Fn, FilmToken.FrameNumberA] }, FilmGauge.Mm135Half),
         // Roll 120: no sprockets, numbers and codes on the edge of the film.
         Edge("film-120", "Roll 120", "#0A0A0A", "#000000", "#EDEDED", 4.5f, 4.5f, 4.5f, FilmPerforation.None, false, 55, 40, 2.5f,
