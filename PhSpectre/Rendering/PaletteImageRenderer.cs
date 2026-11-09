@@ -1,3 +1,4 @@
+using PhSpectre.Recipes;
 using PhSpectre.Models;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
@@ -5,6 +6,7 @@ using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.Metadata;
 using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -151,7 +153,8 @@ public static class PaletteImageRenderer
         string Focal,  string FocalEq,
         string Aperture, string Shutter, string Iso,
         string Date, string ExposureBias,
-        string WhiteBalance, string ExpProgram, string Serial);
+        string WhiteBalance, string ExpProgram, string Serial,
+        string FilmSimulation = "", string ColorProfile = "");
 
     public static void Render(
         string sourceImagePath,
@@ -825,12 +828,32 @@ public static class PaletteImageRenderer
         try
         {
             var info = Image.Identify(path);
-            return info == null ? null : ReadMetadata(info.Metadata.ExifProfile);
+            return info == null ? null : ReadMetadata(info.Metadata);
         }
         catch { return null; }
     }
 
-    public static PhotoMetadata? ReadMetadata(Image image) => ReadMetadata(image.Metadata.ExifProfile);
+    public static PhotoMetadata? ReadMetadata(Image image) => ReadMetadata(image.Metadata);
+
+    // Adds what EXIF text fields alone don't carry: the colour profile (ICC description, or the EXIF
+    // ColorSpace flag) and the Fuji film simulation name from the MakerNote.
+    private static PhotoMetadata? ReadMetadata(ImageMetadata md)
+    {
+        var meta = ReadMetadata(md.ExifProfile);
+        if (meta == null) return null;
+        string sim = "", profile = "";
+        try { sim = RecipeReader.Read(md.ExifProfile)?.FilmSimulation ?? ""; } catch { }
+        try { profile = ReadColorProfile(md); } catch { }
+        return meta with { FilmSimulation = sim, ColorProfile = profile };
+    }
+
+    private static string ReadColorProfile(ImageMetadata md)
+    {
+        if (md.IccProfile is { } icc && IccDescription(icc.ToByteArray()) is { Length: > 0 } desc) return desc;
+        if (md.ExifProfile != null && md.ExifProfile.TryGetValue(ExifTag.ColorSpace, out var cs))
+            return cs.Value == 1 ? "sRGB" : "";
+        return "";
+    }
 
     private static PhotoMetadata? ReadMetadata(ExifProfile? p)
     {
@@ -901,6 +924,37 @@ public static class PaletteImageRenderer
         return new PhotoMetadata(camera, lens, focal, focalEq, aperture, shutter, iso, date, ev, wb, ep, serial);
         }
         catch { return null; }
+    }
+
+    // Reads the profile description ('desc' tag, v2 text or v4 multi-localized) straight from the ICC bytes;
+    // ImageSharp keeps its tag-entry types internal.
+    internal static string? IccDescription(byte[] d)
+    {
+        try
+        {
+            static uint U32(byte[] b, int o) => (uint)(b[o] << 24 | b[o + 1] << 16 | b[o + 2] << 8 | b[o + 3]);
+            if (d.Length < 132) return null;
+            uint count = U32(d, 128);
+            for (int i = 0; i < count && 132 + i * 12 + 12 <= d.Length; i++)
+            {
+                int e = 132 + i * 12;
+                if (U32(d, e) != 0x64657363) continue; // 'desc'
+                int off = (int)U32(d, e + 4);
+                uint type = U32(d, off);
+                if (type == 0x64657363) // 'desc': ASCII length then bytes (includes trailing NUL)
+                {
+                    int n = (int)U32(d, off + 8);
+                    return System.Text.Encoding.ASCII.GetString(d, off + 12, Math.Max(0, n - 1)).Trim();
+                }
+                if (type == 0x6D6C7563) // 'mluc': first record, UTF-16BE
+                {
+                    int len = (int)U32(d, off + 20), so = (int)U32(d, off + 24);
+                    return System.Text.Encoding.BigEndianUnicode.GetString(d, off + so, len).Trim(' ', ' ');
+                }
+            }
+        }
+        catch { }
+        return null;
     }
 
     private static uint Gcd(uint a, uint b) => b == 0 ? a : Gcd(b, a % b);

@@ -62,6 +62,7 @@
                 <ListBoxItem Content="Border"/>
                 <ListBoxItem Content="Card"/>
                 <ListBoxItem Content="Recipe" IsEnabled="{Binding RecipeCardAvailable}"/>
+                <ListBoxItem Content="Film"/>
             </ListBox>
             <TextBlock Text="{Binding RecipeCardReason}" Classes="hint" TextWrapping="Wrap"
                        IsVisible="{Binding ShowRecipeCardReasonInFrame}"/>

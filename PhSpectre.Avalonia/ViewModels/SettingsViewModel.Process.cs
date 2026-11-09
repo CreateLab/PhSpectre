@@ -55,6 +55,8 @@ public partial class SettingsViewModel
     public bool ShowCardBody => !IsCameraMode && !IsProcessMode;
 
     public bool FrameIsBorder => FrameType == FrameType.Border;
+    public bool FrameIsFilm => FrameType == FrameType.Film;
+    public bool ShowCardHint => !FrameIsBorder && !FrameIsFilm;
     public bool FrameIsCardType => CardTypeSelected;
 
     // The old inspector is now only the collage one; Edit (including Card / Recipe card) uses the Edit inspector.
@@ -82,7 +84,7 @@ public partial class SettingsViewModel
     {
         OnPropertyChanged(nameof(TopModeIndex)); OnPropertyChanged(nameof(TopModeSelection));
         OnPropertyChanged(nameof(IsEditMode)); OnPropertyChanged(nameof(IsProcessMode));
-        OnPropertyChanged(nameof(ShowCardBody)); OnPropertyChanged(nameof(FrameIsBorder)); OnPropertyChanged(nameof(FrameIsCardType)); OnPropertyChanged(nameof(ShowLegacyInspector)); OnPropertyChanged(nameof(ShowLegacyExport));
+        OnPropertyChanged(nameof(ShowCardBody)); OnPropertyChanged(nameof(FrameIsBorder)); OnPropertyChanged(nameof(FrameIsFilm)); OnPropertyChanged(nameof(ShowCardHint));OnPropertyChanged(nameof(FrameIsCardType)); OnPropertyChanged(nameof(ShowLegacyInspector)); OnPropertyChanged(nameof(ShowLegacyExport));
         OnPropertyChanged(nameof(IsRecipeCardType)); OnPropertyChanged(nameof(EditIsLook));
         OnPropertyChanged(nameof(EditIsFrame)); OnPropertyChanged(nameof(EditIsExport));
         OnPropertyChanged(nameof(FrameTypeIndex)); OnPropertyChanged(nameof(CardTabIndex)); OnPropertyChanged(nameof(CardTopIndex)); OnPropertyChanged(nameof(CardShowsOptions)); OnPropertyChanged(nameof(CardTabsVisible)); OnPropertyChanged(nameof(ShowRecipeCardReasonInFrame));
@@ -129,6 +131,7 @@ public partial class SettingsViewModel
         if (type != FrameType.RecipeCard && type != FrameType.Card) { /* keep notice until user acts */ }
         else if (FrameNotice.Length > 0 && type == FrameType.RecipeCard) FrameNotice = "";
         Process.SetBorder(type == FrameType.Border);
+        Process.SetFilm(type == FrameType.Film);
         FrameType = type;
         if (type == FrameType.Card) ApplyTopMode(0);
         else if (type == FrameType.RecipeCard) ApplyTopMode(1);
