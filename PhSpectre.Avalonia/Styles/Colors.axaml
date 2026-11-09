@@ -48,7 +48,7 @@
             <SolidColorBrush x:Key="HoverOverlayBrush"      Color="#14000000"/>
             <SolidColorBrush x:Key="PressedOverlayBrush"    Color="#22000000"/>
             <SolidColorBrush x:Key="DisabledFillBrush"      Color="#28000000"/>
-            <SolidColorBrush x:Key="StageBrush"             Color="#1A1A1C"/>
+            <SolidColorBrush x:Key="StageBrush"             Color="#E6E6EA"/>
             <SolidColorBrush x:Key="PanelBrush"             Color="#FFFFFF"/>
             <SolidColorBrush x:Key="FilmstripBrush"         Color="#F0F0F2"/>
             <SolidColorBrush x:Key="FieldBorderBrush"       Color="#C9C9D0"/>
