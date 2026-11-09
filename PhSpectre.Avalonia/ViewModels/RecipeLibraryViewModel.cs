@@ -88,6 +88,49 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         _settings = settings;
     }
 
+    // ── Approximate preview of the selected recipe on the bundled flat (log-like) sample photo ──
+    [ObservableProperty] private global::Avalonia.Media.Imaging.Bitmap? _previewImage;
+    public bool HasPreview => PreviewImage != null;
+    partial void OnPreviewImageChanged(global::Avalonia.Media.Imaging.Bitmap? value) => OnPropertyChanged(nameof(HasPreview));
+    private int _previewGeneration;
+    private static SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>? _flatSample;
+    private static readonly object FlatGate = new();
+
+    private static SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgb24>? FlatSample()
+    {
+        lock (FlatGate)
+        {
+            if (_flatSample != null) return _flatSample;
+            try
+            {
+                using var s = global::Avalonia.Platform.AssetLoader.Open(new Uri("avares://PhSpectre.Avalonia/Assets/Demo/sample-flat.png"));
+                return _flatSample = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(s);
+            }
+            catch (Exception e) when (e is IOException or SixLabors.ImageSharp.ImageFormatException or FileNotFoundException)
+            {
+                AppLogger.LogError("Failed to read the bundled sample photo", e);
+                return null;
+            }
+        }
+    }
+
+    private async Task UpdatePreviewAsync(FilmRecipe? recipe)
+    {
+        int gen = ++_previewGeneration;
+        if (recipe == null) { PreviewImage = null; return; }
+        var bytes = await Task.Run(() =>
+        {
+            var flat = FlatSample();
+            if (flat == null) return null;
+            using var img = PhSpectre.Rendering.RecipePreview.Render(flat, recipe);
+            using var ms = new MemoryStream();
+            SixLabors.ImageSharp.ImageExtensions.SaveAsJpeg(img, ms, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 95 });
+            return ms.ToArray();
+        });
+        if (gen != _previewGeneration || bytes == null) return;
+        PreviewImage = new global::Avalonia.Media.Imaging.Bitmap(new MemoryStream(bytes));
+    }
+
     [ObservableProperty] private int _sourceIndex;
     [ObservableProperty] private string _search = "";
     [ObservableProperty] private string _filter = "All";
@@ -212,6 +255,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
 
     private void RaiseSelection()
     {
+        _ = UpdatePreviewAsync(Selected?.Recipe);
         BuildTiles();
         OnPropertyChanged(nameof(HasSelection));
         OnPropertyChanged(nameof(NoSelection));

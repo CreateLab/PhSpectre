@@ -243,6 +243,13 @@ public partial class MainWindowViewModel : ViewModelBase
     public bool ShowBatchResult   => BatchState is BatchExportState.Finished or BatchExportState.Cancelled;
     public bool BatchHasErrors    => BatchErrors.Count > 0;
     public string IdleButtonText   => Files.Count == 1 ? "Save all · 1 photo" : $"Save all · {Files.Count} photos";
+
+    // Mirrors Save all into the Edit inspector so the card export reads like the Look export.
+    private void SyncCardExport()
+    {
+        Settings.CardCanSaveAll = ShowSaveAllButton && Files.Count > 1;
+        Settings.CardSaveAllText = $"Export all {Files.Count} photos…";
+    }
     public string ActiveButtonText => BatchState == BatchExportState.Cancelling ? "Cancelling…" : "Cancel";
     public double BatchProgressPercent => BatchTotal == 0 ? 0 : BatchProcessed * 100.0 / BatchTotal;
     public string BatchProgressText    => BatchTotal == 0 ? "" : $"{BatchProcessed} / {BatchTotal} ({(int)BatchProgressPercent}%)";
@@ -266,7 +273,6 @@ public partial class MainWindowViewModel : ViewModelBase
     public Func<Task<string?>>?                 PickFolderAsync      { get; set; }
     public Func<string, string, Task<string?>>? SavePngAsync         { get; set; }
     public Func<string, Task<string?>>?          PickBatchFolderAsync { get; set; }
-    public Func<IReadOnlyList<BatchExportError>, Task>? ShowBatchErrorsAsync { get; set; }
 
     private string?                  _lastTempPng;
     private string                   _lastExtension = ".png";
@@ -276,7 +282,7 @@ public partial class MainWindowViewModel : ViewModelBase
     // reuse that output instead of recomputing (skips k-means again on a no-op click). Only
     // one slot is needed — the app always has exactly one active single-photo selection or
     // collage tray at a time, never several to remember at once.
-    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe)? _lastSingleRenderKey;
+    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe, string Look)? _lastSingleRenderKey;
     private string?                                        _cachedSingleRenderOutput;
     private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
     private string?                                         _cachedCollageRenderOutput;
@@ -368,6 +374,10 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.CurrentPhotoProvider = () => SelectedFile;
         Settings.SelectPhotoAction = f => SelectedFile = f;
         Settings.OpenPhotosCommand = OpenFolderCommand;
+        Settings.CardSaveCommand = SavePngAsync2Command;
+        Settings.CardSaveAllCommand = SaveAllCommand;
+        PropertyChanged += (_, e) => { if (e.PropertyName is nameof(ShowSaveAllButton) or nameof(IdleButtonText)) SyncCardExport(); };
+        SyncCardExport();
 
         SettingsStorage.Apply(Settings, SettingsStorage.Load());
         Settings.PropertyChanged += (_, e) =>
@@ -405,6 +415,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // Single photo: live preview. Any settings change re-renders after a short pause so a
         // burst of edits (typing a hex, dragging a slider) produces one render. Changes that
         // don't alter the export snapshot are served from the single-slot render cache.
+        // The card layout is only on screen outside Edit-Look and Camera; coming back to it raises ShowCardBody, which lands here.
+        if (!Settings.ShowCardBody) return;
         ScheduleLiveRender();
     }
 
@@ -414,7 +426,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var recipe = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
         return PaletteBitmap != null && _cachedSingleRenderOutput != null
-            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe));
+            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe, Settings.CardLookKey));
     }
     private CancellationTokenSource? _liveDebounceCts;
 
@@ -442,9 +454,9 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.HasPhoto = value != null;
         _liveDebounceCts?.Cancel();
         OnPropertyChanged(nameof(FilePositionText));
-        Settings.LoadMetadataFields(
-            value != null ? PaletteImageRenderer.ReadMetadata(value.FullPath) : null,
-            value != null ? RecipeReader.Read(value.FullPath) : null);
+        // Reading EXIF / the recipe touches the file: off the UI thread (it made photo switching stutter on phones).
+        Settings.NotifyPhotoChanged(); // start decoding the photo for the canvas right away
+        _ = LoadMetadataAsync(value);
         IsRegenerateAvailable = false; // the fresh render below is already current — nothing to regenerate yet
         // In collage mode, clicking a row to check/inspect it shouldn't steal the big preview
         // away from the collage — only the tray (CollageItems) drives collage rendering.
@@ -452,8 +464,20 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             Settings.SelectedPhotoCount = value != null ? 1 : 0;
             Settings.ExportMode = ExportModeRules.ClosestValidMode(Settings.ExportMode, value != null ? 1 : 0);
-            _ = GeneratePaletteAsync(value);
+            // The card is only drawn in the card layout; Edit builds its own preview and Camera needs none.
+            if (Settings.ShowCardBody) _ = GeneratePaletteAsync(value);
+            else { PaletteBitmap = null; }
         }
+    }
+
+    private async Task LoadMetadataAsync(FileEntry? file)
+    {
+        PaletteImageRenderer.PhotoMetadata? meta = null; FilmRecipe? recipe = null;
+        if (file != null)
+            (meta, recipe) = await Task.Run(() => (PaletteImageRenderer.ReadMetadata(file.FullPath), RecipeReader.Read(file.FullPath)));
+        if (SelectedFile != file) return; // switched again while reading
+        Settings.LoadMetadataFields(meta, recipe);
+        Settings.NotifyPhotoChanged();
     }
 
     // Top-bar Card / Recipe / Collage segment. Collage opens the tray (seeded with the photo
@@ -486,7 +510,7 @@ public partial class MainWindowViewModel : ViewModelBase
         LoadFolder(folder);
     }
 
-    private void LoadFolder(string folder)
+    public void LoadFolder(string folder)
     {
         // A different folder invalidates whatever's currently in the tray (it references
         // FileEntry objects from the folder about to be cleared below).
@@ -644,7 +668,6 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var sourcePaths = CollageItems.Select(i => i.FullPath).ToList();
             FileInfoText = $"Collage · {sourcePaths.Count} photos";
-
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
             var cacheKey = (string.Join("", sourcePaths), exportSettings);
@@ -881,6 +904,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 FileInfoText = $"{entry.FileName}  ·  {working.Width}×{working.Height}";
             }
 
+            Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
             // Recipe mode's composite depends on the current recipe too (which can change
@@ -888,7 +912,7 @@ public partial class MainWindowViewModel : ViewModelBase
             // field), so it has to be part of the cache key or an edit while staying on the
             // same photo/settings would serve a stale render.
             var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
-            var cacheKey = (filePath, exportSettings, recipeForRender);
+            var cacheKey = (filePath, exportSettings, recipeForRender, Settings.CardLookKey);
 
             if (Equals(_lastSingleRenderKey, cacheKey) && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
             {
@@ -982,13 +1006,10 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     private bool CanCancelBatch() => BatchState == BatchExportState.Running && !_batchCancelGuardActive;
+    [ObservableProperty] private bool _showBatchErrorDetails;
 
     [RelayCommand]
-    private async Task ShowBatchErrors()
-    {
-        if (ShowBatchErrorsAsync != null)
-            await ShowBatchErrorsAsync(BatchErrors);
-    }
+    private void ShowBatchErrors() => ShowBatchErrorDetails = !ShowBatchErrorDetails;
 
     // ── Batch progress presentation ("Exporting 2 of 4 · ≈ 12 s left") ─────────────────────
     private DateTime _batchStartedAt;
@@ -1031,6 +1052,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var snapshot = Files.Select(f => f.FullPath).ToList();
         var exportedLookup = Files.ToDictionary(f => f.FullPath, f => f);
         var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
+        var batchLook = Settings.CardLook;
         _batchStartedAt = DateTime.UtcNow;
         BatchEtaText = "";
 
@@ -1038,6 +1060,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var cancelToken = _batchCts.Token;
 
         BatchErrors.Clear();
+        ShowBatchErrorDetails = false;
         BatchTotal = snapshot.Count;
         BatchProcessed = 0;
         BatchCurrentFileName = snapshot.Count > 0 ? Path.GetFileName(snapshot[0]) : null;
@@ -1076,7 +1099,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     if (exportSettings.Mode == ExportMode.Recipe)
                         await Task.Run(() => RenderRecipeCardFile(sourcePath, destPath, exportSettings));
                     else
-                        await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None);
+                        await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None, look: batchLook);
 
                     var exportedEntry = exportedLookup.GetValueOrDefault(sourcePath);
                     if (exportedEntry != null) await Dispatcher.UIThread.InvokeAsync(() => exportedEntry.IsExported = true);

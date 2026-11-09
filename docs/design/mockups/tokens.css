@@ -1,0 +1,25 @@
+/* PhSpectre design tokens — mirror of docs/design/02-visual-language.md.
+   Mockups only; the app's real tokens live in PhSpectre.Avalonia/Styles. */
+:root {
+  --canvas: #1a1a1c;
+  --bg: #f6f6f7; --panel: #ffffff; --surface: #f0f0f2; --raised: #ffffff;
+  --border: #dedee2; --border-strong: #7c7c85;
+  --text: #141416; --text-2: #55555c; --text-muted: #6b6b73;
+  --accent: #2f5f8a; --on-accent: #ffffff; --accent-soft: rgba(47,95,138,.10);
+  --success: #15784f; --warning: #7a5f00; --error: #b5341a; --scrim: rgba(0,0,0,.4);
+
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px;
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px;
+  --f-caption: 11px; --f-small: 12px; --f-body: 13px; --f-title: 15px; --f-display: 20px;
+  --m-fast: 120ms; --m-base: 200ms;
+  --font: Inter, system-ui, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+:root[data-theme="dark"] {
+  --bg: #0e0e10; --panel: #141416; --surface: #1c1c20; --raised: #26262b;
+  --border: #2e2e34; --border-strong: #6e6e78;
+  --text: #f2f2f3; --text-2: #a0a0a8; --text-muted: #8a8a93;
+  --accent: #a9c4dc; --on-accent: #0e0e10; --accent-soft: rgba(169,196,220,.10);
+  --success: #5bd39b; --warning: #e8d08a; --error: #ff8c70; --scrim: rgba(0,0,0,.6);
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

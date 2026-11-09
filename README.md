@@ -1,9 +1,10 @@
 # PhSpectre
 
-Point it at a photo and get back its color story: a dominant palette, EXIF, or — for
-Fujifilm shooters — the exact in-camera film recipe that made it look that way, all
-rendered as a shareable card. Add a QR code and the card can stay clean on the surface
-while carrying the full data underneath, one scan away.
+Open a photo, give it a look, frame it, export it. PhSpectre grades a picture with
+Lightroom presets and `.cube` LUTs, wraps it in a border or a card that carries its colour palette,
+camera info or — for Fujifilm shooters — the exact in-camera film recipe, and can write
+that recipe straight into the camera over USB. Add a QR code and the card can stay clean
+on the surface while carrying the full data underneath, one scan away.
 
 **[Download the latest release](https://github.com/CreateLab/PhSpectre/releases/latest)** — Windows x64, Linux x64, macOS arm64, Android APK.
 
@@ -12,13 +13,66 @@ while carrying the full data underneath, one scan away.
 [![Build — macOS](https://github.com/CreateLab/PhSpectre/actions/workflows/build-macos.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/build-macos.yml)
 [![Test](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml/badge.svg)](https://github.com/CreateLab/PhSpectre/actions/workflows/test.yml)
 
+![Edit — pick a Look, see it on the photo](screens/edit-look.png)
+
 ## What it does
 
+The app has three modes: **Edit** (one photo, three tabs: Look · Frame · Export), **Collage** (several photos, one card) and **Camera** (recipes and your camera's slots).
+
+**Everything above is available on Android too** — the same Edit, Collage and Camera modes, looks and recipe writing over USB (OTG), with the layout adapted for tablets and phones.
+
+- **Look** — 46 bundled looks sorted into categories (Historic, Alt process, Film, Cinema, B&W, Toy camera, Creative): 25 Lightroom-style presets and 21 `.cube` LUTs, every tile rendered on *your* photo. A single Amount slider blends the look in. Import your own `.xmp` presets, `.cube` LUTs or a `.zip` of them; imports are kept between sessions, and favourites are one click away.
+- **Frame** — None, a plain **Border**, a **Card** (palette swatches, camera info plate, QR) or a **Recipe** card. Border and Card are built on the graded photo, so a Look carries through to the export.
+- **Export** — JPEG or PNG, original size, half size or a social preset (square, IG post, story, TG landscape). One Export button for everything, and "Export all" for a whole folder.
 - **Palette** — dominant colors from any JPEG or HEIF/HEIC photo, k-means++ in HSL space, auto or fixed color count.
 - **Recipe** — auto-detects a Fujifilm JPEG/HEIF's in-camera film simulation recipe straight from the MakerNote (white balance + shift, dynamic range, tone curve, sharpness, grain, color chrome, all of it) and renders it as its own card.
 - **Collage** — combine several photos into one card with a single palette pooled across all of them, weighted by area.
 - **QR code** — drop a compact QR on any export linking to a page with the shot's camera, lens, exposure and recipe. The card's own text (camera name, lens, or nothing at all) and what the QR encodes are independent — keep the card minimal and let the scan carry the detail.
+- **Camera** — browse, save and edit recipes, preview them on a sample photo, and write them into a Fujifilm body's custom slots over USB (Windows and Android).
 - One rendering engine, four ways in: Desktop (Windows/Linux/macOS), Android, CLI, and a REST API.
+
+## Screenshots
+
+### Edit: Look → Frame → Export
+
+Look is the first tab: search, filter by All / Fav / Presets / LUTs, and every tile shows your own photo
+with that look applied (see the screenshot above).
+
+Frame has the frame type on top. **Border** is a plain mat (style presets or custom thickness, ratio and colour). On a **Card** the palette and camera info go under the photo,
+and the card is built from the graded photo, so the palette matches the look. Its options sit in two quiet sections, Style and Content:
+
+![Edit — Card frame, palette taken from the graded photo](screens/edit-frame-card.png)
+
+**Recipe** renders the Fujifilm recipe as a full card (available for photos that carry one, while no Look is applied):
+
+![Edit — Recipe frame, parameter grid from the photo's MakerNote](screens/edit-frame-recipe.png)
+
+Export picks the format and size and saves where you tell it:
+
+![Edit — Export tab](screens/edit-export.png)
+
+### Collage
+
+Check several photos into a tray, generate one palette pooled across all of them (weighted by displayed area),
+with EXIF taken from the first photo:
+
+![Collage mode with a photo tray and palette settings](screens/collage-desktop.png)
+
+<p>
+  <img src="screens/collage-mobile.jpg" width="39%" alt="Mobile collage output — five photos, pooled palette, EXIF strip" />
+</p>
+
+### Camera
+
+Recipes from your photos, your saved ones, or a bundled set of community recipes (settings only, with the author's name and a link
+back to the source). Without a camera you can still browse them, with an approximate preview on a sample photo:
+
+![Camera mode without a camera — recipe library and approximate preview](screens/camera-library.png)
+
+Connect a Fujifilm body over USB and its custom slots appear on the right. The slot is saved to a restore point first,
+every setting is read back after writing, and a slot that already has a name is never replaced without confirmation:
+
+![Camera mode with an X-T5 connected — write the recipe into a slot](screens/camera-connected.png)
 
 ## Recipe card, minimal — with a QR carrying the rest
 
@@ -30,26 +84,7 @@ and lens as a two-line caption, the full recipe one scan away.
   <img src="screens/DSCF6964_recipe.jpg" width="49%" alt="Recipe export, text plates off, QR code with camera and lens caption, second example" />
 </p>
 
-## Screenshots
-
-Desktop app — folder browser, palette settings, and live preview:
-
-![Desktop app](screens/desktop-app.jpg)
-
-Collage mode — check several photos into a tray, generate one palette pooled across all of
-them (weighted by displayed area), with EXIF taken from the first photo:
-
-<p>
-  <img src="screens/collage-desktop.jpg" width="59%" alt="Desktop collage mode with a photo tray and gutter settings" />
-  <img src="screens/collage-mobile.jpg" width="39%" alt="Mobile collage output — five photos, pooled palette, EXIF strip" />
-</p>
-
-Film Recipe mode with the full text card — parameter grid alongside the auto-detected recipe:
-
-<p>
-  <img src="screens/recepiet_ui.jpg" width="59%" alt="Desktop Recipe export mode — auto-detected Fujifilm recipe panel" />
-  <img src="screens/photo_2026-09-23_23-17-17.jpg" width="39%" alt="Exported recipe card for a Fujifilm Provia/Standard shot" />
-</p>
+## Exported cards
 
 Generated palettes — portrait and landscape layouts, with and without hex labels:
 
@@ -63,6 +98,7 @@ Generated palettes — portrait and landscape layouts, with and without hex labe
 </p>
 <p>
   <img src="screens/palette-seagulls.jpg" width="49%" alt="Landscape palette, three-color auto count" />
+  <img src="screens/photo_2026-09-23_23-17-17.jpg" width="49%" alt="Exported recipe card for a Fujifilm Provia/Standard shot" />
 </p>
 
 ## Releases
@@ -86,8 +122,20 @@ versions, and publishes the release automatically.
 
 ## Desktop App
 
-Cross-platform GUI built with Avalonia. Open a folder, browse photos, preview the generated
-palette side-by-side and save it as PNG or JPEG.
+Cross-platform GUI built with Avalonia (Windows, Linux, macOS; the same UI runs on Android).
+Open a folder or a single photo, pick a look, frame it and export.
+
+**Edit** is the main screen: the photo in the centre with a *Before* toggle (hold `\`), the film strip of your
+photos underneath, and one inspector on the right with three tabs.
+
+- **Look** — Amount slider, the active preset and LUT (each can be switched off or removed), search, and the
+  library of looks grouped by category. Presets are Lightroom `.xmp` files; basic tone, colour, HSL, tone curves,
+  grain and vignette settings are applied, and anything the engine can't reproduce (for example
+  Texture, Clarity, Dehaze, Sharpening) is listed under the preset as *Not applied*. LUTs are `.cube` files.
+  The bundled looks are read-only; your imports can be renamed, favourited, categorised and deleted.
+- **Frame** — None, Border, Card or Recipe. Card is built from the graded photo and carries the palette, the camera
+  info plate and an optional QR code (details below).
+- **Export** — format, size and destination. For a card the same tab holds the card's size presets.
 
 **Collage mode** (desktop and Android) checks several photos into a tray and renders one
 card from all of them: photos are laid out into a single image with a configurable gutter,
@@ -95,23 +143,18 @@ and the palette is pooled across the source photos — weighted by how much area
 occupies — so the gutter itself never affects the result. EXIF metadata is read from the
 first photo in the tray.
 
-**Export Mode** (desktop and Android) picks what a photo (or collage) is rendered as: `Card`
-(photo + palette swatches), `InfoOnly` (photo + EXIF plate, no swatches), `Recipe` (single
-photo only — see below), or the collage equivalents `Collage`/`CollageInfoOnly`. Modes that
-don't need a color palette skip the k-means clustering step entirely, so `InfoOnly` and
-`CollageInfoOnly` render instantly even on large collages.
-
-**Film Recipe mode** auto-detects the in-camera film simulation recipe from a Fujifilm
+**Film Recipe card** auto-detects the in-camera film simulation recipe from a Fujifilm
 JPEG or HEIF/HEIC photo's MakerNote — film simulation, white balance (+ R/B shift), dynamic
 range, highlight/shadow tone, color, sharpness, noise reduction, clarity, grain effect, and
 color chrome/color chrome blue — and renders it as a standalone shareable card, badged
 `Auto · Fuji`. Manual entry (and a `Custom` badge) is available for non-Fuji photos or to
 override a detected recipe. Recipe detection currently supports Fujifilm cameras only. The
 recipe card itself can be hidden (`Show recipe card`) independently of the QR code below —
-useful once the QR is doing the job of carrying the data instead.
+useful once the QR is doing the job of carrying the data instead. A recipe card is made from the original photo,
+so it isn't offered while a Look is applied.
 
 **QR code** (desktop and Android) adds a QR block right under the photo, before any text
-plates, on any export mode. Three settings, each independent of the others:
+plates, on any card. Three settings, each independent of the others:
 
 - **Caption** — what's printed beside the QR itself: nothing, camera name only, or camera
   + lens as two lines. Doesn't change what's encoded inside the code.
@@ -127,12 +170,12 @@ Self-contained — no .NET runtime required on the target machine.
 
 ### Recipe library and Send to camera (experimental)
 
-- **Camera** is the fourth mode next to Card, Recipe and Collage (it appears once the feature is on). Left: where the
+- **Camera** is a mode next to Edit and Collage (it appears once the feature is on: the *Camera* button in the top bar, or *Write recipes to camera…* in Edit → Export). Left: where the
   recipe comes from, *This photo* (picked for you), *Saved* (the star keeps any recipe) or *Popular* (a bundled set of
   community recipes: settings only, with the author's name and a link back to the source), with search, chips and
   groups by film simulation. Middle: the recipe in full. Right: the camera and its slots, **Write to slot**,
   **Read slot into the app** (saved to *Saved*) and the restore points. The top bar shows the camera status.
-  **Send to camera** in Content → Recipe opens the mode with this photo's recipe (or the setup dialog while the feature is off).
+  **Send to camera** (Frame → Content → Recipe) opens the mode with this photo's recipe (or the setup dialog while the feature is off).
   It writes the current recipe into a custom slot (C1–C7) of a connected Fujifilm body
   over USB: Windows (stock driver, no Zadig) and Android (USB host / OTG). Off until you press *Turn on* in the setup dialog.
   Camera USB mode must be **USB RAW CONV./BACKUP RESTORE**.
@@ -149,7 +192,8 @@ Self-contained — no .NET runtime required on the target machine.
 | Key | Action |
 |---|---|
 | `↑` / `↓` | Navigate file list |
-| `Ctrl+S` | Save palette PNG |
+| `Ctrl+S` | Export the current photo |
+| Hold `\` | Show the original (Before) |
 
 ## CLI
 
@@ -241,7 +285,7 @@ curl -X POST http://localhost:8080/api/palette \
 
 ## Requirements
 
-- .NET 8
+- .NET 10 SDK (only to build from source)
 - Docker (optional, for containerised API)
 - Supports JPEG (`.jpg` / `.jpeg`) and HEIF/HEIC (`.heif` / `.heic` / `.hif`) input on Desktop,
   CLI, and API. Android currently accepts JPEG only — on-device HEIF decoding wasn't reliable

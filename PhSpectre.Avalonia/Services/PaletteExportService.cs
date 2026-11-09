@@ -24,7 +24,8 @@ public static class PaletteExportService
 
     public static async Task ExportAsync(
         string sourcePath, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
-        PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
+        PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null,
+        PhSpectre.ColorGrading.GradeStack? look = null)
     {
         // Decoded once and reused for both palette extraction and the final render (see the
         // Image<Rgb24> overload below). Previously extraction opened its own FileStream (a full
@@ -40,6 +41,7 @@ public static class PaletteExportService
             return img;
         }, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
+        look?.Apply(original); // the Look is part of the picture the card is built from
 
         // Auto-detect the film recipe from the decoded image's own EXIF when the caller
         // didn't already resolve one (e.g. batch export, one photo at a time) — same

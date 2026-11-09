@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — Edit · Frame</title><link rel="stylesheet" href="mock.css">
+<style>
+.card{width:min(100%,760px);background:#111113;border-radius:2px;padding:20px 20px 16px;box-shadow:0 8px 40px rgba(0,0,0,.5);display:grid;gap:14px}
+.card .photo{width:100%;aspect-ratio:3/2}
+.sw{display:flex;gap:6px}.sw i{flex:1;height:34px;border-radius:4px}
+.meta{display:flex;justify-content:space-between;color:#bdbdc4;font:500 12px var(--mono)}
+.arow{display:grid;gap:var(--s3);padding:var(--s3) 0;border-top:1px solid var(--border)} .row.arow{display:flex}
+.types{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
+.ftype{border:0;background:none;padding:0;display:grid;gap:4px;text-align:center}
+.ftype .t{aspect-ratio:1;border-radius:var(--r-sm);background:var(--surface);outline:1px solid var(--border);display:grid;place-items:center}
+.ftype .t i{display:block;width:60%;height:60%;background:linear-gradient(135deg,#c9a07a,#6d8fb3);border-radius:2px}
+.ftype[aria-selected="true"] .t{outline:2px solid var(--accent)} .ftype span{font-size:var(--f-caption);font-weight:500;color:var(--text-2)}
+.ftype[aria-selected="true"] span{color:var(--text)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,360px);gap:24px;justify-content:center;padding:24px 16px 80px}
+.ftype[aria-disabled="true"]{opacity:.45;cursor:not-allowed} .ftype[aria-disabled="true"] .t{outline-style:dashed}
+.why{margin:0;font-size:var(--f-small);color:var(--text-2);background:var(--surface);padding:var(--s2) var(--s3);border-radius:var(--r-sm)}
+.two .insp{border:1px solid var(--border);border-radius:var(--r-md);grid-template-rows:auto}
+</style></head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo"><i></i>PhSpectre</div>
+    <div class="seg" role="tablist"><button role="tab" aria-selected="true">Edit</button><button role="tab" aria-selected="false">Collage</button><button role="tab" aria-selected="false">Camera</button></div>
+    <button class="iconbtn" aria-label="Undo"><span data-i="undo"></span></button><button class="iconbtn" aria-label="Redo"><span data-i="redo"></span></button>
+    <button class="iconbtn" aria-label="More"><span data-i="more"></span></button><button class="btn primary">Export</button>
+  </header>
+  <div class="body">
+    <main class="stage">
+      <div class="card">
+        <div class="photo f-warm"></div>
+        <div class="sw"><i style="background:#c9a07a"></i><i style="background:#8aa7c4"></i><i style="background:#3d4a3a"></i><i style="background:#f3c88a"></i><i style="background:#6d8fb3"></i><i style="background:#2a2f2a"></i></div>
+        <div class="meta"><span>X-T5 · XF 35mm f/1.4</span><span>f/2.8 · 1/250 · ISO 200</span></div>
+      </div>
+      <div class="canvasbar"><button>Before</button><button title="Composition grid"><span data-i="grid"></span></button><button>Fit</button></div>
+    </main>
+    <aside class="insp">
+      <nav class="tabs" role="tablist">
+        <button role="tab" aria-selected="false"><span data-i="look"></span>Look</button>
+        <button role="tab" aria-selected="true"><span data-i="frame"></span>Frame</button>
+        <button role="tab" aria-selected="false"><span data-i="export"></span>Export</button>
+      </nav>
+      <div class="pane">
+        <h3>Frame type</h3>
+        <div class="types" role="listbox" aria-label="Frame type">
+          <button class="ftype" role="option" aria-selected="false"><div class="t"><span class="hint">—</span></div><span>None</span></button>
+          <button class="ftype" role="option" aria-selected="false"><div class="t" style="background:#fff"><i></i></div><span>Border</span></button>
+          <button class="ftype" role="option" aria-selected="true"><div class="t" style="background:#111113"><i></i></div><span>Card</span></button>
+          <button class="ftype" role="option" aria-selected="false" aria-disabled="true" title="Remove the Look to use the recipe card"><div class="t"><span class="mono">C1</span></div><span>Recipe card</span></button>
+        </div>
+        <p class="why">ⓘ Recipe card is unavailable: a Look is applied (Moody). Remove the Look to use it.</p>
+
+        <h3>Card style</h3>
+        <div class="grid3">
+          <button class="tile" aria-selected="true"><div class="thumb" style="background:#111113"></div><span>Dark</span></button>
+          <button class="tile" aria-selected="false"><div class="thumb" style="background:#f3f3f3"></div><span>Light</span></button>
+          <button class="tile" aria-selected="false"><div class="thumb photo f-fade"></div><span>Blurred photo</span></button>
+          <button class="tile" aria-selected="false"><div class="thumb" style="background:linear-gradient(135deg,#3a3f2a,#b9d2f2)"></div><span>Custom…</span></button>
+        </div>
+
+        <div class="row arow"><h3>Palette</h3><input class="switch" type="checkbox" checked aria-label="Palette"></div>
+        <details class="arow"><summary>Palette · More</summary><div class="row"><span>Colors</span><span class="mono">6</span></div><div class="row"><span>Palette style</span><span class="mono">Punchy ▾</span></div><div class="row"><span>Sort by</span><span class="mono">Hue ▾</span></div></details>
+        <div class="row arow"><h3>Camera info</h3><div class="seg" style="margin:0"><button aria-selected="false">Off</button><button aria-selected="true">Short</button><button aria-selected="false">Detailed</button></div></div>
+        <div class="row arow"><h3>QR code</h3><input class="switch" type="checkbox" aria-label="QR code"></div>
+      </div>
+      <div class="foot"><button class="btn block">Export card…</button></div>
+    </aside>
+  </div>
+  <footer class="film"><button class="open"><span data-i="folder"></span> Open</button><div class="f photo" aria-selected="true"></div><div class="f photo f-cool"></div><div class="f photo f-pop"></div><div class="f photo f-mono"></div></footer>
+</div>
+
+<h2 style="text-align:center;margin:40px 0 0;font-size:var(--f-title)">Other Frame types: only their own settings appear</h2>
+<div class="two">
+  <aside class="insp"><div class="pane">
+    <h3>Border — always available</h3>
+    <div class="types"><button class="ftype" aria-selected="false"><div class="t"><span class="hint">—</span></div><span>None</span></button><button class="ftype" aria-selected="true"><div class="t" style="background:#fff"><i></i></div><span>Border</span></button><button class="ftype" aria-selected="false"><div class="t" style="background:#111113"><i></i></div><span>Card</span></button><button class="ftype" aria-selected="false"><div class="t"><span class="mono">C1</span></div><span>Recipe card</span></button></div>
+    <div class="grid3"><button class="tile" aria-selected="true"><div class="thumb" style="background:#fff;padding:8%"><div class="photo" style="width:100%;height:100%"></div></div><span>Thin white</span></button><button class="tile"><div class="thumb" style="background:#f4f1ea;padding:14%"><div class="photo" style="width:100%;height:100%"></div></div><span>Gallery mat</span></button><button class="tile"><div class="thumb" style="background:#faf8f2;padding:8% 8% 20%"><div class="photo" style="width:100%;height:100%"></div></div><span>Instant film</span></button></div>
+    <details><summary>Customize</summary><div class="row"><span>Border</span><span class="mono">4%</span></div><div class="row"><span>Ratio</span><span class="mono">Original ▾</span></div><div class="row"><span>Color</span><span class="mono">#FFFFFF</span></div></details>
+  </div></aside>
+  <aside class="insp"><div class="pane">
+    <h3>Recipe card — no Look, recipe found in EXIF</h3>
+    <div class="types"><button class="ftype" aria-selected="false"><div class="t"><span class="hint">—</span></div><span>None</span></button><button class="ftype" aria-selected="false"><div class="t" style="background:#fff"><i></i></div><span>Border</span></button><button class="ftype" aria-selected="false"><div class="t" style="background:#111113"><i></i></div><span>Card</span></button><button class="ftype" aria-selected="true"><div class="t"><span class="mono">C1</span></div><span>Recipe card</span></button></div>
+    <div class="grid3"><button class="tile" aria-selected="true"><div class="thumb" style="background:#111113"></div><span>Color</span></button><button class="tile"><div class="thumb" style="background:#222"></div><span>B&amp;W</span></button><button class="tile"><div class="thumb" style="background:#111113"></div><span>Minimal</span></button></div>
+    <div class="note">Recipe read from the photo: Classic Neg. · DR400 · Grain Weak. Tap an item to hide it on the card.</div>
+    <div style="display:flex;gap:8px"><button class="btn">★ Save to library</button><button class="btn">Send to camera</button></div>
+  </div></aside>
+  <aside class="insp"><div class="pane">
+    <h3>Photo without a recipe in EXIF</h3>
+    <div class="types"><button class="ftype" aria-selected="false"><div class="t"><span class="hint">—</span></div><span>None</span></button><button class="ftype" aria-selected="false"><div class="t" style="background:#fff"><i></i></div><span>Border</span></button><button class="ftype" aria-selected="true"><div class="t" style="background:#111113"><i></i></div><span>Card</span></button><button class="ftype" aria-selected="false" aria-disabled="true"><div class="t"><span class="mono">C1</span></div><span>Recipe card</span></button></div>
+    <p class="why">ⓘ Recipe card is unavailable: no film recipe found in this photo (not a Fujifilm JPEG, or EXIF was removed).</p>
+    <div class="row arow"><h3>Camera info</h3><div class="seg" style="margin:0"><button aria-selected="true">Off</button></div></div>
+    <p class="hint">Camera info shows only what EXIF contains.</p>
+  </div></aside>
+</div>
+<button class="btn toggle-theme">Theme</button>
+<script src="mock.js"></script>
+</body></html>

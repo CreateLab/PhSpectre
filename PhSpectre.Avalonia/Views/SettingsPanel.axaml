@@ -48,476 +48,46 @@
         </Style>
     </UserControl.Styles>
 
-    <Grid RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,Auto,*">
 
+        <!-- Edit header: Look · Frame, then the frame type (Card / Recipe card stay in this layout) -->
+        <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,12,8" IsVisible="{Binding IsEditMode}">
+            <ListBox Classes="seg" SelectedIndex="{Binding CardTopIndex}">
+                <ListBoxItem Content="Look"/>
+                <ListBoxItem Content="Frame"/>
+                <ListBoxItem Content="Export" IsVisible="{Binding IsEditMode}"/>
+            </ListBox>
+            <ListBox Classes="seg" x:Name="FrameLayoutBox" SelectedIndex="{Binding FrameTypeIndex}" IsVisible="{Binding CardShowsOptions}">
+                <ListBoxItem Content="None"/>
+                <ListBoxItem Content="Border"/>
+                <ListBoxItem Content="Card"/>
+                <ListBoxItem Content="Recipe" IsEnabled="{Binding RecipeCardAvailable}"/>
+            </ListBox>
+            <TextBlock Text="{Binding RecipeCardReason}" Classes="hint" TextWrapping="Wrap"
+                       IsVisible="{Binding ShowRecipeCardReasonInFrame}"/>
+            <TextBlock Text="{Binding FrameNotice}" Foreground="{DynamicResource WarningBrush}" FontSize="12"
+                       TextWrapping="Wrap" IsVisible="{Binding HasFrameNotice}"/>
+        </StackPanel>
         <!-- Tabs -->
-        <ListBox Grid.Row="0" Classes="seg" x:Name="TabsBox" IsVisible="{Binding !IsRecipeEditorOpen}" Margin="0,0,0,4"
+        <ListBox Grid.Row="1" Classes="seg" x:Name="TabsBox" IsVisible="{Binding CardTabsVisible}" Margin="0,0,0,4"
                  SelectedIndex="{Binding ActiveTabIndex}">
             <ListBoxItem Content="Style"/>
             <ListBoxItem Content="Content"/>
-            <ListBoxItem Content="Export"/>
+            <ListBoxItem Content="Export" IsVisible="{Binding !IsEditMode}"/>
         </ListBox>
 
-        <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsRecipeEditorOpen}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,12,0">
+        <ScrollViewer Grid.Row="2" IsVisible="{Binding !IsRecipeEditorOpen}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,12,0">
         <Panel>
 
         <!-- ═════════════════════════ STYLE ═════════════════════════ -->
-        <StackPanel IsVisible="{Binding IsStyleTab}" Margin="0,0,0,28">
-
-            <TextBlock Text="CARD" Classes="section-title first"/>
-
-            <ListBox Classes="chips" SelectedIndex="{Binding CardChoiceIndex}">
-                <ListBoxItem>
-                    <StackPanel Spacing="6">
-                        <Border Height="48" CornerRadius="8" Background="#111113"
-                                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
-                        <TextBlock Text="Dark" FontSize="12" HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
-                    </StackPanel>
-                </ListBoxItem>
-                <ListBoxItem>
-                    <StackPanel Spacing="6">
-                        <Border Height="48" CornerRadius="8" Background="#F3F3F3"
-                                BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
-                        <TextBlock Text="Light" FontSize="12" HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
-                    </StackPanel>
-                </ListBoxItem>
-                <ListBoxItem>
-                    <StackPanel Spacing="6">
-                        <Border Height="48" CornerRadius="8" BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1">
-                            <Border.Background>
-                                <LinearGradientBrush StartPoint="0%,100%" EndPoint="100%,0%">
-                                    <GradientStop Offset="0" Color="#3A3F2A"/>
-                                    <GradientStop Offset="1" Color="#B9D2F2"/>
-                                </LinearGradientBrush>
-                            </Border.Background>
-                            <TextBlock Text="+" FontSize="18" Foreground="White"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <TextBlock Text="Custom" FontSize="12" HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
-                    </StackPanel>
-                </ListBoxItem>
-            </ListBox>
-
-            <!-- Custom colour: empty field is hidden unless Custom is chosen (V2-Errors). -->
-            <StackPanel IsVisible="{Binding IsCustomBackgroundMode}" Spacing="6" Margin="0,12,0,0">
-                <Grid ColumnDefinitions="Auto,*">
-                    <Border Width="36" Height="36" CornerRadius="8" Margin="0,0,8,0"
-                            Background="{Binding CustomSwatchBrush}"
-                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1"/>
-                    <TextBox Grid.Column="1" Text="{Binding CustomBackgroundHex, UpdateSourceTrigger=PropertyChanged}"
-                             PlaceholderText="#RRGGBB" Classes.invalid="{Binding ShowCustomHexError}"
-                             FontFamily="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
-                </Grid>
-                <TextBlock Text="Not a valid color. Use #RRGGBB. The preview keeps the last valid color."
-                           IsVisible="{Binding ShowCustomHexError}" Classes="hint error"/>
-            </StackPanel>
-
-            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
-                <TextBlock Text="Blurred photo backdrop" Classes="row"/>
-                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding UseBlurredBackdrop}"
-                              IsEnabled="{Binding IsBlurredBackdropEnabled}"/>
-            </Grid>
-            <TextBlock Text="Not available with a custom color — the backdrop is a flat fill."
-                       IsVisible="{Binding IsCustomBackgroundMode}" Classes="hint"/>
-            <TextBlock Text="Ignored for Collage — falls back to the card theme."
-                       IsVisible="{Binding ShowBlurredIgnoredForCollageHint}" Classes="hint"/>
-
-            <Grid Classes="row" ColumnDefinitions="*,Auto">
-                <TextBlock Text="Guide lines" Classes="row-dim"/>
-                <ComboBox Grid.Column="1" SelectedIndex="{Binding CompositionGuideIndex}">
-                    <ComboBoxItem Content="Off"/>
-                    <ComboBoxItem Content="Thirds"/>
-                    <ComboBoxItem Content="Golden"/>
-                    <ComboBoxItem Content="Diagonal"/>
-                    <ComboBoxItem Content="Cross"/>
-                </ComboBox>
-            </Grid>
-
-            <!-- PALETTE -->
-            <StackPanel IsVisible="{Binding IsPaletteSwitchVisible}">
-                <TextBlock Text="PALETTE" Classes="section-title"/>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Show palette" Classes="row"/>
-                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowPalette}"/>
-                </Grid>
-                <StackPanel IsVisible="{Binding ComputeColors}">
-                    <Grid Classes="row" ColumnDefinitions="Auto,*" Margin="0,4,0,0">
-                        <TextBlock Text="Colors" Classes="row-dim" Margin="0,0,16,0"/>
-                        <ListBox Grid.Column="1" Classes="seg compact" SelectedIndex="{Binding ColorCountSegment}">
-                            <ListBoxItem Content="Auto"/>
-                            <ListBoxItem Content="3"/>
-                            <ListBoxItem Content="4"/>
-                            <ListBoxItem Content="5"/>
-                            <ListBoxItem Content="6"/>
-                            <ListBoxItem Content="8"/>
-                        </ListBox>
-                    </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                        <TextBlock Text="Sampling" Classes="row-dim"/>
-                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SamplingModeIndex}">
-                            <ComboBoxItem Content="Vivid"/>
-                            <ComboBoxItem Content="Standard"/>
-                            <ComboBoxItem Content="Contrast"/>
-                        </ComboBox>
-                    </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                        <TextBlock Text="Sort" Classes="row-dim"/>
-                        <ComboBox Grid.Column="1" SelectedIndex="{Binding SortOrderIndex}">
-                            <ComboBoxItem Content="Original order"/>
-                            <ComboBoxItem Content="By hue"/>
-                            <ComboBoxItem Content="By luminance"/>
-                            <ComboBoxItem Content="By share"/>
-                        </ComboBox>
-                    </Grid>
-                </StackPanel>
-                <TextBlock Text="Off keeps the photo and camera plate only (the old “Info only”)."
-                           IsVisible="{Binding !ShowPalette}" Classes="hint"/>
-            </StackPanel>
-
-            <!-- COLLAGE -->
-            <StackPanel IsVisible="{Binding ShowCollageSectionUI}">
-                <TextBlock Text="COLLAGE" Classes="section-title"/>
-                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-                    <TextBlock Text="Gutter" Classes="row-dim" Margin="0,0,16,0"/>
-                    <Slider Grid.Column="1" Classes="v2" Value="{Binding GutterThickness}"
-                            Minimum="0" Maximum="40" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                    <TextBlock Grid.Column="2" Text="{Binding GutterThickness, StringFormat={}{0} px}"
-                               Classes="value" Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
-                </Grid>
-            </StackPanel>
-
-            <!-- SWATCHES -->
-            <StackPanel IsVisible="{Binding ShowSwatchesSectionUI}">
-                <TextBlock Text="SWATCHES" Classes="section-title"/>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Hex labels" Classes="row"/>
-                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowHex}"/>
-                </Grid>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Labels below" Classes="row"/>
-                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding HexBelow}"
-                                  IsEnabled="{Binding ShowHex}"/>
-                </Grid>
-                <TextBlock Text="Turn on Hex labels to choose where they go."
-                           IsVisible="{Binding !ShowHex}" Classes="hint"/>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Percentage" Classes="row"/>
-                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowPercent}"/>
-                </Grid>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Shape" Classes="row-dim"/>
-                    <ComboBox Grid.Column="1" SelectedIndex="{Binding SwatchShapeIndex}">
-                        <ComboBoxItem Content="Rectangle"/>
-                        <ComboBoxItem Content="Rounded"/>
-                        <ComboBoxItem Content="Circle"/>
-                    </ComboBox>
-                </Grid>
-                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-                    <TextBlock Text="Size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
-                    <Slider Grid.Column="1" Classes="v2" Value="{Binding SwatchScaleIndex}"
-                            Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                    <TextBlock Grid.Column="2" Text="{Binding SwatchScaleLabel}" Classes="value"
-                               Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
-                </Grid>
-                <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-                    <TextBlock Text="Label size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
-                    <Slider Grid.Column="1" Classes="v2" Value="{Binding LabelScaleIndex}"
-                            Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                    <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}" Classes="value"
-                               Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
-                </Grid>
-            </StackPanel>
-
-            <!-- Recipe mode has no swatches: its text size lives here instead. -->
-            <StackPanel IsVisible="{Binding ShowRecipeCard}">
-                <StackPanel IsVisible="{Binding IsRecipeMode}">
-                    <TextBlock Text="TEXT" Classes="section-title"/>
-                    <Grid Classes="row" ColumnDefinitions="Auto,*,Auto">
-                        <TextBlock Text="Text size" Classes="row-dim" Margin="0,0,16,0" MinWidth="64"/>
-                        <Slider Grid.Column="1" Classes="v2" Value="{Binding LabelScaleIndex}"
-                                Minimum="0" Maximum="4" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                        <TextBlock Grid.Column="2" Text="{Binding LabelScaleLabel}" Classes="value"
-                                   Margin="12,0,0,0" MinWidth="48" TextAlignment="Right"/>
-                    </Grid>
-                </StackPanel>
-            </StackPanel>
-        </StackPanel>
+        <local:CardStyleSection IsVisible="{Binding IsStyleTab}"/>
 
         <!-- ═════════════════════════ CONTENT ═════════════════════════ -->
-        <StackPanel IsVisible="{Binding IsContentTab}" Margin="0,0,0,28">
-
-            <TextBlock Text="CAMERA PLATE" Classes="section-title first"/>
-            <Grid Classes="row" ColumnDefinitions="*,Auto">
-                <TextBlock Text="Show camera info" Classes="row"/>
-                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowCameraInfo}"
-                              IsEnabled="{Binding IsCameraInfoToggleEnabled}"/>
-            </Grid>
-
-            <StackPanel IsVisible="{Binding ShowMetaVerbositySectionUI}">
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Text" Classes="row-dim"/>
-                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MetaVerbosityIndex}">
-                        <ComboBoxItem Content="None"/>
-                        <ComboBoxItem Content="Short"/>
-                        <ComboBoxItem Content="Default"/>
-                        <ComboBoxItem Content="Detail"/>
-                        <ComboBoxItem Content="Full"/>
-                    </ComboBox>
-                </Grid>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Layout" Classes="row-dim"/>
-                    <ComboBox Grid.Column="1" SelectedIndex="{Binding MetaStyleIndex}">
-                        <ComboBoxItem Content="Film strip"/>
-                        <ComboBoxItem Content="Overlay"/>
-                    </ComboBox>
-                </Grid>
-            </StackPanel>
-
-            <!-- Photo metadata override (Edit / Hide) -->
-            <StackPanel IsVisible="{Binding ShowPhotoMetadataSectionUI}">
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Photo metadata" Classes="row-dim"/>
-                    <Button Grid.Column="1" Classes="link" Content="{Binding MetadataEditorToggleLabel}"
-                            Command="{Binding ToggleMetadataEditorCommand}"/>
-                </Grid>
-                <StackPanel Spacing="8" IsVisible="{Binding IsMetadataEditorExpanded}" Margin="0,4,0,0">
-                    <TextBlock Text="Camera" Classes="hint"/>
-                    <TextBox Text="{Binding MetaCameraText}" PlaceholderText="e.g. Canon EOS R5"/>
-                    <TextBlock Text="Lens" Classes="hint"/>
-                    <TextBox Text="{Binding MetaLensText}" PlaceholderText="e.g. RF 24-70mm f/2.8"/>
-                    <TextBlock Text="Focal (mm)" Classes="hint"/>
-                    <NumericUpDown Value="{Binding FocalMm}" Minimum="0" Maximum="2000" Increment="1"
-                                   FormatString="0.#" ParsingNumberStyle="Float"/>
-                    <TextBlock Text="Aperture" Classes="hint"/>
-                    <TextBox Text="{Binding MetaApertureText, UpdateSourceTrigger=LostFocus}" PlaceholderText="e.g. f/2.8"
-                             ToolTip.Tip="Format: f/X.X — invalid values are discarded on commit"/>
-                    <TextBlock Text="Shutter" Classes="hint"/>
-                    <TextBox Text="{Binding MetaShutterText, UpdateSourceTrigger=LostFocus}" PlaceholderText="e.g. 1/200s"
-                             ToolTip.Tip="Format: 1/Xs or Xs — invalid values are discarded on commit"/>
-                    <TextBlock Text="ISO" Classes="hint"/>
-                    <NumericUpDown Value="{Binding IsoValue}" Minimum="0" Maximum="512000" Increment="100"
-                                   FormatString="0" ParsingNumberStyle="Float"/>
-                    <TextBlock Text="Date" Classes="hint"/>
-                    <TextBox Text="{Binding MetaDateText}" PlaceholderText="e.g. 2026-07-05"/>
-                    <Button Classes="secondary" HorizontalAlignment="Left" Content="Reset to photo's EXIF"
-                            Command="{Binding ResetMetadataCommand}"/>
-                </StackPanel>
-            </StackPanel>
-
-            <!-- QR CODE -->
-            <TextBlock Text="QR CODE" Classes="section-title"/>
-            <Grid Classes="row" ColumnDefinitions="*,Auto">
-                <TextBlock Text="Show QR" Classes="row"/>
-                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowQrCode}"/>
-            </Grid>
-
-            <StackPanel IsVisible="{Binding ShowQrCode}">
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Caption" Classes="row-dim"/>
-                    <ComboBox Grid.Column="1" SelectedIndex="{Binding QrCaptionIndex}">
-                        <ComboBoxItem Content="None"/>
-                        <ComboBoxItem Content="Camera"/>
-                        <ComboBoxItem Content="Camera + lens"/>
-                    </ComboBox>
-                </Grid>
-                <TextBlock Text="Printed beside the code. “Scan for the recipe” always goes under it."
-                           Classes="hint"/>
-
-                <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                    <TextBlock Text="Source" Classes="row-dim"/>
-                    <ComboBox Grid.Column="1" SelectedIndex="{Binding QrContentSourceIndex}">
-                        <ComboBoxItem Content="Generated link"/>
-                        <ComboBoxItem Content="Custom URL"/>
-                    </ComboBox>
-                </Grid>
-
-                <StackPanel IsVisible="{Binding !IsQrCustomUrlMode}" Spacing="6" Margin="0,6,0,0">
-                    <TextBlock Text="Content" Classes="row-dim"/>
-                    <ComboBox Width="NaN" HorizontalAlignment="Stretch" SelectedIndex="{Binding QrContentPresetIndex}">
-                        <ComboBoxItem Content="Camera + Recipe"/>
-                        <ComboBoxItem Content="Camera + Lens + Photo info + Recipe"/>
-                        <ComboBoxItem Content="Camera + Photo info + Recipe"/>
-                        <ComboBoxItem Content="Camera + Lens + Photo info"/>
-                        <ComboBoxItem Content="Recipe only"/>
-                    </ComboBox>
-                </StackPanel>
-                <TextBlock Text="May duplicate text already shown on this card"
-                           IsVisible="{Binding ShowQrDuplicateHint}" Classes="hint"/>
-
-                <TextBox Text="{Binding QrCustomUrl}" PlaceholderText="https://example.com/you"
-                         IsVisible="{Binding IsQrCustomUrlMode}" Margin="0,4,0,0"/>
-
-                <StackPanel IsVisible="{Binding !IsQrCustomUrlMode}">
-                    <Grid Classes="row" ColumnDefinitions="*,Auto">
-                        <TextBlock Text="Include note" Classes="row"/>
-                        <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding QrIncludeNote}"/>
-                    </Grid>
-                    <StackPanel IsVisible="{Binding ShowQrNoteTextBox}" Spacing="6" Margin="0,4,0,0">
-                        <Panel>
-                            <TextBox Text="{Binding QrNoteText, UpdateSourceTrigger=PropertyChanged}"
-                                     PlaceholderText="Note text" MaxLength="80" AcceptsReturn="False"
-                                     TextWrapping="Wrap" MinHeight="68" Padding="12,10,12,26"/>
-                            <TextBlock Text="{Binding QrNoteCounter}" Classes="value" Opacity="0.7"
-                                       FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                       Margin="0,0,12,8" IsHitTestVisible="False"/>
-                        </Panel>
-                        <TextBlock Text="Encoded into the QR. Under the code the card shows “Scan for the recipe”."
-                                   Classes="hint"/>
-                    </StackPanel>
-                </StackPanel>
-            </StackPanel>
-
-            <!-- RECIPE -->
-            <StackPanel IsVisible="{Binding ShowFilmRecipeSectionUI}">
-                <TextBlock Text="RECIPE" Classes="section-title"/>
-                <Grid Classes="row" ColumnDefinitions="*,Auto">
-                    <TextBlock Text="Show recipe card" Classes="row"/>
-                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowRecipeCard}"/>
-                </Grid>
-
-                <StackPanel Spacing="8" IsVisible="{Binding !HasRecipe}" Margin="0,6,0,0">
-                    <TextBlock Text="Film recipe detection currently works for Fujifilm cameras only."
-                               Classes="hint"/>
-                    <Button Classes="secondary" Content="Set recipe manually" HorizontalAlignment="Left"
-                            Command="{Binding OpenRecipeEditorCommand}"/>
-                </StackPanel>
-
-                <StackPanel Spacing="10" IsVisible="{Binding HasRecipe}" Margin="0,6,0,0">
-                    <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
-                            BorderThickness="1" CornerRadius="8" Padding="12,10">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <StackPanel>
-                                <TextBlock Text="{Binding RecipeTitleText}" FontSize="16" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                <TextBlock Text="{Binding RecipeSourceBadgeText}" Classes="hint"/>
-                            </StackPanel>
-                            <Button Grid.Column="1" Classes="link" Content="Edit" VerticalAlignment="Center"
-                                    Command="{Binding OpenRecipeEditorCommand}"/>
-                        </Grid>
-                    </Border>
-                    <!-- Which parameters the card shows: eye per tile, count, presets -->
-                    <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,6">
-                        <TextBlock Text="{Binding RecipeVisibilitySummary}" Classes="hint" VerticalAlignment="Center"/>
-                        <Button Grid.Column="1" Classes="link" Content="Show all" Command="{Binding ApplyRecipePresetCommand}"
-                                CommandParameter="color" IsEnabled="{Binding CanShowAllRecipeFields}"/>
-                    </Grid>
-                    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,6">
-                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="Color"
-                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="color"/>
-                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="B&amp;W"
-                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="bw"/>
-                        <Button Classes="ghost" Height="30" Padding="12,0" FontSize="12" Content="Minimal"
-                                Command="{Binding ApplyRecipePresetCommand}" CommandParameter="min"/>
-                    </StackPanel>
-                    <ItemsControl ItemsSource="{Binding RecipeFieldItems}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <UniformGrid Columns="{Binding RecipeColumns}"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:RecipeFieldItem">
-                                <Border Classes="recipe-plate" Opacity="{Binding TileOpacity}" ToolTip.Tip="{Binding FullLabel}">
-                                    <Grid>
-                                        <StackPanel Spacing="2" VerticalAlignment="Center" Margin="10,0">
-                                            <TextBlock Text="{Binding Label}" Classes="recipe-plate-label" HorizontalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Value}" Classes="recipe-plate-value" HorizontalAlignment="Center"/>
-                                        </StackPanel>
-                                        <!-- Desktop: small eye in the corner; touch: 44 px target -->
-                                        <Button Classes="link" Width="22" Height="22" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                Margin="0,-4,-6,0" IsVisible="{Binding IsDesktop}"
-                                                Command="{Binding ToggleCommand}" CommandParameter="{Binding Key}"
-                                                Foreground="{DynamicResource TextSecondaryBrush}">
-                                            <Panel>
-                                                <materialIcons:MaterialIcon Kind="Eye" Width="15" Height="15" IsVisible="{Binding IsShown}"/>
-                                                <materialIcons:MaterialIcon Kind="EyeOff" Width="15" Height="15" IsVisible="{Binding IsHidden}"/>
-                                            </Panel>
-                                        </Button>
-                                        <Button Classes="link" Width="44" Height="44" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                Margin="-12,-12,-12,0" IsVisible="{Binding IsMobile}"
-                                                Command="{Binding ToggleCommand}" CommandParameter="{Binding Key}"
-                                                Foreground="{DynamicResource TextSecondaryBrush}">
-                                            <Panel>
-                                                <materialIcons:MaterialIcon Kind="Eye" Width="18" Height="18" IsVisible="{Binding IsShown}"/>
-                                                <materialIcons:MaterialIcon Kind="EyeOff" Width="18" Height="18" IsVisible="{Binding IsHidden}"/>
-                                            </Panel>
-                                        </Button>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
-                            Margin="0,2,0,0" Content="Save to library" Command="{Binding SaveRecipeToLibraryCommand}"/>
-                    <Button Classes="secondary" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Height="44"
-                            Margin="0,2,0,0" IsVisible="{Binding CameraSupported}" Command="{Binding OpenCameraCommand}">
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <materialIcons:MaterialIcon Kind="Camera" Width="16" Height="16"/>
-                            <TextBlock Text="Send to camera" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
-
-                    <TextBlock Text="{Binding RecipeStatusText}" Classes="hint" TextWrapping="Wrap"
-                               Foreground="{DynamicResource SuccessBrush}" IsVisible="{Binding HasRecipeStatus}"/>
-                </StackPanel>
-
-            </StackPanel>
-        </StackPanel>
+        <local:CardContentSection IsVisible="{Binding IsContentTab}"/>
 
         <!-- ═════════════════════════ EXPORT ═════════════════════════ -->
         <StackPanel IsVisible="{Binding IsExportTab}" Margin="0,0,0,28">
-
-            <TextBlock Text="FORMAT" Classes="section-title first"/>
-            <ListBox Classes="seg" SelectedIndex="{Binding OutputFormatIndex}">
-                <ListBoxItem Content="PNG"/>
-                <ListBoxItem Content="JPEG"/>
-            </ListBox>
-            <TextBlock Text="PNG is lossless and larger; JPEG is much smaller and ready to share."
-                       Classes="hint" Margin="0,6,0,0"/>
-
-            <TextBlock Text="SIZE" Classes="section-title"/>
-            <ListBox Classes="options" ItemsSource="{Binding ExportSizeOptions}"
-                     SelectedIndex="{Binding ExportSizeIndex}">
-                <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="vm:ExportSizeOption">
-                        <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding Label}" Classes="row"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Pixels}" Classes="value" Opacity="0.75"/>
-                        </Grid>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-
-            <StackPanel IsVisible="{Binding IsMobile}">
-                <TextBlock Text="WORKING QUALITY" Classes="section-title"/>
-                <ListBox Classes="seg" SelectedIndex="{Binding WorkingQualityIndex}">
-                    <ListBoxItem Content="Fast"/>
-                    <ListBoxItem Content="Balanced"/>
-                    <ListBoxItem Content="Best"/>
-                </ListBox>
-                <TextBlock Text="Fast 2000 px · Balanced 3400 px · Best 4800 px. The preview is built from a downscaled copy of the photo."
-                           Classes="hint" Margin="0,6,0,0"/>
-            </StackPanel>
-
-            <TextBlock Text="SAVE TO" Classes="section-title"/>
-            <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
-                    BorderThickness="1" CornerRadius="8" Padding="12,0" MinHeight="40">
-                <Grid ColumnDefinitions="*,Auto">
-                    <TextBlock Text="{Binding SaveFolderDisplay}" Classes="value" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Column="1" Classes="link" Content="Change" VerticalAlignment="Center"
-                            IsVisible="{Binding CanChooseSaveFolder}"
-                            Command="{Binding ChangeSaveFolderCommand}"/>
-                </Grid>
-            </Border>
-            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,6,0,0" IsVisible="{Binding CanChooseSaveFolder}">
-                <TextBlock Text="Show in folder after saving" Classes="row"/>
-                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowInFolderAfterSave}"/>
-            </Grid>
-
+            <local:CardExportSection/>
             <!-- ABOUT -->
             <TextBlock Text="ABOUT" Classes="section-title"/>
             <TextBlock Text="{Binding AppVersionText}" Classes="hint"/>
@@ -534,7 +104,7 @@
         </ScrollViewer>
 
         <!-- Recipe editor: replaces the whole inspector while open (header / scrolling body / sticky footer) -->
-        <local:RecipeEditorView Grid.Row="0" Grid.RowSpan="2" IsVisible="{Binding IsRecipeEditorOpen}"/>
+        <local:RecipeEditorView Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsRecipeEditorOpen}"/>
     </Grid>
 
 </UserControl>

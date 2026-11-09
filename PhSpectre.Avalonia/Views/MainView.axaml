@@ -39,8 +39,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     <!-- Tablet: modes live in the top bar -->
                     <ListBox Grid.Column="1" Classes="seg touch" Width="420" VerticalAlignment="Center"
                              IsVisible="{Binding IsWide}" SelectedIndex="{Binding Settings.TopModeSelection}">
-                        <ListBoxItem Content="Card"/>
-                        <ListBoxItem Content="Recipe"/>
+                        <ListBoxItem Content="Edit"/>
                         <ListBoxItem Content="Collage"/>
                         <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
                     </ListBox>
@@ -91,10 +90,9 @@ to set the actual DataContext for runtime, set the DataContext property in code 
             <!-- Phone: modes under the top bar -->
             <ListBox Grid.Row="1" Classes="seg touch" Margin="16,12,16,4" IsVisible="{Binding IsPhone}"
                      SelectedIndex="{Binding Settings.TopModeSelection}">
-                <ListBoxItem Content="Card"/>
-                <ListBoxItem Content="Recipe"/>
-                <ListBoxItem Content="Collage"/>
-                <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
+                <ListBoxItem Content="Edit"/>
+                        <ListBoxItem Content="Collage"/>
+                        <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
             </ListBox>
 
             <!-- ═══════════ Body ═══════════ -->
@@ -164,7 +162,10 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Border>
 
                     <!-- Stage -->
-                    <Panel Grid.Row="1" Background="{DynamicResource StageBrush}" ClipToBounds="True" MinHeight="200">
+                    <views:EditCanvas Grid.Row="1" MinHeight="200" DataContext="{Binding Settings.Process}"
+                                      IsVisible="{Binding Settings.IsProcessMode}"/>
+                    <Panel Grid.Row="1" Background="{DynamicResource StageBrush}" ClipToBounds="True" MinHeight="200"
+                           IsVisible="{Binding Settings.ShowCardBody}">
 
                         <Panel Margin="16,16,16,64">
                             <Border HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -325,8 +326,9 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                     <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"/>
                                 </Button>
                             </Grid>
-                            <views:SettingsPanel Grid.Row="1" DataContext="{Binding Settings}" Margin="16,4,10,0"/>
-                            <Border Grid.Row="2" IsVisible="{Binding Settings.IsExportTab}" Padding="16,10,16,14"
+                            <views:EditInspector Grid.Row="1" DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
+                            <views:SettingsPanel Grid.Row="1" DataContext="{Binding Settings}" Margin="16,4,10,0" IsVisible="{Binding ShowLegacyInspector}"/>
+                            <Border Grid.Row="2" IsVisible="{Binding Settings.ShowLegacyExport}" Padding="16,10,16,14"
                                     BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
                                 <StackPanel Spacing="8">
                                     <Grid ColumnDefinitions="*,Auto">
@@ -346,7 +348,9 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                 <!-- Tablet: permanent inspector -->
                 <Border Grid.Column="1" Width="344" IsVisible="{Binding IsWide}" Background="{DynamicResource PanelBrush}"
                         BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
-                    <Grid RowDefinitions="*,Auto">
+                    <Panel>
+                    <views:EditInspector DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
+                    <Grid RowDefinitions="*,Auto" IsVisible="{Binding Settings.ShowLegacyInspector}">
                         <views:SettingsPanel Grid.Row="0" DataContext="{Binding Settings}" Margin="16,14,10,0"/>
                         <Border Grid.Row="1" IsVisible="{Binding Settings.IsExportTab}" Padding="16,12,16,16"
                                 BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
@@ -362,6 +366,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                             </StackPanel>
                         </Border>
                     </Grid>
+                    </Panel>
                 </Border>
             </Grid>
             <views:CameraModeView Grid.Row="2" DataContext="{Binding Settings}" IsVisible="{Binding IsCameraMode}"/>

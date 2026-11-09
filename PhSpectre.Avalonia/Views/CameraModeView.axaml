@@ -260,7 +260,7 @@
             <!-- ═════════════════ The recipe (middle) ═════════════════ -->
             <Grid x:Name="CenterCol" Grid.Column="1" Grid.ColumnSpan="{Binding CenterSpan}" RowDefinitions="*,Auto" Margin="32,28,32,16"
                   DataContext="{Binding Library}" x:DataType="vm:RecipeLibraryViewModel" IsVisible="{Binding ShowCenterColumn}">
-                <StackPanel Spacing="20" IsVisible="{Binding HasSelection}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelection}"><StackPanel Spacing="20" Margin="0,0,12,0">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                         <Border Width="64" Height="64" CornerRadius="8" ClipToBounds="True" Margin="0,0,16,0" VerticalAlignment="Top"
                                 Background="{DynamicResource SurfaceBrush}" IsVisible="{Binding SelectedIsPhoto}">
@@ -304,6 +304,14 @@
                         </StackPanel>
                     </Grid>
 
+                    <StackPanel Spacing="6" IsVisible="{Binding HasPreview}">
+                        <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource SurfaceBrush}" MaxHeight="400" HorizontalAlignment="Left">
+                            <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality" MaxHeight="400"/>
+                        </Border>
+                        <TextBlock Classes="hint" TextWrapping="Wrap"
+                                   Text="Approximate preview on a sample photo. The camera's real result will differ."/>
+                    </StackPanel>
+
                     <ItemsControl ItemsSource="{Binding Tiles}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
@@ -329,7 +337,7 @@
                             <TextBlock Text="{Binding MutedText}" Classes="hint" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"/>
                         </StackPanel>
                     </Border>
-                </StackPanel>
+                </StackPanel></ScrollViewer>
 
                 <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="8" IsVisible="{Binding NoSelection}">
                     <materialIcons:MaterialIcon Kind="FilmstripBoxMultiple" Width="40" Height="40" Foreground="{DynamicResource TextMutedBrush}"/>
@@ -583,6 +591,14 @@
                             </Panel>
                         </Button>
                     </Grid>
+                    <StackPanel Spacing="6" IsVisible="{Binding HasPreview}">
+                        <Border CornerRadius="10" ClipToBounds="True" Background="{DynamicResource SurfaceBrush}" MaxHeight="220" HorizontalAlignment="Left">
+                            <Image Source="{Binding PreviewImage}" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality" MaxHeight="220"/>
+                        </Border>
+                        <TextBlock Classes="hint" TextWrapping="Wrap"
+                                   Text="Approximate preview on a sample photo. The camera's real result will differ."/>
+                    </StackPanel>
+
                     <ItemsControl ItemsSource="{Binding Tiles}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>

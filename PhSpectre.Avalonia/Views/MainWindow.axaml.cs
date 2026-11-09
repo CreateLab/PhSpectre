@@ -21,6 +21,21 @@ public partial class MainWindow : Window
         // buttons (right on Windows/Linux, left traffic lights on macOS) and let the empty bar drag the window.
         TopBar.Padding = OperatingSystem.IsMacOS() ? new Thickness(84, 10, 16, 10) : new Thickness(16, 10, 150, 10);
         WireFilmstrip();
+        EditExportButton.Click += async (_, _) =>
+        {
+            if (DataContext is not MainWindowViewModel m) return;
+            // Look export in Edit; the card layout saves the card through the same button.
+            if (m.Settings.IsProcessMode) await EditActions.ExportAsync(this, m.Settings.Process);
+            else if (m.SavePngAsync2Command.CanExecute(null)) m.SavePngAsync2Command.Execute(null);
+        };
+        // Dev hook: PHSPECTRE_OPEN=<folder> loads that folder at startup (used for automated UI checks).
+        Opened += (_, _) =>
+        {
+            var dev = Environment.GetEnvironmentVariable("PHSPECTRE_OPEN");
+            if (!string.IsNullOrEmpty(dev) && DataContext is MainWindowViewModel m) m.LoadFolder(dev);
+        };
+        KeyDown += OnEditKeyDown;
+        KeyUp += OnEditKeyUp;
 
         TopBar.PointerPressed += (_, e) =>
         {
@@ -31,6 +46,25 @@ public partial class MainWindow : Window
         };
     }
 
+
+    // ── Edit shortcuts: Ctrl+Z / Ctrl+Y, Ctrl+S exports, 1–3 switch tabs, hold \ to see the original ──
+    private void OnEditKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is not MainWindowViewModel m || !m.Settings.IsProcessMode || e.Source is TextBox) return;
+        var p = m.Settings.Process;
+        if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Z) { if (p.UndoCommand.CanExecute(null)) p.UndoCommand.Execute(null); e.Handled = true; }
+        else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.Y) { if (p.RedoCommand.CanExecute(null)) p.RedoCommand.Execute(null); e.Handled = true; }
+        else if (e.KeyModifiers == KeyModifiers.Control && e.Key == Key.S) { _ = EditActions.ExportAsync(this, p); e.Handled = true; }
+        else if (e.KeyModifiers == KeyModifiers.None && (e.Key == Key.OemBackslash || e.Key == Key.OemPipe)) { p.ShowOriginal = true; e.Handled = true; }
+        else if (e.KeyModifiers == KeyModifiers.None && e.Key is Key.D1 or Key.D2 or Key.D3)
+        { m.Settings.EditTab = e.Key - Key.D1; e.Handled = true; }
+    }
+
+    private void OnEditKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel m && (e.Key == Key.OemBackslash || e.Key == Key.OemPipe))
+            m.Settings.Process.ShowOriginal = false;
+    }
     private void WireViewModel()
     {
         if (DataContext is not MainWindowViewModel vm) return;
@@ -38,11 +72,6 @@ public partial class MainWindow : Window
         vm.PickFolderAsync      = () => FileDialogService.PickFolderAsync(topLevel);
         vm.SavePngAsync         = (name, dir) => FileDialogService.SavePngAsync(topLevel, name, dir);
         vm.PickBatchFolderAsync = defaultDir => FileDialogService.PickExportFolderAsync(topLevel, defaultDir);
-        vm.ShowBatchErrorsAsync = errors =>
-        {
-            var window = new BatchErrorsWindow { DataContext = errors };
-            return window.ShowDialog(this);
-        };
         vm.OpenUrlAsync         = url => topLevel.Launcher.LaunchUriAsync(new Uri(url));
         vm.Settings.OpenUrlAsync = url => topLevel.Launcher.LaunchUriAsync(new Uri(url));
         vm.Settings.ChooseSaveFolderAsync = () => FileDialogService.PickExportFolderAsync(topLevel,

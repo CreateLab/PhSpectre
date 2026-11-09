@@ -104,7 +104,7 @@ public partial class MainViewModel : ViewModelBase
     // Single-slot memoization, mirrors MainWindowViewModel — reuse the last successful
     // render instead of recomputing (skips k-means again) when the (photo/tray, settings —
     // ExportMode included) combination hasn't actually changed since last time.
-    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe)? _lastSingleRenderKey;
+    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe, string Look)? _lastSingleRenderKey;
     private string?                                        _cachedSingleRenderOutput;
     private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
     private string?                                          _cachedCollageRenderOutput;
@@ -148,12 +148,13 @@ public partial class MainViewModel : ViewModelBase
         Settings.PropertyChanged += OnSettingsPropertyChanged;
         Settings.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(SettingsViewModel.IsCameraMode)) OnPropertyChanged(nameof(ShowTabletExport));
+            if (e.PropertyName == nameof(SettingsViewModel.ShowCardBody)) OnPropertyChanged(nameof(ShowTabletExport));
         };
         Settings.PhotosProvider = () => RecentPhotos;
         Settings.CurrentPhotoProvider = () => RecentPhotos.FirstOrDefault(r => r.IsCurrent);
         Settings.SelectPhotoAction = f => SelectRecentPhotoCommand.Execute(f);
         Settings.OpenPhotosCommand = PickPhotoCommand;
+        Settings.CardSaveCommand = SavePngCommand;
 
         // Mirrors OnSelectedFileChanged/IngestNewPhotoAsync's "picking new content re-renders
         // immediately" rule: editing the tray (add/remove/reorder) is a content change, not a
@@ -176,7 +177,7 @@ public partial class MainViewModel : ViewModelBase
     // IsWide is set by MainView from the window width (≥ 840 dp → tablet layout with the
     // inspector as a right-hand column; below that the inspector is a bottom sheet).
     [ObservableProperty] private bool _isWide;
-    public bool ShowTabletExport => IsWide && !Settings.IsCameraMode;
+    public bool ShowTabletExport => IsWide && Settings.ShowCardBody;
     [ObservableProperty] private bool _isSheetOpen;
 
     public bool IsPhone   => !IsWide;
@@ -331,6 +332,8 @@ public partial class MainViewModel : ViewModelBase
 
         // Single photo: live preview on the working copy (Settings.WorkingQuality). Debounced
         // so a burst of edits produces one render; the previous result stays visible meanwhile.
+        // Outside the card layout (Edit, Camera) there is nothing on screen to refresh.
+        if (!Settings.ShowCardBody) return;
         ScheduleLiveRender();
     }
 
@@ -340,7 +343,7 @@ public partial class MainViewModel : ViewModelBase
     {
         var recipe = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
         return PaletteBitmap != null && _cachedSingleRenderOutput != null
-            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe));
+            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe, Settings.CardLookKey));
     }
     private CancellationTokenSource? _liveDebounceCts;
 
@@ -915,6 +918,11 @@ public partial class MainViewModel : ViewModelBase
         await IngestFromStablePathAsync(entry.FullPath, entry.FileName, addToRecent: false);
     }
 
+    private static bool SameLength(string path, long len)
+    {
+        try { return len > 0 && new FileInfo(path).Length == len; } catch { return false; }
+    }
+
     private async Task IngestFromStablePathAsync(string path, string fileName, bool addToRecent)
     {
         _renderCts?.Cancel();
@@ -927,6 +935,14 @@ public partial class MainViewModel : ViewModelBase
 
         if (addToRecent)
         {
+            // Coming back from Collage re-ingests the same photo under a new temp copy: replace
+            // its old strip entry (same name and size) instead of adding a duplicate.
+            long len = 0;
+            try { len = new FileInfo(path).Length; } catch { }
+            foreach (var dup in RecentPhotos
+                         .Where(r => r.FileName == fileName && r.FullPath != path && SameLength(r.FullPath, len)).ToList())
+                RecentPhotos.Remove(dup);
+
             var entry = new FileEntry(fileName, path);
             entry.IsCurrent = true;
             RecentPhotos.Insert(0, entry);
@@ -942,9 +958,12 @@ public partial class MainViewModel : ViewModelBase
         }
 
         var metaSw = Stopwatch.StartNew();
-        Settings.LoadMetadataFields(
-            PaletteImageRenderer.ReadMetadata(_currentSourcePath),
-            RecipeReader.Read(_currentSourcePath));
+        var metaPath = _currentSourcePath;
+        var (metaRead, recipeRead) = await Task.Run(() => (PaletteImageRenderer.ReadMetadata(metaPath), RecipeReader.Read(metaPath)));
+        if (_currentSourcePath != metaPath) return; // another photo was picked meanwhile
+        Settings.LoadMetadataFields(metaRead, recipeRead);
+        // Only now: the photo is in the list and marked current, so Edit can find and load it.
+        Settings.NotifyPhotoChanged();
         // Temporary diagnostics for the "why is even InfoOnly slow on mobile" investigation —
         // stage timings land in AppLogger's app.log so a slow device's actual bottleneck can be
         // read back after the fact instead of guessed at from a desktop benchmark.
@@ -953,7 +972,10 @@ public partial class MainViewModel : ViewModelBase
         Settings.SelectedPhotoCount = 1;
         Settings.ExportMode = ExportModeRules.ClosestValidMode(Settings.ExportMode, 1);
 
-        await RenderCurrentAsync();
+        // The card is only drawn in the card layout; Edit builds its own preview. Entering the card layout
+        // raises ShowCardBody, which renders it then.
+        if (Settings.ShowCardBody) await RenderCurrentAsync();
+        else PaletteBitmap = null;
     }
 
     private static async Task LoadRecentThumbnailAsync(FileEntry entry)
@@ -1042,12 +1064,14 @@ public partial class MainViewModel : ViewModelBase
             var ps = OriginalBitmap.PixelSize;
             FileInfoText = $"{_lastFileName}  ·  {ps.Width}×{ps.Height}";
 
+            var lookKey = Settings.CardLookKey;
+            Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
             // Recipe mode's composite depends on the current recipe too — see the matching
             // comment in MainWindowViewModel.GeneratePaletteAsync.
             var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
-            var cacheKey = (sourcePath, exportSettings, recipeForRender);
+            var cacheKey = (sourcePath, exportSettings, recipeForRender, lookKey);
 
             if (Equals(_lastSingleRenderKey, cacheKey) && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
             {

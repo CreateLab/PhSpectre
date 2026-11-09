@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — Edit (phone)</title><link rel="stylesheet" href="mock.css">
+<style>body{background:var(--surface)} .phone .top{padding:0 var(--s3)} .phone .tile{min-height:48px} .phone .grid3{grid-template-columns:repeat(4,1fr)}
+.phone .chips{flex-wrap:nowrap}.phone .chip{height:36px}.phone .pane{padding:var(--s3);gap:var(--s3)}</style></head>
+<body>
+<div class="phone">
+  <header class="top">
+    <div class="logo"><i></i>PhSpectre</div><span class="spacer"></span>
+    <button class="iconbtn" aria-label="Undo" style="width:44px;height:44px"><span data-i="undo"></span></button>
+    <button class="btn primary" style="height:40px">Export</button>
+  </header>
+  <main class="stage"><div class="photo f-warm" role="img" aria-label="Photo"></div>
+    <div class="canvasbar"><button style="min-height:40px">Before</button><button style="min-height:40px">Grid</button></div></main>
+
+  <div class="sheet" aria-label="Look panel">
+    <div><div class="grab"></div></div>
+    <div class="pane">
+      <div class="row"><h3>Amount</h3><span class="mono">80%</span></div>
+      <input type="range" min="0" max="100" value="80" aria-label="Amount" style="height:44px">
+      <div class="chips"><button class="chip" aria-pressed="true">All</button><button class="chip" aria-pressed="false">Favorites</button><button class="chip" aria-pressed="false">Presets</button><button class="chip" aria-pressed="false">LUTs</button></div>
+      <div class="grid3">
+        <button class="tile" aria-selected="true"><div class="thumb photo f-warm"></div><span>Moody</span></button>
+        <button class="tile" aria-selected="false"><div class="thumb photo f-teal"></div><span>Teal</span></button>
+        <button class="tile" aria-selected="false"><div class="thumb photo f-mono"></div><span>Mono</span></button>
+        <button class="tile" aria-selected="false"><div class="thumb photo f-fade"></div><span>Faded</span></button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bar" aria-label="Tools" style="grid-template-columns:repeat(5,1fr)">
+    <button aria-selected="true"><span data-i="look"></span>Look</button>
+    <button aria-selected="false"><span data-i="frame"></span>Frame</button>
+    <button aria-selected="false"><span data-i="export"></span>Export</button>
+    <button aria-selected="false"><span data-i="folder"></span>Photos</button>
+    <button aria-selected="false"><span data-i="more"></span>More</button>
+  </nav>
+</div>
+<p class="hint" style="text-align:center;max-width:390px;margin:0 auto">Phone: the bottom bar holds the three steps of Edit (Look · Frame · Export), Photos and More. Modes (Edit · Collage · Camera), Appearance, Updates and About live under “More”. Targets ≥ 44–48 px.</p>
+<button class="btn toggle-theme">Theme</button>
+<script src="mock.js"></script>
+</body></html>

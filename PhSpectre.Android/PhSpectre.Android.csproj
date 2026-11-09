@@ -5,8 +5,8 @@
         <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
         <Nullable>enable</Nullable>
         <ApplicationId>com.CompanyName.PhSpectre</ApplicationId>
-        <ApplicationVersion>11</ApplicationVersion>
-        <ApplicationDisplayVersion>1.1.6</ApplicationDisplayVersion>
+        <ApplicationVersion>12</ApplicationVersion>
+        <ApplicationDisplayVersion>2.0.0</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
         <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
         <!-- Local dev machine only — CI runners auto-detect SDK/JDK via ANDROID_HOME/JAVA_HOME,

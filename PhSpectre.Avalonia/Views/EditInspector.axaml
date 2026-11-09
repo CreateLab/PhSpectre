@@ -1,0 +1,335 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
+             xmlns:rend="using:PhSpectre.Rendering"
+             xmlns:local="using:PhSpectre.Avalonia.Views"
+             xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+             x:Class="PhSpectre.Avalonia.Views.EditInspector"
+             x:DataType="vm:ProcessViewModel">
+
+    <UserControl.Styles>
+        <Style Selector="Border.tile-img">
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+        <Style Selector="Border.tile-img.active">
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- Edit inspector (DataContext = Settings.Process): Look · Frame · Export, one topic at a time. -->
+    <Border Background="{DynamicResource PanelBrush}">
+        <Grid RowDefinitions="Auto,*">
+
+            <!-- Tabs -->
+            <ListBox Grid.Row="0" Classes="seg" Margin="16,14,16,0" SelectedIndex="{Binding Settings.EditTab}">
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                        <materialIcons:MaterialIcon Kind="PaletteOutline" Width="16" Height="16"/>
+                        <TextBlock Text="Look"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                        <materialIcons:MaterialIcon Kind="ImageFrame" Width="16" Height="16"/>
+                        <TextBlock Text="Frame"/>
+                    </StackPanel>
+                </ListBoxItem>
+                <ListBoxItem>
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                        <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
+                        <TextBlock Text="Export"/>
+                    </StackPanel>
+                </ListBoxItem>
+            </ListBox>
+
+            <!-- ═══════════ Look ═══════════ -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsLook}">
+                <StackPanel Margin="16,14,16,16" Spacing="12">
+
+                    <!-- Amount -->
+                    <StackPanel Spacing="4" IsVisible="{Binding HasLayers}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Amount" Classes="section-title first"/>
+                            <TextBlock Grid.Column="1" Text="{Binding AmountText}" Classes="mono-data"/>
+                        </Grid>
+                        <Slider Classes="v2" Minimum="0" Maximum="100" Value="{Binding Amount}"
+                                AutomationProperties.Name="Look amount"/>
+                    </StackPanel>
+
+                    <!-- Layers -->
+                    <Border IsVisible="{Binding HasPreset}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <ToggleButton Classes="switch" IsChecked="{Binding PresetEnabled}"
+                                          AutomationProperties.Name="Preset on or off"/>
+                            <StackPanel Grid.Column="1" Margin="10,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="Preset" Classes="hint" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding PresetName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Classes="icon-toolbar" Width="28" Height="28" Command="{Binding ClearPresetCommand}"
+                                    ToolTip.Tip="Remove preset" AutomationProperties.Name="Remove preset">
+                                <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <Border IsVisible="{Binding HasLut}" Background="{DynamicResource SurfaceBrush}"
+                            BorderBrush="{DynamicResource FieldBorderBrush}" BorderThickness="1" CornerRadius="8" Padding="10,6">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <ToggleButton Classes="switch" IsChecked="{Binding LutEnabled}"
+                                          AutomationProperties.Name="LUT on or off"/>
+                            <StackPanel Grid.Column="1" Margin="10,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <TextBlock Text="LUT" Classes="hint" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding LutName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Classes="icon-toolbar" Width="28" Height="28" Command="{Binding ClearLutCommand}"
+                                    ToolTip.Tip="Remove LUT" AutomationProperties.Name="Remove LUT">
+                                <materialIcons:MaterialIcon Kind="Close" Width="14" Height="14"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <TextBlock Text="{Binding SkippedText}" IsVisible="{Binding HasSkipped}"
+                               Foreground="{DynamicResource WarningBrush}" FontSize="12" TextWrapping="Wrap"/>
+                    <TextBlock Text="Applying a Look turns off Recipe card." Classes="hint"
+                               IsVisible="{Binding Settings.IsRecipeCardType}"/>
+
+                    <!-- Search, filter, import -->
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox Text="{Binding SearchText}" Watermark="Search looks" AutomationProperties.Name="Search looks"/>
+                        <Button Grid.Column="1" x:Name="ImportButton" Classes="secondary" Height="36" Padding="12,0"
+                                ToolTip.Tip="Import .cube, .xmp or a .zip of them" AutomationProperties.Name="Import">
+                            <StackPanel Orientation="Horizontal" Spacing="6">
+                                <materialIcons:MaterialIcon Kind="Plus" Width="16" Height="16" VerticalAlignment="Center"/>
+                                <TextBlock Text="Import" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                    <ListBox Classes="seg" SelectedIndex="{Binding LibraryTab}">
+                        <ListBoxItem Content="All"/>
+                        <ListBoxItem Content="Fav"/>
+                        <ListBoxItem Content="Presets"/>
+                        <ListBoxItem Content="LUTs"/>
+                    </ListBox>
+
+                    <Border IsVisible="{Binding HasImportStatus}" Background="{DynamicResource ControlBrush}"
+                            CornerRadius="8" Padding="10,8">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="{Binding ImportStatus}" TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                            <Button Grid.Column="1" Classes="icon-toolbar" Width="24" Height="24" VerticalAlignment="Top"
+                                    Command="{Binding DismissImportStatusCommand}" AutomationProperties.Name="Dismiss">
+                                <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+
+                    <!-- Empty library -->
+                    <TextBlock Text="{Binding LibraryEmptyText}" Classes="hint" TextWrapping="Wrap" Margin="0,8"
+                               IsVisible="{Binding ShowLibraryEmpty}"/>
+
+                    <!-- Look tiles: the user's own photo with each Look applied -->
+                    <ItemsControl ItemsSource="{Binding Groups}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:GradeGroup">
+                          <StackPanel Spacing="8" Margin="0,0,0,6">
+                            <TextBlock Text="{Binding Name}" Classes="section-title"/>
+                    <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:GradeItemViewModel">
+                                <Button Width="96" Margin="0,0,12,10" Padding="0"
+                                        HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0"
+                                        Command="{Binding Owner.UseItemCommand}" CommandParameter="{Binding}"
+                                        AutomationProperties.Name="{Binding Name}">
+                                    <Button.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="Favorite" Command="{Binding Owner.ToggleFavoriteCommand}" CommandParameter="{Binding}"/>
+                                            <MenuItem Header="Delete from library" IsVisible="{Binding CanDelete}" Command="{Binding Owner.DeleteItemCommand}" CommandParameter="{Binding}"/>
+                                        </ContextMenu>
+                                    </Button.ContextMenu>
+                                    <StackPanel Spacing="3">
+                                        <Border Classes="tile-img" Classes.active="{Binding IsActive}"
+                                                Width="96" Height="72" CornerRadius="10" ClipToBounds="True"
+                                                Background="{DynamicResource SurfaceBrush}" BorderThickness="2">
+                                            <Panel>
+                                                <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                <TextBlock Text="…" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           IsVisible="{Binding !HasThumb}" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                <materialIcons:MaterialIcon Kind="Star" Width="14" Height="14" Margin="5"
+                                                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                                            Foreground="{DynamicResource AccentBrush}"
+                                                                            IsVisible="{Binding IsFavorite}"/>
+                                            </Panel>
+                                        </Border>
+                                        <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="Medium"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                        <TextBlock Text="{Binding Badge}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                          </StackPanel>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════ Frame (None · Border here; Card · Recipe card open the card layout) ═══════════ -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsFrame}">
+                <StackPanel Margin="16,14,16,16" Spacing="12">
+                    <TextBlock Text="Frame type" Classes="section-title first"/>
+                    <ListBox Classes="seg" SelectedIndex="{Binding Settings.FrameTypeIndex}">
+                        <ListBoxItem Content="None"/>
+                        <ListBoxItem Content="Border"/>
+                        <ListBoxItem Content="Card"/>
+                        <ListBoxItem Content="Recipe" IsEnabled="{Binding Settings.RecipeCardAvailable}"/>
+                    </ListBox>
+                    <TextBlock Text="{Binding Settings.RecipeCardReason}" Classes="hint" TextWrapping="Wrap"
+                               IsVisible="{Binding Settings.ShowRecipeCardReason}"/>
+                    <TextBlock Text="{Binding Settings.FrameNotice}" Foreground="{DynamicResource WarningBrush}"
+                               FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Settings.HasFrameNotice}"/>
+
+                    <TextBlock Text="Card and Recipe card add a palette, camera info or the film recipe under the photo."
+                               Classes="hint" TextWrapping="Wrap" IsVisible="{Binding !Settings.FrameIsBorder}"/>
+
+                    <!-- Border -->
+                    <StackPanel Spacing="10" IsVisible="{Binding Settings.FrameIsBorder}">
+                        <ComboBox ItemsSource="{Binding Frames}" SelectedItem="{Binding SelectedFrame}"
+                                  PlaceholderText="Custom" HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="Border style">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate x:DataType="rend:PhotoFrame">
+                                    <TextBlock Text="{Binding Name}"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <Expander Header="Customize" IsExpanded="False" HorizontalAlignment="Stretch">
+                            <StackPanel Spacing="10" Margin="0,8,0,0">
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Border" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FrameThickness}"
+                                            AutomationProperties.Name="Border thickness"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FrameThicknessText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*,44">
+                                    <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="40" Value="{Binding FrameBottom}"
+                                            AutomationProperties.Name="Extra space below the photo"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FrameBottomText}" Classes="mono-data"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*">
+                                    <TextBlock Text="Ratio" Classes="hint" VerticalAlignment="Center"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AspectLabels}"
+                                              SelectedIndex="{Binding FrameAspectIndex}" HorizontalAlignment="Stretch"
+                                              AutomationProperties.Name="Canvas ratio"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="72,*">
+                                    <TextBlock Text="Color" Classes="hint" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Spacing="6">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <Button Width="28" Height="28" Background="#FFFFFF" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#FFFFFF"
+                                                    AutomationProperties.Name="White"/>
+                                            <Button Width="28" Height="28" Background="#F4F1EA" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#F4F1EA"
+                                                    AutomationProperties.Name="Cream"/>
+                                            <Button Width="28" Height="28" Background="#808080" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#808080"
+                                                    AutomationProperties.Name="Grey"/>
+                                            <Button Width="28" Height="28" Background="#000000" BorderBrush="{DynamicResource FieldBorderBrush}"
+                                                    BorderThickness="1" Command="{Binding SetFrameColorCommand}" CommandParameter="#000000"
+                                                    AutomationProperties.Name="Black"/>
+                                        </StackPanel>
+                                        <TextBox Text="{Binding FrameColorHex}" Watermark="#RRGGBB" MaxLength="7"
+                                                 AutomationProperties.Name="Border color hex"/>
+                                        <TextBlock Text="Use #RRGGBB" IsVisible="{Binding FrameColorInvalid}"
+                                                   Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                                    <TextBox Text="{Binding FrameName}" Watermark="Save as…"
+                                             AutomationProperties.Name="Name for the custom border"/>
+                                    <Button Grid.Column="1" Classes="secondary" Height="32" Padding="10,0" Content="Save"
+                                            Command="{Binding SaveFrameCommand}"/>
+                                    <Button Grid.Column="2" Classes="icon-toolbar" Width="32" Height="32"
+                                            Command="{Binding DeleteFrameCommand}" IsEnabled="{Binding CanDeleteFrame}"
+                                            ToolTip.Tip="Delete saved border" AutomationProperties.Name="Delete saved border">
+                                        <materialIcons:MaterialIcon Kind="TrashCanOutline" Width="14" Height="14"/>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Expander>
+                    </StackPanel>
+
+                    <!-- Card / Recipe card: the same options as before, tucked into two sections -->
+                    <StackPanel Spacing="10" DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel"
+                                IsVisible="{Binding FrameIsCardType}">
+                        <Expander Header="Style" IsExpanded="False" HorizontalAlignment="Stretch">
+                            <local:CardStyleSection Margin="0,8,0,0"/>
+                        </Expander>
+                        <Expander Header="Content" IsExpanded="False" HorizontalAlignment="Stretch">
+                            <local:CardContentSection Margin="0,8,0,0"/>
+                        </Expander>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- ═══════════ Export ═══════════ -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsExport}">
+                <StackPanel Margin="16,14,16,16" Spacing="14">
+                    <StackPanel Spacing="14" IsVisible="{Binding !Settings.FrameIsCardType}">
+                    <TextBlock Text="Format" Classes="section-title first"/>
+                    <ListBox Classes="seg" SelectedIndex="{Binding ExportFormatIndex}">
+                        <ListBoxItem Content="JPEG"/>
+                        <ListBoxItem Content="PNG"/>
+                    </ListBox>
+                    <StackPanel Spacing="4" IsVisible="{Binding ExportIsJpeg}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Quality" Classes="section-title first"/>
+                            <TextBlock Grid.Column="1" Text="{Binding ExportQualityText}" Classes="mono-data"/>
+                        </Grid>
+                        <Slider Classes="v2" Minimum="50" Maximum="100" Value="{Binding ExportQuality}"
+                                AutomationProperties.Name="JPEG quality"/>
+                    </StackPanel>
+                    <TextBlock Text="Full resolution of the original. The original file is never changed." Classes="hint"
+                               TextWrapping="Wrap"/>
+                    <TextBlock Text="{Binding ExportStatus}" IsVisible="{Binding HasExportStatus}" Classes="hint" TextWrapping="Wrap"/>
+                    <Button x:Name="ExportButton" Classes="primary" Height="44" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" IsEnabled="{Binding CanExport}"
+                            Content="{Binding ExportButtonText}"/>
+                    <Button x:Name="ExportAllButton" Classes="secondary" Height="40" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" IsEnabled="{Binding CanExportAll}"
+                            IsVisible="{Binding CanExportAll}" Content="{Binding ExportAllText}"/>
+                    </StackPanel>
+
+                    <!-- Card export: same layout, the card's own format and size options -->
+                    <StackPanel Spacing="14" DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel" IsVisible="{Binding FrameIsCardType}">
+                        <local:CardExportSection/>
+                        <Button Classes="primary" Height="44" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                Command="{Binding CardSaveCommand}" Content="{Binding SaveButtonLabel}"/>
+                        <Button Classes="secondary" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                IsVisible="{Binding CardCanSaveAll}" Command="{Binding CardSaveAllCommand}" Content="{Binding CardSaveAllText}"/>
+                    </StackPanel>
+
+                    <!-- Write recipes into a Fujifilm camera over USB (desktop and Android) -->
+                    <Button Classes="secondary" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                            IsVisible="{Binding Settings.CameraSupported}" Command="{Binding Settings.OpenCameraCommand}"
+                            AutomationProperties.Name="Connect camera">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <materialIcons:MaterialIcon Kind="CameraOutline" Width="16" Height="16" VerticalAlignment="Center"/>
+                            <TextBlock Text="Write recipes to camera…" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </ScrollViewer>
+            <local:RecipeEditorView Grid.RowSpan="2" DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel"
+                                    IsVisible="{Binding IsRecipeEditorOpen}"/>
+        </Grid>
+    </Border>
+</UserControl>

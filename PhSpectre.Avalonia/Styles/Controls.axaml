@@ -400,4 +400,35 @@
         <Setter Property="Opacity" Value="0.8"/>
     </Style>
 
+
+    <!-- Accordion (Expander): a quiet header with a hairline under it, no filled boxes; the content sits on the panel. -->
+    <Style Selector="Expander">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Style.Resources>
+            <SolidColorBrush x:Key="ExpanderHeaderBackground" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderHeaderBackgroundPointerOver" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderHeaderBackgroundPressed" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderHeaderBackgroundDisabled" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderContentBackground" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderHeaderBorderBrush" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPointerOver" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderHeaderBorderBrushPressed" Color="Transparent"/>
+            <SolidColorBrush x:Key="ExpanderContentBorderBrush" Color="Transparent"/>
+        </Style.Resources>
+    </Style>
+    <Style Selector="Expander /template/ ToggleButton#ExpanderHeader">
+        <Setter Property="Padding" Value="0,10"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
+        <Setter Property="CornerRadius" Value="0"/>
+    </Style>
+    <Style Selector="Expander /template/ Border#ExpanderContent">
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
 </Styles>

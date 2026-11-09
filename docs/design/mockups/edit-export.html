@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — Edit · Export</title><link rel="stylesheet" href="mock.css">
+<style>.opt{display:flex;justify-content:space-between;padding:var(--s3);border:1px solid var(--border-strong);border-radius:var(--r-sm);background:transparent;width:100%;text-align:left}
+.opt[aria-selected="true"]{border-color:var(--accent);background:var(--accent-soft)} .grp{display:grid;gap:var(--s2)}</style></head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="logo"><i></i>PhSpectre</div>
+    <div class="seg" role="tablist"><button role="tab" aria-selected="true">Edit</button><button role="tab" aria-selected="false">Collage</button><button role="tab" aria-selected="false">Camera</button></div>
+    <button class="iconbtn" aria-label="Undo"><span data-i="undo"></span></button><button class="iconbtn" aria-label="Redo"><span data-i="redo"></span></button>
+    <button class="iconbtn" aria-label="More"><span data-i="more"></span></button><button class="btn primary">Export</button>
+  </header>
+  <div class="body">
+    <main class="stage"><div class="photo f-warm" role="img" aria-label="Photo"></div><span class="chip-name">DSCF0412_moody.jpg · 6240×4160 · ~4.2 MB</span>
+      <div class="toast"><span style="color:var(--success)">✔</span><span>Saved · 4.2 MB</span><button class="btn" style="height:28px">Show</button></div></main>
+    <aside class="insp">
+      <nav class="tabs" role="tablist">
+        <button role="tab" aria-selected="false"><span data-i="look"></span>Look</button>
+        <button role="tab" aria-selected="false"><span data-i="frame"></span>Frame</button>
+        <button role="tab" aria-selected="true"><span data-i="export"></span>Export</button>
+      </nav>
+      <div class="pane">
+        <div class="grp"><h3>Format</h3><div class="seg" style="margin:0"><button aria-selected="true" style="flex:1">JPEG</button><button aria-selected="false" style="flex:1">PNG</button></div></div>
+        <div class="grp"><div class="row"><h3>Quality</h3><span class="mono">95</span></div><input type="range" min="60" max="100" value="95" aria-label="Quality"></div>
+        <div class="grp"><h3>Size</h3>
+          <button class="opt" aria-selected="true"><span>Original</span><span class="mono">6240 × 4160</span></button>
+          <button class="opt" aria-selected="false"><span>Instagram</span><span class="mono">1080 × 1350</span></button>
+          <button class="opt" aria-selected="false"><span>Web</span><span class="mono">2048 px</span></button></div>
+        <div class="grp"><h3>Save to</h3><div class="row"><span class="mono" style="overflow:hidden;text-overflow:ellipsis">C:\Users\you\Pictures\PhSpectre</span><button class="btn" style="height:28px">Change</button></div>
+          <div class="row"><span>Show in folder after saving</span><input class="switch" type="checkbox" checked aria-label="Show in folder"></div></div>
+        <details><summary>Preview quality (More)</summary><p class="hint">Fast · Balanced · Best — only for the on-screen preview.</p></details>
+      </div>
+      <div class="foot"><button class="btn primary block">Export JPEG</button><button class="btn block">Export all 12 photos…</button></div>
+    </aside>
+  </div>
+  <footer class="film"><button class="open"><span data-i="folder"></span> Open</button><div class="f photo" aria-selected="true"></div><div class="f photo f-cool"></div><div class="f photo f-pop"></div></footer>
+</div>
+<button class="btn toggle-theme">Theme</button><script src="mock.js"></script></body></html>

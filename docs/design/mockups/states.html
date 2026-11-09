@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PhSpectre — states</title><link rel="stylesheet" href="mock.css">
+<style>
+.wrap{max-width:1100px;margin:0 auto;padding:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.cell{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--panel)}
+.cell h3{padding:var(--s3) var(--s4);border-bottom:1px solid var(--border)}
+.demo{min-height:220px;display:grid;place-items:center;text-align:center;padding:var(--s4);gap:var(--s3)}
+.demo.canvas{background:var(--canvas);color:#e6e6e8}
+.demo .big{font-size:var(--f-display);font-weight:600}
+</style></head>
+<body>
+<div class="wrap">
+  <div class="cell"><h3>Grade · no photo</h3><div class="demo canvas"><div><div class="big">Drop a photo here</div><p style="color:#a0a0a8;margin:6px 0 12px">or open a folder of photos</p><button class="btn primary">Open</button></div></div></div>
+  <div class="cell"><h3>Looks · empty</h3><div class="demo"><div><div class="big" style="font-size:var(--f-title)">No looks yet</div><p class="hint">Import Lightroom presets (.xmp) or LUTs (.cube).</p><button class="btn">Import</button></div></div></div>
+  <div class="cell"><h3>Looks · loading</h3><div class="demo"><div class="grid3" style="width:100%"><div class="tile"><div class="thumb skel"></div></div><div class="tile"><div class="thumb skel"></div></div><div class="tile"><div class="thumb skel"></div></div></div></div></div>
+  <div class="cell"><h3>Look · error tile</h3><div class="demo"><div class="grid3" style="width:100%"><div class="tile"><div class="thumb photo f-warm"></div><span>Moody</span></div><div class="tile"><div class="thumb" style="display:grid;place-items:center;background:var(--surface);color:var(--error)">⚠</div><span class="err">Can't load</span></div></div></div></div>
+  <div class="cell"><h3>Import result (toast)</h3><div class="demo"><div class="toast" style="position:static;transform:none"><span class="warn">⚠</span><span>Imported 3 · 2 failed</span><button class="btn" style="height:28px">Details</button></div></div></div>
+  <div class="cell"><h3>Export · saving / done / error</h3><div class="demo"><div style="display:grid;gap:8px;width:100%"><button class="btn primary block">Saving… ◌</button><div class="toast" style="position:static;transform:none"><span style="color:var(--success)">✔</span><span>Saved · 4.2 MB</span><button class="btn" style="height:28px">Show</button></div><div class="toast" style="position:static;transform:none"><span class="err">✖</span><span>Couldn't save: disk full</span><button class="btn" style="height:28px">Retry</button></div></div></div></div>
+</div>
+<button class="btn toggle-theme">Theme</button>
+<script src="mock.js"></script>
+</body></html>
