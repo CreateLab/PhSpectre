@@ -806,7 +806,9 @@ public partial class SettingsViewModel : ViewModelBase
     {
         if (index == 2)
         {
-            if (CameraExperimental && CameraSupported) IsCameraMode = true;
+            if (!CameraSupported) return;
+            if (!CameraExperimental) Camera.OpenSetup();
+            else IsCameraMode = true;
             return;
         }
         IsCameraMode = false;

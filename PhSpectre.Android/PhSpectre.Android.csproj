@@ -5,7 +5,7 @@
         <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
         <Nullable>enable</Nullable>
         <ApplicationId>com.CompanyName.PhSpectre</ApplicationId>
-        <ApplicationVersion>8</ApplicationVersion>
+        <ApplicationVersion>12</ApplicationVersion>
         <ApplicationDisplayVersion>2.0.0</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
         <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>

@@ -16,7 +16,10 @@ public sealed class LibUsbTransport : ICameraTransport
     private const int StillImageClass = 6;
     private const int TransferTimeoutMs = 15_000;
 
-    private readonly UsbContext _context;
+    // One libusb context for the whole process: on macOS, initialising a second context right after the first one
+    // is torn down fails with "Other error" (every other attempt), which broke the camera polling.
+    private static readonly Lazy<UsbContext> SharedContext = new(() => new UsbContext());
+
     private readonly IUsbDevice _device;
     private readonly UsbEndpointReader _reader;
     private readonly UsbEndpointWriter _writer;
@@ -25,10 +28,9 @@ public sealed class LibUsbTransport : ICameraTransport
 
     public string Description { get; }
 
-    private LibUsbTransport(UsbContext context, IUsbDevice device, int interfaceId,
+    private LibUsbTransport(IUsbDevice device, int interfaceId,
         UsbEndpointReader reader, UsbEndpointWriter writer, int maxPacket, string description)
     {
-        _context = context;
         _device = device;
         _interfaceId = interfaceId;
         _reader = reader;
@@ -40,7 +42,7 @@ public sealed class LibUsbTransport : ICameraTransport
     /// <summary>Lists connected devices exposing a Still Image interface, for diagnostics.</summary>
     public static IReadOnlyList<string> ListStillImageDevices()
     {
-        using var context = new UsbContext();
+        var context = SharedContext.Value;
         var result = new List<string>();
         foreach (var device in context.List())
         {
@@ -64,16 +66,35 @@ public sealed class LibUsbTransport : ICameraTransport
     }
 
     /// <summary>Opens the first device with the given vendor id that exposes a Still Image interface.</summary>
-    public static LibUsbTransport Open(ushort vendorId = 0x04CB)
+    public static LibUsbTransport Open(ushort vendorId = 0x04CB) =>
+        OpenCore(vendorId, throwWhenAbsent: true)!;
+
+    /// <summary>Like <see cref="Open"/>, but returns null when no such device is plugged in. </summary>
+    public static LibUsbTransport? OpenIfPresent(ushort vendorId = 0x04CB) =>
+        OpenCore(vendorId, throwWhenAbsent: false);
+
+    private static LibUsbTransport? OpenCore(ushort vendorId, bool throwWhenAbsent)
     {
-        var context = new UsbContext();
+        var context = SharedContext.Value;
+        var seen = false;
+        var devices = context.List().ToList();
+        LibUsbTransport? opened = null;
         try
         {
-            foreach (var device in context.List())
+            foreach (var device in devices)
             {
-                if (device.VendorId != vendorId) continue;
+                if (device.VendorId != vendorId) { device.Dispose(); continue; }
+                seen = true;
 
-                device.Open();
+                try
+                {
+                    device.Open();
+                }
+                catch (Exception ex)
+                {
+                    device.Dispose();
+                    throw new PtpException(ClaimFailureHint(ex.Message));
+                }
                 var iface = FindStillImageInterface(device);
                 if (iface == null)
                 {
@@ -81,7 +102,15 @@ public sealed class LibUsbTransport : ICameraTransport
                     continue;
                 }
 
-                device.ClaimInterface(iface.Number);
+                try
+                {
+                    Claim(device, iface.Number);
+                }
+                catch
+                {
+                    device.Dispose();
+                    throw;
+                }
 
                 var endpoints = iface.Endpoints;
                 var bulkIn = endpoints.FirstOrDefault(e => IsBulk(e) && (e.EndpointAddress & 0x80) != 0)
@@ -92,18 +121,121 @@ public sealed class LibUsbTransport : ICameraTransport
                 var reader = device.OpenEndpointReader((ReadEndpointID)bulkIn.EndpointAddress);
                 var writer = device.OpenEndpointWriter((WriteEndpointID)bulkOut.EndpointAddress);
                 var description = $"{device.VendorId:X4}:{device.ProductId:X4} {device.Info.Product}";
-                return new LibUsbTransport(context, device, iface.Number, reader, writer, bulkIn.MaxPacketSize, description);
+                opened = new LibUsbTransport(device, iface.Number, reader, writer, bulkIn.MaxPacketSize, description);
+                return opened;
             }
         }
-        catch
+        finally
         {
-            context.Dispose();
-            throw;
+            // The context outlives every transport, so the handles of devices we didn't pick must be released here.
+            foreach (var device in devices)
+                if (opened == null || !ReferenceEquals(device, opened._device)) device.Dispose();
         }
 
-        context.Dispose();
+        if (!seen && !throwWhenAbsent) return null;
         throw new PtpException(
             $"No USB device with vendor id 0x{vendorId:X4} exposing a Still Image interface was found or it could not be opened.");
+    }
+
+    /// <summary>True when a device with the given vendor id is plugged in; does not open it.</summary>
+    public static bool IsPresent(ushort vendorId = 0x04CB)
+    {
+        var context = SharedContext.Value;
+        foreach (var device in context.List())
+        {
+            try
+            {
+                if (device.VendorId == vendorId) return true;
+            }
+            finally
+            {
+                device.Dispose();
+            }
+        }
+        return false;
+    }
+
+    private const int ClaimAttempts = 6;
+
+    private static void Claim(IUsbDevice device, int interfaceNumber)
+    {
+        // Linux: let libusb take the interface from the kernel's usbfs/gphoto-style drivers; harmless elsewhere.
+        if (device is UsbDevice native)
+        {
+            try { native.SetAutoDetachKernelDriver(true); }
+            catch (Exception) { /* unsupported on this platform */ }
+        }
+
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                device.ClaimInterface(interfaceNumber);
+                return;
+            }
+            catch (Exception ex) when (ex is not PtpException)
+            {
+                // macOS: ptpcamerad grabs every camera the moment it is plugged in and launchd restarts it after
+                // a kill, so stopping it and claiming right away usually wins the race.
+                if (OperatingSystem.IsMacOS() && attempt < ClaimAttempts)
+                {
+                    StopPtpCameraDaemon();
+                    Thread.Sleep(250);
+                    continue;
+                }
+                throw new PtpException(ClaimFailureHint(ex.Message));
+            }
+        }
+    }
+
+    private static void StopPtpCameraDaemon()
+    {
+        try
+        {
+            using var kill = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("killall", "ptpcamerad")
+            {
+                UseShellExecute = false,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+            });
+            kill?.WaitForExit(2000);
+        }
+        catch (Exception)
+        {
+            // killall missing or not allowed; the claim will report the real failure.
+        }
+    }
+
+    private static string ClaimFailureHint(string detail)
+    {
+        if (OperatingSystem.IsMacOS())
+            return "Another app is holding the camera. Quit Photos, Image Capture and Preview, replug the camera and try again. " + detail;
+        if (OperatingSystem.IsLinux())
+            return "Can't access the camera over USB. Close any app using it (file manager, gphoto2) and make sure your user may open " +
+                   "Fujifilm devices. " + LinuxSetupHint + " " + detail;
+        return "Could not claim the camera's USB interface. " + detail;
+    }
+
+    /// <summary>What a Linux user has to install and allow before libusb can talk to the camera.</summary>
+    public const string LinuxSetupHint =
+        "Linux setup: install libusb (Debian/Ubuntu: sudo apt install libusb-1.0-0; Fedora: sudo dnf install libusb1; Arch: sudo pacman -S libusb), " +
+        "then add the udev rule SUBSYSTEM==\"usb\", ATTR{idVendor}==\"04cb\", MODE=\"0666\" to /etc/udev/rules.d/70-fujifilm.rules, " +
+        "run sudo udevadm control --reload-rules and replug the camera.";
+
+    /// <summary>Explains an exception thrown while loading or using libusb itself; null when the cause isn't a missing native library.</summary>
+    internal static string? MissingLibraryHint(Exception ex)
+    {
+        for (var e = ex; e != null; e = e.InnerException)
+        {
+            if (e is DllNotFoundException or BadImageFormatException)
+            {
+                return OperatingSystem.IsLinux()
+                    ? "The libusb library is missing. " + LinuxSetupHint
+                    : "The libusb library could not be loaded. " + e.Message;
+            }
+        }
+        return null;
     }
 
     public Task SendAsync(byte[] container, CancellationToken ct = default) =>
@@ -151,7 +283,6 @@ public sealed class LibUsbTransport : ICameraTransport
     {
         try { _device.ReleaseInterface(_interfaceId); } catch (Exception) { /* device may be unplugged */ }
         _device.Dispose();
-        _context.Dispose();
         return ValueTask.CompletedTask;
     }
 
