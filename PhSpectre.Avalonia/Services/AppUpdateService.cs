@@ -13,6 +13,9 @@ public sealed partial class AppUpdateService : ObservableObject
 {
     public static AppUpdateService Instance { get; } = new();
 
+    /// <summary>False in Google Play builds (set by the Android head); GitHub/desktop builds keep the check.</summary>
+    public static bool Enabled { get; set; } = true;
+
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
 
     [ObservableProperty] private bool _isAvailable;
@@ -25,6 +28,9 @@ public sealed partial class AppUpdateService : ObservableObject
 
     public async Task CheckAsync()
     {
+        // Store builds update through the store; no GitHub lookup (and no network use at all).
+        if (!Enabled) return;
+
         // Dev builds have no meaningful version to compare against — skip silently
         // rather than reporting every dev build as perpetually out of date.
         if (AppVersionInfo.Version is not { } currentVersion) return;

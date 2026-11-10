@@ -1,10 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net10.0-android</TargetFramework>
-        <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
+        <!-- Explicit API 36 target (Play requires >= 35). minSdk 29: MediaStore saving needs no storage permission. -->
+        <TargetFramework>net10.0-android36.0</TargetFramework>
+        <SupportedOSPlatformVersion>29</SupportedOSPlatformVersion>
+        <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
         <Nullable>enable</Nullable>
-        <ApplicationId>com.CompanyName.PhSpectre</ApplicationId>
+        <ApplicationId>com.createlab.phspectre</ApplicationId>
         <ApplicationVersion>16</ApplicationVersion>
         <ApplicationDisplayVersion>2.2.1</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
@@ -15,11 +17,11 @@
         <JavaSdkDirectory Condition="'$(CI)' != 'true'">C:\Android\jdk</JavaSdkDirectory>
     </PropertyGroup>
 
-    <ItemGroup>
-        <AndroidResource Include="Icon.png">
-            <Link>Resources\drawable\Icon.png</Link>
-        </AndroidResource>
-    </ItemGroup>
+    <!-- Google Play build: dotnet publish -p:PlayStoreBuild=true (see scripts/build-play-aab.ps1).
+         Drops the INTERNET permission and the GitHub update check; CI/GitHub APKs keep both. -->
+    <PropertyGroup Condition="'$(PlayStoreBuild)' == 'true'">
+        <DefineConstants>$(DefineConstants);PLAY_STORE</DefineConstants>
+    </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Avalonia.Android" Version="12.0.5"/>

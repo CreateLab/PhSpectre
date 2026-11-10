@@ -20,7 +20,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
     private const int StillImageClass = 6;
     private const int TransferTimeoutMs = 15_000;
     private const int ReadChunk = 16 * 1024;
-    private const string PermissionAction = "com.CompanyName.PhSpectre.USB_PERMISSION";
+    private const string PermissionAction = "com.createlab.phspectre.USB_PERMISSION";
 
     private readonly UsbDeviceConnection _connection;
     private readonly UsbInterface _interface;
