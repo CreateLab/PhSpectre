@@ -131,7 +131,8 @@
                     </Button>
 
                     <!-- Export ▾ (card / collage) -->
-                    <Button Classes="cta" Padding="16,0" Height="36" MinWidth="110" IsVisible="{Binding Settings.ShowLegacyInspector}">
+                    <Button Classes="cta" Padding="16,0" Height="36" MinWidth="110" IsVisible="{Binding Settings.ShowLegacyInspector}"
+                            IsEnabled="{Binding Settings.IsCollageModeAvailable}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
                             <TextBlock Text="Export" VerticalAlignment="Center"/>
@@ -245,7 +246,7 @@
                         <materialIcons:MaterialIcon Kind="ImageMultipleOutline" Width="40" Height="40"
                                                      Foreground="{DynamicResource TextMutedBrush}"/>
                         <TextBlock Text="{Binding EmptyStageText}" Classes="hint" TextAlignment="Center"/>
-                        <Button Classes="cta" Padding="18,0" HorizontalAlignment="Center"
+                        <Button Classes="secondary" Padding="18,0" HorizontalAlignment="Center"
                                 IsVisible="{Binding !HasPhotos}" Command="{Binding OpenFolderCommand}"
                                 Content="Open folder"/>
                     </StackPanel>

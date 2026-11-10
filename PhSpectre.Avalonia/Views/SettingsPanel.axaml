@@ -72,9 +72,24 @@
         <!-- Tabs -->
         <ListBox Grid.Row="1" Classes="seg" x:Name="TabsBox" IsVisible="{Binding CardTabsVisible}" Margin="0,0,0,4"
                  SelectedIndex="{Binding ActiveTabIndex}">
-            <ListBoxItem Content="Style"/>
-            <ListBoxItem Content="Content"/>
-            <ListBoxItem Content="Export" IsVisible="{Binding !IsEditMode}"/>
+            <ListBoxItem>
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="TuneVariant" Width="16" Height="16"/>
+                    <TextBlock Text="Style"/>
+                </StackPanel>
+            </ListBoxItem>
+            <ListBoxItem>
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="TextBoxOutline" Width="16" Height="16"/>
+                    <TextBlock Text="Content"/>
+                </StackPanel>
+            </ListBoxItem>
+            <ListBoxItem IsVisible="{Binding !IsEditMode}">
+                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                    <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
+                    <TextBlock Text="Export"/>
+                </StackPanel>
+            </ListBoxItem>
         </ListBox>
 
         <ScrollViewer Grid.Row="2" IsVisible="{Binding !IsRecipeEditorOpen}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,12,0">

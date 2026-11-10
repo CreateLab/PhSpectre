@@ -28,9 +28,9 @@
             <SolidColorBrush x:Key="ControlBrush"           Color="#1C1C20"/>   
             <SolidColorBrush x:Key="ControlSelectedBrush"   Color="#2C2C32"/>   
             <SolidColorBrush x:Key="SwitchOffBrush"         Color="#3A3A42"/>
-            <SolidColorBrush x:Key="AccentBrush"            Color="#A9C4DC"/>   
+            <SolidColorBrush x:Key="AccentBrush"            Color="#D2D2D8"/>   
             <SolidColorBrush x:Key="AccentInkBrush"         Color="#0E0E10"/>   
-            <SolidColorBrush x:Key="AccentSoftBrush"        Color="#1AA9C4DC"/> 
+            <SolidColorBrush x:Key="AccentSoftBrush"        Color="#1AD2D2D8"/> 
             <SolidColorBrush x:Key="SuccessBrush"           Color="#5BD39B"/>
             <SolidColorBrush x:Key="WarningBrush"           Color="#E8D08A"/>
             <SolidColorBrush x:Key="ScrimBrush"             Color="#99000000"/>
@@ -55,9 +55,9 @@
             <SolidColorBrush x:Key="ControlBrush"           Color="#E8E8EC"/>
             <SolidColorBrush x:Key="ControlSelectedBrush"   Color="#FFFFFF"/>
             <SolidColorBrush x:Key="SwitchOffBrush"         Color="#B8B8C0"/>
-            <SolidColorBrush x:Key="AccentBrush"            Color="#2F5F8A"/>   
+            <SolidColorBrush x:Key="AccentBrush"            Color="#3A3A40"/>   
             <SolidColorBrush x:Key="AccentInkBrush"         Color="#FFFFFF"/>
-            <SolidColorBrush x:Key="AccentSoftBrush"        Color="#1A2F5F8A"/>
+            <SolidColorBrush x:Key="AccentSoftBrush"        Color="#1A3A3A40"/>
             <SolidColorBrush x:Key="SuccessBrush"           Color="#15784F"/>
             <SolidColorBrush x:Key="WarningBrush"           Color="#7A5F00"/>
             <SolidColorBrush x:Key="ScrimBrush"             Color="#66000000"/>

@@ -149,8 +149,10 @@
                         <Thumb Name="thumb" Width="22" Height="22">
                             <Thumb.Template>
                                 <ControlTemplate>
-                                    <Ellipse Fill="{DynamicResource TextPrimaryBrush}"
-                                             Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"/>
+                                    <!-- Surface-coloured knob with an accent ring: a text-coloured fill turned into
+                                         a heavy black blob on the light theme. -->
+                                    <Ellipse Fill="{DynamicResource SurfaceBrush}"
+                                             Stroke="{DynamicResource AccentBrush}" StrokeThickness="2.5"/>
                                 </ControlTemplate>
                             </Thumb.Template>
                         </Thumb>

@@ -61,17 +61,19 @@
                            IsVisible="{Binding ShowCustomHexError}" Classes="hint error"/>
             </StackPanel>
 
-            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
-                <TextBlock Text="Blurred photo backdrop" Classes="row"/>
-                <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding UseBlurredBackdrop}"
-                              IsEnabled="{Binding IsBlurredBackdropEnabled}"/>
-            </Grid>
-            <TextBlock Text="Not available with a custom color — the backdrop is a flat fill."
-                       IsVisible="{Binding IsCustomBackgroundMode}" Classes="hint"/>
-            <TextBlock Text="Ignored for Collage — falls back to the card theme."
-                       IsVisible="{Binding ShowBlurredIgnoredForCollageHint}" Classes="hint"/>
+            <!-- A collage has no photo to blur behind it, so the whole option is hidden there instead of
+                 being shown with an "ignored" note. -->
+            <StackPanel IsVisible="{Binding !ShowCollageSectionUI}">
+                <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,10,0,0">
+                    <TextBlock Text="Blurred photo backdrop" Classes="row"/>
+                    <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding UseBlurredBackdrop}"
+                                  IsEnabled="{Binding IsBlurredBackdropEnabled}"/>
+                </Grid>
+                <TextBlock Text="Not available with a custom color — the backdrop is a flat fill."
+                           IsVisible="{Binding IsCustomBackgroundMode}" Classes="hint"/>
+            </StackPanel>
 
-            <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
                 <TextBlock Text="Guide lines" Classes="row-dim"/>
                 <ComboBox Grid.Column="1" SelectedIndex="{Binding CompositionGuideIndex}">
                     <ComboBoxItem Content="Off"/>
