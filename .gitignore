@@ -48,3 +48,8 @@ coverage/
 !screens/*.jpg
 !screens/*.jpeg
 !screens/*.png
+
+# Play signing (never commit)
+*.jks
+*.keystore
+scripts/play-signing.local.ps1

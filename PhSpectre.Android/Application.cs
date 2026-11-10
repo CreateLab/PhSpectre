@@ -18,6 +18,9 @@ namespace PhSpectre.Android
 
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
+#if PLAY_STORE
+            AppUpdateService.Enabled = false; // Play updates the app; no GitHub lookup
+#endif
             FileDialogService.GallerySaver = GallerySaver.SaveAsync;
             PhSpectre.Avalonia.Services.CameraService.TransportFactory = AndroidUsbCameraTransport.OpenFirstFujifilmAsync;
             ImageLoader.FastWorkingCopyDecoder = NativeImageDecoder.TryDecodeWorkingCopy;
