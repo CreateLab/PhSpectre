@@ -5,6 +5,8 @@ Outputs:
   PhSpectre.Android/Resources/drawable/ic_launcher_monochrome.xml  (themed icon, Android 13+)
   PhSpectre.Android/Resources/drawable/ic_launcher_splash.xml      (splash: dark disc + glyph)
   docs/design/icon/*.svg and store-icon-512.png (Play Console)
+  docs/design/icon/app-icon-1024.png (macOS .icns source) and PhSpectre.Avalonia/Assets/PhSpectre.ico
+  (window/exe icon + in-app header logo, 16..256 px)
 Run: python scripts/gen-icon.py
 """
 import math
@@ -91,6 +93,18 @@ def render_png(size, scale):
     return img.resize((size, size), Image.LANCZOS)
 
 
+def render_tile(size, scale=1.45):
+    """Rounded dark tile with transparent corners: desktop window/exe icon, in-app logo, macOS .icns source."""
+    from PIL import Image, ImageDraw
+    ss = 4
+    s = size * ss
+    img = render_png(size * 1, scale).resize((s, s), Image.LANCZOS).convert("RGBA")
+    mask = Image.new("L", (s, s), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, s - 1, s - 1), radius=int(s * 0.22), fill=255)
+    img.putalpha(mask)
+    return img.resize((size, size), Image.LANCZOS)
+
+
 same = lambda c: c
 mono = lambda c: "#FF000000"
 
@@ -107,4 +121,11 @@ write(DOCS / "icon-monochrome.svg", svg(432, lambda c: "#000000"))
 DOCS.mkdir(parents=True, exist_ok=True)
 render_png(512, 1.45).save(DOCS / "store-icon-512.png")
 render_png(432, 1.0).save(DOCS / "preview-launcher-432.png")
+
+# desktop / macOS: one source of truth for every platform's icon
+render_tile(1024).save(DOCS / "app-icon-1024.png")  # macOS .icns source (release.yml)
+render_tile(256).save(
+    ROOT / "PhSpectre.Avalonia" / "Assets" / "PhSpectre.ico",
+    sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+)
 print("icon written")
