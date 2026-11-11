@@ -91,7 +91,7 @@ public static class RecipeCardRenderer
     private static void Save(Image<Rgb24> canvas, string outputPath, OutputFormat format)
     {
         if (format == OutputFormat.Jpeg)
-            canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = 92 });
+            canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = ExportDefaults.JpegQuality });
         else
             canvas.SaveAsPng(outputPath, new PngEncoder { FilterMethod = PngFilterMethod.None });
     }

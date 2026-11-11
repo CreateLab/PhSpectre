@@ -48,6 +48,8 @@ public static class EditActions
             return;
         }
         var path = await FileDialogService.SavePngAsync(top, vm.SuggestedExportName, vm.DefaultExportDir);
-        if (path != null) await vm.ExportAsync(path);
+        if (path == null) return;
+        await vm.ExportAsync(path);
+        if (vm.Settings.ShowInFolderAfterSave && File.Exists(path)) MainWindowViewModel.RevealInFolder(path);
     }
 }

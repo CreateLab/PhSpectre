@@ -148,7 +148,7 @@ public partial class MainViewModel : ViewModelBase
         Settings.PropertyChanged += OnSettingsPropertyChanged;
         Settings.PropertyChanged += (_, e) =>
         {
-            if (e.PropertyName == nameof(SettingsViewModel.ShowCardBody)) OnPropertyChanged(nameof(ShowTabletExport));
+            if (e.PropertyName is nameof(SettingsViewModel.ShowCardBody) or nameof(SettingsViewModel.IsEditMode)) OnPropertyChanged(nameof(ShowTabletExport));
         };
         Settings.PhotosProvider = () => RecentPhotos;
         Settings.CurrentPhotoProvider = () => RecentPhotos.FirstOrDefault(r => r.IsCurrent);
@@ -177,7 +177,8 @@ public partial class MainViewModel : ViewModelBase
     // IsWide is set by MainView from the window width (≥ 840 dp → tablet layout with the
     // inspector as a right-hand column; below that the inspector is a bottom sheet).
     [ObservableProperty] private bool _isWide;
-    public bool ShowTabletExport => IsWide && Settings.ShowCardBody;
+    // The same Export button for every frame (None / Border / Film / Card / Recipe card), like the desktop top bar.
+    public bool ShowTabletExport => IsWide && (Settings.ShowCardBody || Settings.IsEditMode);
     [ObservableProperty] private bool _isSheetOpen;
 
     public bool IsPhone   => !IsWide;
@@ -208,7 +209,9 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void OpenExport()
     {
-        Settings.ActiveTab = InspectorTab.Export;
+        // Edit: the one Export tab of the inspector, the same for every frame.
+        if (Settings.IsEditMode) Settings.EditTab = 2;
+        else Settings.ActiveTab = InspectorTab.Export;
         IsSheetOpen = true;
     }
 
@@ -1072,6 +1075,7 @@ public partial class MainViewModel : ViewModelBase
             FileInfoText = $"{_lastFileName}  ·  {ps.Width}×{ps.Height}";
 
             var lookKey = Settings.CardLookKey;
+            if (Settings.CardAdjust is { } cardAdjust) { var adjusted = cardAdjust.Render(working); working.Dispose(); working = adjusted; }
             Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);

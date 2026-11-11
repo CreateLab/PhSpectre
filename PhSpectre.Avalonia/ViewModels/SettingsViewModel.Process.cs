@@ -71,13 +71,21 @@ public partial class SettingsViewModel
 
     // Frame → Card is built from the graded photo; the key tells the live preview when to re-render.
     public PhSpectre.ColorGrading.GradeStack? CardLook => FrameType == FrameType.Card && IsEditMode ? _process?.LookStack() : null;
-    public string CardLookKey => CardLook == null ? "" : _process!.LookKey;
+    // Card and Recipe card are built from the adjusted (cropped, exposed) photo.
+    public PhSpectre.Rendering.PhotoAdjust? CardAdjust => IsEditMode && FrameType is FrameType.Card or FrameType.RecipeCard ? _process?.AdjustForCard() : null;
+    public string CardLookKey => (CardLook == null ? "" : _process!.LookKey) + (CardAdjust is { } a ? "|" + a : "");
     public bool IsRecipeCardType => FrameType == FrameType.RecipeCard;
     public bool EditIsLook => EditTab == 0;
     public bool EditIsFrame => EditTab == 1;
     public bool EditIsExport => EditTab == 2;
 
-    partial void OnEditTabChanged(int value) { RaiseLayoutChanged(); if (IsProcessMode) Process.Refresh(); }
+    partial void OnEditTabChanged(int value)
+    {
+        // Leaving Look closes the Crop section, so Frame and Export see the cropped photo, not the zoomed crop view.
+        if (value != 0 && _process is { LookSection: not 0 } p) p.LookSection = 0;
+        RaiseLayoutChanged();
+        if (IsProcessMode) Process.Refresh();
+    }
     partial void OnFrameTypeChanged(FrameType value) { OnPropertyChanged(nameof(CardLookKey)); RaiseLayoutChanged(); }
 
     private void RaiseLayoutChanged()

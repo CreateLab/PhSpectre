@@ -276,7 +276,7 @@ public static class PaletteImageRenderer
         using (canvas)
         {
             if (format == OutputFormat.Jpeg)
-                canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = 92 });
+                canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = ExportDefaults.JpegQuality });
             else
                 // Adaptive filtering (ImageSharp's default) tries all 5 PNG row filters
                 // per scanline and picks the smallest — ~2x+ slower than a fixed filter

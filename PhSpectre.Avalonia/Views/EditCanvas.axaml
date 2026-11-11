@@ -8,7 +8,17 @@
 
     <!-- Edit canvas (DataContext = Settings.Process): the neutral stage with the graded photo. -->
     <Grid Background="{DynamicResource StageBrush}">
-        <Image Source="{Binding Shown}" Stretch="Uniform" Margin="{Binding StageMargin}" IsVisible="{Binding HasPhoto}"/>
+        <Image x:Name="Photo" Source="{Binding Shown}" Stretch="Uniform" Margin="{Binding StageMargin}" IsVisible="{Binding ShowPhotoView}"/>
+
+        <!-- Crop: the whole photo, moved / rotated / scaled by transforms under a clipped window (no re-render per drag) -->
+        <Grid x:Name="CropHost" Margin="{Binding StageMargin}" Background="Transparent" IsVisible="{Binding ShowCropView}">
+            <Border x:Name="CropWindow" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Canvas x:Name="CropCanvas">
+                    <Image x:Name="CropImage" Source="{Binding CropBase}" Stretch="Fill" RenderTransformOrigin="50%,50%"
+                           RenderOptions.BitmapInterpolationMode="MediumQuality"/>
+                </Canvas>
+            </Border>
+        </Grid>
 
         <Button IsVisible="{Binding ShowEmpty}" Command="{Binding OpenPhotosCommand}" Background="Transparent"
                 BorderThickness="0" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="40,28"
