@@ -36,5 +36,5 @@ jobs:
         run: |
           dotnet publish PhSpectre.Android/PhSpectre.Android.csproj \
             -c Release \
-            -f net10.0-android \
+            -f net10.0-android36.0 \
             -o publish/android
