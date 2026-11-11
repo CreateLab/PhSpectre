@@ -20,33 +20,36 @@
     <Border Background="{DynamicResource PanelBrush}">
         <Grid RowDefinitions="Auto,*">
 
-            <!-- Tabs -->
-            <ListBox Grid.Row="0" Classes="seg" Margin="16,14,16,0" SelectedIndex="{Binding Settings.EditTab}">
-                <ListBoxItem>
-                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                        <materialIcons:MaterialIcon Kind="PaletteOutline" Width="16" Height="16"/>
-                        <TextBlock Text="Look"/>
-                    </StackPanel>
+            <!-- Phone: the same tools as one row of icons. -->
+            <ListBox Grid.Row="0" Classes="seg touch" Margin="16,12,16,0"
+                     IsVisible="{Binding !Rail, RelativeSource={RelativeSource AncestorType=local:EditInspector}}"
+                     SelectedIndex="{Binding EditSection}" AutomationProperties.Name="Edit tools">
+                <ListBoxItem Padding="0" ToolTip.Tip="Looks" AutomationProperties.Name="Looks">
+                    <materialIcons:MaterialIcon Kind="PaletteOutline" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem>
-                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                        <materialIcons:MaterialIcon Kind="ImageFrame" Width="16" Height="16"/>
-                        <TextBlock Text="Frame"/>
-                    </StackPanel>
+                <ListBoxItem Padding="0" ToolTip.Tip="Crop" AutomationProperties.Name="Crop">
+                    <materialIcons:MaterialIcon Kind="Crop" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem>
-                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                        <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
-                        <TextBlock Text="Export"/>
-                    </StackPanel>
+                <ListBoxItem Padding="0" ToolTip.Tip="Light" AutomationProperties.Name="Light">
+                    <materialIcons:MaterialIcon Kind="Brightness6" Width="20" Height="20"/>
+                </ListBoxItem>
+                <ListBoxItem Padding="0" ToolTip.Tip="Color" AutomationProperties.Name="Color">
+                    <materialIcons:MaterialIcon Kind="Thermometer" Width="20" Height="20"/>
+                </ListBoxItem>
+                <ListBoxItem Padding="0" ToolTip.Tip="Effects" AutomationProperties.Name="Effects">
+                    <materialIcons:MaterialIcon Kind="AutoFix" Width="20" Height="20"/>
+                </ListBoxItem>
+                <ListBoxItem Padding="0" ToolTip.Tip="Frame" AutomationProperties.Name="Frame">
+                    <materialIcons:MaterialIcon Kind="ImageFrame" Width="20" Height="20"/>
+                </ListBoxItem>
+                <ListBoxItem Padding="0" ToolTip.Tip="Export" AutomationProperties.Name="Export">
+                    <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="20" Height="20"/>
                 </ListBoxItem>
             </ListBox>
 
             <!-- ═══════════ Look ═══════════ -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsLook}">
-                <StackPanel Margin="16,14,16,16" Spacing="12">
-                    <local:SegmentedControl Labels="Looks|Crop|Exposure" SelectedIndex="{Binding LookSection}"/>
-
+                <StackPanel Margin="16,12,16,16" Spacing="10">
                     <!-- Crop and straighten -->
                     <StackPanel Spacing="12" IsVisible="{Binding LookIsCrop}">
                         <Grid ColumnDefinitions="*,Auto">
@@ -92,26 +95,95 @@
                                 </Button>
                             </StackPanel>
                         </Grid>
-                        <TextBlock Text="Drag the photo to move the crop. It is cut to the largest area that stays full, so straightening never leaves empty corners."
-                                   Classes="hint" TextWrapping="Wrap"/>
-                        <TextBlock Text="Export all keeps the ratio; straighten, turn and zoom stay with this photo."
-                                   Classes="hint" TextWrapping="Wrap" IsVisible="{Binding CanExportAll}"/>
                     </StackPanel>
 
-                    <!-- Exposure -->
-                    <StackPanel Spacing="12" IsVisible="{Binding LookIsExposure}">
+                    <!-- Light -->
+                    <StackPanel Spacing="12" IsVisible="{Binding LookIsLight}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Exposure" Classes="section-title first"/>
-                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasExposureAdjust}"
-                                    Command="{Binding ResetExposureCommand}"/>
+                            <TextBlock Text="Light" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasLightAdjust}" Command="{Binding ResetLightCommand}"/>
                         </Grid>
-                        <Grid ColumnDefinitions="*,76">
-                            <Slider Classes="v2" Minimum="-3" Maximum="3" Value="{Binding Exposure}" AutomationProperties.Name="Exposure"/>
-                            <TextBlock Grid.Column="1" Text="{Binding ExposureText}" Classes="mono-data"
-                                       HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Exposure" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-3" Maximum="3" Value="{Binding Exposure}" AutomationProperties.Name="Exposure"/>
+                            <TextBlock Grid.Column="2" Text="{Binding ExposureText}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <TextBlock Text="Brightens or darkens in stops, before the Look is applied. Export all applies it to every photo."
-                                   Classes="hint" TextWrapping="Wrap"/>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Contrast" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Contrast}" AutomationProperties.Name="Contrast"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Contrast, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Highlights" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Highlights}" AutomationProperties.Name="Highlights"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Highlights, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Shadows" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Shadows}" AutomationProperties.Name="Shadows"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Shadows, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Whites" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Whites}" AutomationProperties.Name="Whites"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Whites, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Blacks" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Blacks}" AutomationProperties.Name="Blacks"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Blacks, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Color -->
+                    <StackPanel Spacing="12" IsVisible="{Binding LookIsColor}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Color" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasColorAdjust}" Command="{Binding ResetColorCommand}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Temperature" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Temperature}" AutomationProperties.Name="Temperature"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Temperature, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Tint" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Tint}" AutomationProperties.Name="Tint"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Tint, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Vibrance" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vibrance}" AutomationProperties.Name="Vibrance"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Vibrance, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Saturation" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Saturation}" AutomationProperties.Name="Saturation"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Saturation, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- Effects -->
+                    <StackPanel Spacing="12" IsVisible="{Binding LookIsEffects}">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Text="Effects" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasEffectsAdjust}" Command="{Binding ResetEffectsCommand}"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Sharpness" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Sharpness}" AutomationProperties.Name="Sharpness"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Sharpness, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Vignette" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vignette}" AutomationProperties.Name="Vignette"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Vignette, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Grain" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Grain}" AutomationProperties.Name="Grain"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Grain, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
                     </StackPanel>
 
                     <!-- Looks -->

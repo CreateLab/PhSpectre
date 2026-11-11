@@ -1,3 +1,4 @@
+using global::Avalonia;
 using global::Avalonia.Controls;
 using PhSpectre.Avalonia.ViewModels;
 
@@ -5,6 +6,10 @@ namespace PhSpectre.Avalonia.Views;
 
 public partial class EditInspector : UserControl
 {
+    public static readonly StyledProperty<bool> RailProperty = AvaloniaProperty.Register<EditInspector, bool>(nameof(Rail), true);
+    /// <summary>True: the tools live in the rail beside the photo (desktop, tablet). False: one row on top (phone).</summary>
+    public bool Rail { get => GetValue(RailProperty); set => SetValue(RailProperty, value); }
+
     public EditInspector()
     {
         InitializeComponent();

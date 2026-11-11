@@ -152,10 +152,13 @@
         </Border>
 
         <!-- ═══════════ Body ═══════════ -->
-        <Grid Grid.Row="1" ColumnDefinitions="*,344" IsVisible="{Binding !Settings.IsCameraMode}">
+        <Grid Grid.Row="1" ColumnDefinitions="Auto,*,344" IsVisible="{Binding !Settings.IsCameraMode}">
+
+            <!-- Edit tools: a rail at the left edge, beside the photo -->
+            <views:EditToolRail Grid.Column="0" DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
 
             <!-- Stage + filmstrip -->
-            <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
+            <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
 
                 <!-- Collage tray: order = packing order; the first photo supplies the EXIF. -->
                 <Border Grid.Row="0" IsVisible="{Binding IsCollageMode}" Padding="16,12,16,8"
@@ -393,7 +396,7 @@
             </Grid>
 
             <!-- Inspector -->
-            <Border Grid.Column="1" Background="{DynamicResource PanelBrush}"
+            <Border Grid.Column="2" Background="{DynamicResource PanelBrush}"
                     BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
                 <Panel>
                 <views:EditInspector DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>

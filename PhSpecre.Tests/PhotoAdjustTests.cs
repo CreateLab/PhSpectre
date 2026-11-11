@@ -169,4 +169,76 @@ public class PhotoAdjustTests
         Assert.Equal((50, 50), (src.Width, src.Height));
         Assert.Equal(new Rgb24(80, 80, 80), src[0, 0]);
     }
+
+    private static Rgb24 Mid(PhotoAdjust a, Rgb24 c) { using var src = Photo(8, 8, c); using var o = a.Render(src); return o[4, 4]; }
+
+    [Fact]
+    public void Contrast_SpreadsAroundMiddle()
+    {
+        Assert.True(Mid(new PhotoAdjust { Contrast = 80 }, new Rgb24(200, 200, 200)).R > 200);
+        Assert.True(Mid(new PhotoAdjust { Contrast = 80 }, new Rgb24(60, 60, 60)).R < 60);
+    }
+
+    [Fact]
+    public void Highlights_AndShadows_MoveTheirRange()
+    {
+        Assert.True(Mid(new PhotoAdjust { Highlights = -80 }, new Rgb24(230, 230, 230)).R < 230);
+        Assert.True(Mid(new PhotoAdjust { Shadows = 80 }, new Rgb24(30, 30, 30)).R > 30);
+        Assert.InRange(Mid(new PhotoAdjust { Highlights = -80 }, new Rgb24(128, 128, 128)).R, 118, 128);
+    }
+
+    [Fact]
+    public void Saturation_ZeroGivesGray_AndPlusStrengthens()
+    {
+        var gray = Mid(new PhotoAdjust { Saturation = -100 }, new Rgb24(200, 100, 50));
+        Assert.InRange(Math.Abs(gray.R - gray.B), 0, 2);
+        var vivid = Mid(new PhotoAdjust { Saturation = 60 }, new Rgb24(200, 100, 50));
+        Assert.True(vivid.R - vivid.B > 150);
+    }
+
+    [Fact]
+    public void Temperature_WarmAddsRed_CoolAddsBlue()
+    {
+        var warm = Mid(new PhotoAdjust { Temperature = 60 }, new Rgb24(128, 128, 128));
+        var cool = Mid(new PhotoAdjust { Temperature = -60 }, new Rgb24(128, 128, 128));
+        Assert.True(warm.R > warm.B);
+        Assert.True(cool.B > cool.R);
+    }
+
+    [Fact]
+    public void Vignette_DarkensCorners_NotCentre()
+    {
+        using var src = Photo(100, 100, new Rgb24(200, 200, 200));
+        using var o = new PhotoAdjust { Vignette = -80 }.Render(src);
+        Assert.True(o[0, 0].R < 150);
+        Assert.Equal(200, o[50, 50].R);
+    }
+
+    [Fact]
+    public void Grain_IsDeterministic_AndSharpen_KeepsFlatAreas()
+    {
+        using var src = Photo(40, 40, new Rgb24(120, 120, 120));
+        using var a = new PhotoAdjust { Grain = 50 }.Render(src);
+        using var b = new PhotoAdjust { Grain = 50 }.Render(src);
+        Assert.Equal(a[7, 9], b[7, 9]);
+        using var s = new PhotoAdjust { Sharpness = 80 }.Render(src);
+        Assert.Equal(new Rgb24(120, 120, 120), s[20, 20]);
+    }
+
+    [Fact]
+    public void Tone_Zero_IsNoOp_AndOutOfRangeIsClamped()
+    {
+        Assert.True(new PhotoAdjust().IsNoOp);
+        Assert.False(new PhotoAdjust { Contrast = 1 }.IsNoOp);
+        var n = new PhotoAdjust { Contrast = 900, Grain = -5, Tint = float.NaN }.Normalized();
+        Assert.Equal((100f, 0f, 0f), (n.Contrast, n.Grain, n.Tint));
+    }
+
+    [Fact]
+    public void Tone_WorksAfterStraighten()
+    {
+        using var src = Photo(300, 200, new Rgb24(100, 100, 100));
+        using var o = new PhotoAdjust { Straighten = 5, Zoom = 2, Temperature = 50 }.Render(src);
+        Assert.True(o[10, 10].R > o[10, 10].B);
+    }
 }

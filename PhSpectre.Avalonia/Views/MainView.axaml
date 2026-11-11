@@ -96,9 +96,14 @@ to set the actual DataContext for runtime, set the DataContext property in code 
             </ListBox>
 
             <!-- ═══════════ Body ═══════════ -->
-            <Grid Grid.Row="2" ColumnDefinitions="*,Auto" IsVisible="{Binding !Settings.IsCameraMode}">
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !Settings.IsCameraMode}">
 
-                <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto,Auto,Auto">
+                <!-- Tablet: edit tools as a rail at the left edge -->
+                <Panel Grid.Column="0" IsVisible="{Binding IsWide}">
+                    <views:EditToolRail DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
+                </Panel>
+
+                <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,Auto,Auto">
 
                     <!-- Collage tray: order = packing order, the first photo supplies the EXIF -->
                     <Border Grid.Row="0" IsVisible="{Binding IsCollageMode}" Padding="16,10,16,8">
@@ -317,7 +322,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                     <materialIcons:MaterialIcon Kind="Close" Width="18" Height="18"/>
                                 </Button>
                             </Grid>
-                            <views:EditInspector Grid.Row="1" DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
+                            <views:EditInspector Rail="False" Grid.Row="1" DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
                             <views:SettingsPanel Grid.Row="1" DataContext="{Binding Settings}" Margin="16,4,10,0" IsVisible="{Binding ShowLegacyInspector}"/>
                             <Border Grid.Row="2" IsVisible="{Binding Settings.ShowLegacyExport}" Padding="16,10,16,14"
                                     BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
@@ -337,7 +342,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                 </Grid>
 
                 <!-- Tablet: permanent inspector -->
-                <Border Grid.Column="1" Width="344" IsVisible="{Binding IsWide}" Background="{DynamicResource PanelBrush}"
+                <Border Grid.Column="2" Width="344" IsVisible="{Binding IsWide}" Background="{DynamicResource PanelBrush}"
                         BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="1,0,0,0">
                     <Panel>
                     <views:EditInspector DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>

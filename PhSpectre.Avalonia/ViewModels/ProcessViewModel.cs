@@ -597,16 +597,45 @@ public partial class ProcessViewModel : ViewModelBase
     [ObservableProperty] private double _exposure;
     [ObservableProperty] private double _panX;
     [ObservableProperty] private double _panY;
+    [ObservableProperty] private double _contrast;
+    [ObservableProperty] private double _highlights;
+    [ObservableProperty] private double _shadows;
+    [ObservableProperty] private double _whites;
+    [ObservableProperty] private double _blacks;
+    [ObservableProperty] private double _saturation;
+    [ObservableProperty] private double _vibrance;
+    [ObservableProperty] private double _temperature;
+    [ObservableProperty] private double _tint;
+    [ObservableProperty] private double _sharpness;
+    [ObservableProperty] private double _vignette;
+    [ObservableProperty] private double _grain;
     private bool _noReclamp;
 
-    // Inner sections of the Look tab: Looks · Crop · Exposure.
+    // Inner sections of the Look tab: Looks · Crop · Light · Color · Effects.
     [ObservableProperty] private int _lookSection;
     public bool LookIsLooks => LookSection == 0;
     public bool LookIsCrop => LookSection == 1;
-    public bool LookIsExposure => LookSection == 2;
+    public bool LookIsLight => LookSection == 2;
+    public bool LookIsColor => LookSection == 3;
+    public bool LookIsEffects => LookSection == 4;
+    // The single tool strip: 0-4 are the Look sections above, 5 = Frame, 6 = Export.
+    public int EditSection
+    {
+        get => _settings.EditTab == 0 ? LookSection : _settings.EditTab + 4;
+        set
+        {
+            if (value < 0) return;
+            if (value <= 4) { _settings.EditTab = 0; LookSection = value; }
+            else _settings.EditTab = value - 4;
+            OnPropertyChanged();
+        }
+    }
+    public void RaiseEditSection() => OnPropertyChanged(nameof(EditSection));
+
     partial void OnLookSectionChanged(int value)
     {
-        OnPropertyChanged(nameof(LookIsLooks)); OnPropertyChanged(nameof(LookIsCrop)); OnPropertyChanged(nameof(LookIsExposure));
+        OnPropertyChanged(nameof(EditSection));
+        OnPropertyChanged(nameof(LookIsLooks)); OnPropertyChanged(nameof(LookIsCrop)); OnPropertyChanged(nameof(LookIsLight)); OnPropertyChanged(nameof(LookIsColor)); OnPropertyChanged(nameof(LookIsEffects));
         OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView));
         // Crop shows the whole photo moved by transforms (no re-render per drag); the cropped result is built once on leaving it.
         ScheduleRender();
@@ -639,10 +668,14 @@ public partial class ProcessViewModel : ViewModelBase
     public bool HasAdjust => CurrentAdjust() != null;
     public bool HasGeometryAdjust => CurrentAdjustSettings().HasGeometry;
     public bool HasExposureAdjust => CurrentAdjustSettings().HasExposure;
+    public bool HasLightAdjust => CurrentAdjustSettings().HasLight;
+    public bool HasColorAdjust => CurrentAdjustSettings().HasColor;
+    public bool HasEffectsAdjust => CurrentAdjustSettings().HasEffects;
 
     private PhotoAdjust CurrentAdjustSettings() => new PhotoAdjust
     {
         Quarter = Quarter, Straighten = (float)Straighten, Zoom = (float)Zoom, Exposure = (float)Exposure, PanX = (float)PanX, PanY = (float)PanY,
+        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites, Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance, Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness, Vignette = (float)Vignette, Grain = (float)Grain,
         Aspect = PhotoAdjust.CropChoices[Math.Clamp(CropIndex, 0, PhotoAdjust.CropChoices.Length - 1)].Ratio
     }.Normalized();
 
@@ -652,6 +685,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ApplyAdjustSettings(PhotoAdjust a)
     {
         Quarter = a.Quarter; Straighten = a.Straighten; Zoom = a.Zoom; Exposure = a.Exposure; PanX = a.PanX; PanY = a.PanY;
+        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks; Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint; Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain;
         CropIndex = Math.Max(0, Array.FindIndex(PhotoAdjust.CropChoices, c => c.Ratio == a.Aspect));
     }
 
@@ -659,6 +693,7 @@ public partial class ProcessViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(StraightenText)); OnPropertyChanged(nameof(ZoomText)); OnPropertyChanged(nameof(ExposureText));
         OnPropertyChanged(nameof(HasAdjust)); OnPropertyChanged(nameof(HasGeometryAdjust)); OnPropertyChanged(nameof(HasExposureAdjust));
+        OnPropertyChanged(nameof(HasLightAdjust)); OnPropertyChanged(nameof(HasColorAdjust)); OnPropertyChanged(nameof(HasEffectsAdjust));
         OnPropertyChanged(nameof(SuggestedExportName));
     }
 
@@ -706,10 +741,32 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnCropIndexChanged(int value) => AdjustChanged(true);
     partial void OnZoomChanged(double value) => AdjustChanged(false);
     partial void OnExposureChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnContrastChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnHighlightsChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnShadowsChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnWhitesChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnBlacksChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnSaturationChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnVibranceChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnTemperatureChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnTintChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnSharpnessChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnVignetteChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnGrainChanged(double value) => AdjustChanged(false, geometry: false);
 
     [RelayCommand] private void RotateLeft() => Quarter = (Quarter + 3) % 4;
     [RelayCommand] private void RotateRight() => Quarter = (Quarter + 1) % 4;
     [RelayCommand] private void ResetExposure() => Exposure = 0;
+    [RelayCommand] private void ResetLight() => ResetGroup(() => { Exposure = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; });
+    [RelayCommand] private void ResetColor() => ResetGroup(() => { Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; });
+    [RelayCommand] private void ResetEffects() => ResetGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; });
+    private void ResetGroup(Action reset)
+    {
+        _restoring = true;
+        try { reset(); }
+        finally { _restoring = false; }
+        AdjustChanged(true, geometry: false);
+    }
     [RelayCommand]
     private void ResetGeometry()
     {
@@ -723,7 +780,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ResetPhotoAdjust()
     {
         _restoring = true;
-        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; }
+        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; }
         finally { _restoring = false; }
         RaiseAdjustTexts();
         _commitTimer?.Stop();
@@ -731,16 +788,34 @@ public partial class ProcessViewModel : ViewModelBase
     }
 
     // ── Live preview ───────────────────────────────────────────────────────────────────
-    private CancellationTokenSource? _renderCts;
     private bool _isRendering;
     /// <summary>A preview render is in flight (shown as an "Updating…" chip so a slow phone doesn't look frozen).</summary>
     public bool IsRendering { get => _isRendering; private set { if (_isRendering == value) return; _isRendering = value; OnPropertyChanged(); } }
 
+    // One render runs at a time and only the newest request waits behind it, so a dragged slider shows every frame the
+    // machine can produce (no fixed delay, no half-finished renders thrown away). All of this runs on the UI thread.
+    private Func<Task>? _pendingRender;
+    private bool _renderPumping;
+    private int _renderEpoch;
+
+    private void EnqueueRender(Func<Task> job)
+    {
+        _pendingRender = job;
+        if (_renderPumping) return;
+        _renderPumping = true;
+        _ = PumpRenders();
+    }
+
+    private async Task PumpRenders()
+    {
+        try { while (_pendingRender is { } job) { _pendingRender = null; await job(); } }
+        finally { _renderPumping = false; }
+    }
+
     private void ScheduleRender()
     {
-        _renderCts?.Cancel();
         var src = _source;
-        if (src == null) return;
+        if (src == null) { _renderEpoch++; _pendingRender = null; return; }
         var stack = BuildStack();
         var frame = CurrentFrame();
         var film = CurrentFilm(_loadedPath, useSettingsMetadata: true);
@@ -748,39 +823,36 @@ public partial class ProcessViewModel : ViewModelBase
         if (LookIsCrop)
         {
             // Crop view: exposure and Look, but no geometry, frame or film.
-            var exposure = CurrentAdjustSettings().Exposure;
-            if (stack.IsEmpty && exposure == 0) { CropBase = Original; IsRendering = false; return; }
+            var tone = CurrentAdjustSettings().ToneOnly() with { Sharpness = 0, Vignette = 0, Grain = 0 };
+            if (stack.IsEmpty && !tone.HasTone) { _renderEpoch++; _pendingRender = null; CropBase = Original; IsRendering = false; return; }
             IsRendering = true;
-            var cropCts = _renderCts = new CancellationTokenSource();
-            _ = RenderAsync(src, stack, null, null, new PhotoAdjust { Exposure = exposure }, cropCts.Token, forCrop: true);
+            int ep = _renderEpoch;
+            EnqueueRender(() => RenderAsync(src, stack, null, null, tone, ep, forCrop: true));
             return;
         }
-        if (stack.IsEmpty && (frame == null || frame.IsNoOp) && film == null && adjust == null) { Graded = null; IsRendering = false; return; }
+        if (stack.IsEmpty && (frame == null || frame.IsNoOp) && film == null && adjust == null) { _renderEpoch++; _pendingRender = null; Graded = null; IsRendering = false; return; }
         IsRendering = true;
-        var cts = _renderCts = new CancellationTokenSource();
-        _ = RenderAsync(src, stack, frame, film, adjust, cts.Token);
+        int epoch = _renderEpoch;
+        EnqueueRender(() => RenderAsync(src, stack, frame, film, adjust, epoch));
     }
 
-    private async Task RenderAsync(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust, CancellationToken ct, bool forCrop = false)
+    private async Task RenderAsync(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust, int epoch, bool forCrop = false)
     {
         try
         {
-            await Task.Delay(30, ct); // coalesce slider drags
-            var bmp = await Task.Run(() =>
+            // The bitmap is filled on the worker thread straight from the render, so the UI thread only swaps it in.
+            var shown = await Task.Run(() =>
             {
-                ct.ThrowIfCancellationRequested();
                 // _source is only replaced on the UI thread together with a new render, and a
                 // stale result is dropped below, so reading it here is safe.
                 using var graded = RenderPreview(src, stack, frame, film, adjust);
-                return ToBgra(graded);
-            }, ct);
-            if (ct.IsCancellationRequested || !ReferenceEquals(src, _source)) return;
-            var shown = ToWriteable(bmp);
+                return ToWriteable(graded);
+            });
+            if (epoch != _renderEpoch || !ReferenceEquals(src, _source)) return;
             if (forCrop) CropBase = shown; else Graded = shown;
         }
-        catch (OperationCanceledException) { }
         catch (ObjectDisposedException) { } // photo changed mid-render
-        finally { if (!ct.IsCancellationRequested) IsRendering = false; }
+        finally { if (_pendingRender == null) IsRendering = false; }
     }
 
     // Preview render. The geometry step (rotate, crop) is the slow one and does not change while the exposure or a
@@ -791,8 +863,8 @@ public partial class ProcessViewModel : ViewModelBase
 
     private Image<Rgb24> RenderPreview(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust)
     {
-        var geometry = adjust == null ? new PhotoAdjust() : adjust with { Exposure = 0 };
-        float stops = adjust?.Exposure ?? 0f;
+        var geometry = adjust == null ? new PhotoAdjust() : adjust.WithoutTone();
+        var tone = adjust?.ToneOnly();
         lock (_geomLock)
         {
             var basis = src;
@@ -807,38 +879,29 @@ public partial class ProcessViewModel : ViewModelBase
                 }
                 basis = _geomImg!;
             }
-            using var exposed = stops != 0f ? new PhotoAdjust { Exposure = stops }.Render(basis) : null;
+            using var exposed = tone is { HasTone: true } ? tone.Render(basis) : null;
             return RenderAll(exposed ?? basis, stack, frame, film);
         }
     }
 
     // Preview pixels go to the screen as raw BGRA: no BMP file is written and decoded again for every slider tick.
-    private sealed record RawPixels(byte[] Data, int Width, int Height);
-
-    private static RawPixels ToBgra(Image<Rgb24> img)
+    private static unsafe WriteableBitmap ToWriteable(Image<Rgb24> img)
     {
         int w = img.Width, h = img.Height;
-        var data = new byte[w * h * 4];
+        var wb = new WriteableBitmap(new global::Avalonia.PixelSize(w, h), new global::Avalonia.Vector(96, 96),
+            global::Avalonia.Platform.PixelFormat.Bgra8888, global::Avalonia.Platform.AlphaFormat.Opaque);
+        using var fb = wb.Lock();
+        byte* basePtr = (byte*)fb.Address;
+        int stride = fb.RowBytes;
         System.Threading.Tasks.Parallel.For(0, h, y =>
         {
             var row = img.Frames.RootFrame.DangerousGetPixelRowMemory(y).Span;
-            int o = y * w * 4;
+            byte* o = basePtr + (long)y * stride;
             for (int x = 0; x < row.Length; x++, o += 4)
             {
-                data[o] = row[x].B; data[o + 1] = row[x].G; data[o + 2] = row[x].R; data[o + 3] = 255;
+                o[0] = row[x].B; o[1] = row[x].G; o[2] = row[x].R; o[3] = 255;
             }
         });
-        return new RawPixels(data, w, h);
-    }
-
-    private static WriteableBitmap ToWriteable(RawPixels px)
-    {
-        var wb = new WriteableBitmap(new global::Avalonia.PixelSize(px.Width, px.Height), new global::Avalonia.Vector(96, 96),
-            global::Avalonia.Platform.PixelFormat.Bgra8888, global::Avalonia.Platform.AlphaFormat.Opaque);
-        using var fb = wb.Lock();
-        int rowBytes = px.Width * 4;
-        for (int y = 0; y < px.Height; y++)
-            System.Runtime.InteropServices.Marshal.Copy(px.Data, y * rowBytes, fb.Address + y * fb.RowBytes, rowBytes);
         return wb;
     }
 

@@ -83,6 +83,7 @@ public partial class SettingsViewModel
     {
         // Leaving Look closes the Crop section, so Frame and Export see the cropped photo, not the zoomed crop view.
         if (value != 0 && _process is { LookSection: not 0 } p) p.LookSection = 0;
+        _process?.RaiseEditSection();
         RaiseLayoutChanged();
         if (IsProcessMode) Process.Refresh();
     }
