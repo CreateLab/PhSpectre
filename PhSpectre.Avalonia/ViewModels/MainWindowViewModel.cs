@@ -837,7 +837,7 @@ public partial class MainWindowViewModel : ViewModelBase
         DismissToast();
     }
 
-    private static void RevealInFolder(string? path)
+    internal static void RevealInFolder(string? path)
     {
         if (path == null || !File.Exists(path)) return;
         try
@@ -888,9 +888,7 @@ public partial class MainWindowViewModel : ViewModelBase
             // matching comment for why that redundant decode is worth avoiding.
             working = await Task.Run(() =>
             {
-                var img = Image.Load<Rgb24>(filePath);
-                img.Mutate(ctx => ctx.AutoOrient());
-                return img;
+                return Services.FastDecode.LoadUpright(filePath);
             }, token);
             token.ThrowIfCancellationRequested();
             // Live re-renders of the same photo keep the already-built "original" preview.
@@ -904,6 +902,7 @@ public partial class MainWindowViewModel : ViewModelBase
                 FileInfoText = $"{entry.FileName}  ·  {working.Width}×{working.Height}";
             }
 
+            if (Settings.CardAdjust is { } cardAdjust) { var adjusted = cardAdjust.Render(working); working.Dispose(); working = adjusted; }
             Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
@@ -1033,8 +1032,7 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         var recipe = RecipeReader.Read(sourcePath)
             ?? throw new InvalidOperationException("No film recipe found in this photo");
-        using var img = Image.Load<Rgb24>(sourcePath);
-        img.Mutate(ctx => ctx.AutoOrient());
+        using var img = Services.FastDecode.LoadUpright(sourcePath);
         var metadata = PaletteImageRenderer.ReadMetadata(sourcePath);
         var qr = s.BuildQrRenderOptions(metadata, recipe);
         RecipeCardRenderer.Render(img, recipe, destPath,
@@ -1053,6 +1051,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var exportedLookup = Files.ToDictionary(f => f.FullPath, f => f);
         var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
         var batchLook = Settings.CardLook;
+        // Straighten, turn, zoom and the crop position belong to one photo; the ratio and exposure go to every card.
+        var batchAdjust = Settings.CardAdjust is { } ca ? ca with { Quarter = 0, Straighten = 0, Zoom = 1, PanX = 0, PanY = 0 } : null;
         _batchStartedAt = DateTime.UtcNow;
         BatchEtaText = "";
 
@@ -1099,7 +1099,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     if (exportSettings.Mode == ExportMode.Recipe)
                         await Task.Run(() => RenderRecipeCardFile(sourcePath, destPath, exportSettings));
                     else
-                        await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None, look: batchLook);
+                        await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None, look: batchLook, adjust: batchAdjust);
 
                     var exportedEntry = exportedLookup.GetValueOrDefault(sourcePath);
                     if (exportedEntry != null) await Dispatcher.UIThread.InvokeAsync(() => exportedEntry.IsExported = true);

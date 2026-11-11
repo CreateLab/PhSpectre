@@ -69,6 +69,12 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                                      CommandParameter="{x:Static vm:AppAppearance.Dark}"/>
                                         <TextBlock Classes="hint" Margin="4,6,4,4"
                                                    Text="Applies to the app. The exported card has its own theme in Style → Card."/>
+                                        <StackPanel IsVisible="{Binding IsMobile}" Spacing="6" Margin="4,10,4,4">
+                                            <TextBlock Text="WORKING QUALITY" Classes="section-title first"/>
+                                            <local:SegmentedControl Labels="Fast|Balanced|Best" SelectedIndex="{Binding WorkingQualityIndex}"/>
+                                            <TextBlock Classes="hint" TextWrapping="Wrap"
+                                                       Text="Fast 2000 px · Balanced 3400 px · Best 4800 px. Previews are built from a downscaled copy; saved photos stay full size."/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Flyout>
                             </Button.Flyout>
