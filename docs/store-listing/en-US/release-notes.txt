@@ -1,0 +1,1 @@
+First release on Google Play: film looks, frames (border, card, recipe, film edge), collage, palette and QR cards, and optional camera recipe writing over USB.

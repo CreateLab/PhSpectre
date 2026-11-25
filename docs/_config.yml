@@ -1,0 +1,5 @@
+title: PhSpectre
+theme: jekyll-theme-minimal
+exclude:
+  - design
+  - mobile-audit
