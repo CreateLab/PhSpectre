@@ -28,7 +28,7 @@ Never commit `*.jks`, `*.keystore` or passwords.
 
 - `ApplicationVersion` (versionCode) is passed with `-VersionCode`; every Play upload must be strictly higher than
   the previous one. Play tracks its own codes, so reusing numbers from GitHub releases is fine.
-- `ApplicationDisplayVersion` comes from the csproj (currently 3.0.0).
+- `ApplicationDisplayVersion` comes from the csproj (currently 3.0.1).
 
 ## Checks before uploading
 
