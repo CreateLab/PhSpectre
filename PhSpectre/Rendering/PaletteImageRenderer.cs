@@ -19,13 +19,8 @@ public enum MetaStyle    { FilmStrip, Overlay }
 public enum Theme        { Dark, Light }
 public enum OutputFormat { Png, Jpeg }
 
-// Fixed-size frames for sharing to social apps. The finished card (photo + swatches +
-// metadata) is letterboxed into the frame at its native aspect ratio rather than cropped,
-// so nothing in the composition gets cut off. Instagram and Telegram don't actually agree
-// on one universal size — IG's feed default moved to 4:5, Telegram's chat-photo sweet spot
-// is a different square/landscape pair, and stories (shared by both) reserve top/bottom
-// space for UI chrome — so these are kept as distinct, platform-accurate presets rather
-// than one generic "square/story" pair.
+// Fixed-size frames for social apps. The finished card is letterboxed at its native aspect ratio, never cropped.
+// Instagram and Telegram disagree on sizes and stories reserve space for UI chrome, so the presets stay platform-specific.
 public enum ExportPreset { Original, Square, InstagramPost, Story, TelegramLandscape }
 
 public enum SwatchShape { Rectangle, Rounded, Circle }
@@ -36,16 +31,11 @@ public static class PaletteImageRenderer
 {
     private record ThemeColors(Color Background, Color Text);
 
-    // Exposes just the background half of GetThemeColors for callers outside this class
-    // that need to match it exactly rather than re-deriving their own — e.g. the collage
-    // gutter, which has to be the same color as the card background it sits inside so the
-    // two don't visibly seam.
+    // Background half of GetThemeColors, for callers that must match it exactly (e.g. the collage gutter).
     public static Color GetBackgroundColor(Theme theme, Color? customBackground = null) =>
         GetThemeColors(theme, customBackground).Background;
 
-    // Text-color counterpart to GetBackgroundColor above, for callers (RecipeCardRenderer)
-    // that need to match the theme's text color without exposing the private ThemeColors
-    // record itself.
+    // Text-color counterpart to GetBackgroundColor, for RecipeCardRenderer.
     internal static Color GetTextColor(Theme theme, Color? customBackground = null) =>
         GetThemeColors(theme, customBackground).Text;
 
@@ -61,30 +51,12 @@ public static class PaletteImageRenderer
             : new ThemeColors(Color.ParseHex("111111"), Color.White);
     }
 
-    // Shared "paint the card background" step behind BuildLandscapeCanvas/BuildPortraitCanvas
-    // and RecipeCardRenderer.BuildCanvas — either today's flat theme/custom fill, or (when
-    // useBlurredBackground) a blurred cover-crop of the source photo with a translucent
-    // black/white scrim on top (Spotify/Apple-Music-style blurred backdrop). Callers pass
-    // customBackground: null alongside useBlurredBackground: true (enforced at the settings
-    // layer, see PaletteExportSettings.UseBlurredBackground) so text color still resolves from
-    // the Dark/Light theme rather than contrasting against a single (here nonexistent) color.
-    // Blurring is done on a small downscaled copy and resized back up — blur output is
-    // low-frequency so the upscale is visually free, and this keeps the op's cost roughly
-    // constant regardless of export resolution (multi-thousand-px photos otherwise make this
-    // needlessly slow, especially on Android).
-    //
-    // A scrim (not a multiplicative Brightness pass) is what actually makes this legible: the
-    // photo region that ends up behind a recipe card's plates/title is often already dark
-    // (shadow, ground, foliage), and Brightness is multiplicative — it can't lift a near-black
-    // pixel toward white (0 * anything is still 0), so a Light-theme card over a dark corner of
-    // the photo came out just as dark as Dark theme, indistinguishable from a flat fill.
-    // Compositing translucent black/white on top guarantees the intended tone regardless of
-    // what's locally in the photo, while still leaving blurred color/texture showing through.
-    // photoBoxHeight: when the caller draws a sharp foreground photo with alpha-blended
-    // rounded corners on top (RecipeCardRenderer), it crops that photo to fit a (w, photoBoxHeight)
-    // box. Left null (PaletteImageRenderer's canvases), the whole (w, h) area gets one cover-crop
-    // as before — safe there because the sharp photo it draws is either pixel-exact (no crop) or
-    // has hard, opaque edges, so there's no alpha blend that could expose a mismatched crop.
+    // Paints the card background: a flat theme/custom fill, or a blurred cover-crop of the photo under a translucent black/white scrim.
+    // Callers pass customBackground: null with useBlurredBackground: true (see PaletteExportSettings.UseBlurredBackground), so text color resolves from the theme.
+    // Blur runs on a downscaled copy and is scaled back up (low-frequency, so it is free visually and keeps the cost flat at any export size).
+    // A scrim rather than a multiplicative Brightness pass: Brightness can't lift a near-black pixel, so a Light card over a dark photo corner came out dark.
+    // photoBoxHeight: when the caller draws a sharp rounded-corner photo on top (RecipeCardRenderer), that photo is cropped to (w, photoBoxHeight).
+    // Left null, the whole (w, h) area gets one cover-crop; safe because the sharp photo drawn there has opaque edges or no crop.
     internal static void FillCardBackground(
         IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int w, int h,
         Theme theme, Color? customBackground, bool useBlurredBackground,
@@ -96,18 +68,13 @@ public static class PaletteImageRenderer
             return;
         }
 
-        // The backdrop is the same photo, cover-cropped over the whole card with a little extra
-        // zoom (so the blur never fades at the edges) and heavily blurred: the sharp photo reads as
-        // if it continued past its own borders. Only a light tint (<=12%) keeps text legible; the
-        // Dark/Light theme changes plate and text colours, not the backdrop itself.
+        // Backdrop: the same photo, cover-cropped over the card with extra zoom so the blur never fades at the edges, heavily blurred.
+        // Only a light tint (<=12%) keeps text legible; the theme changes plate and text colors, not the backdrop.
         Color scrimColor = theme == Theme.Dark ? Color.Black : Color.White;
         DrawBlurredBackdrop(ctx, sourcePhoto, w, h, scrimColor);
     }
 
-    // Blurring is done on a small downscaled copy and resized back up: the blur output is
-    // low-frequency so the upscale is visually free, and the cost stays roughly constant regardless
-    // of export resolution. The radius is a fraction of the card width, so the look is the same at
-    // every export size.
+    // Blur on a downscaled copy, scaled back up (cost stays flat at any export size). The radius is a fraction of the card width, so the look is the same at every size.
     private static void DrawBlurredBackdrop(
         IImageProcessingContext ctx, Image<Rgb24> sourcePhoto, int w, int h, Color scrimColor)
     {
@@ -136,8 +103,7 @@ public static class PaletteImageRenderer
         if (sigma >= 0.5f)
             backdrop.Mutate(c => c.GaussianBlur(sigma));
 
-        // ctx.Fill(translucentColor) (no region) does a straight replace rather than an alpha
-        // blend in this ImageSharp version, so the tint goes through DrawImage's opacity instead.
+        // ctx.Fill(translucentColor) without a region replaces instead of blending in this ImageSharp version, so the tint goes through DrawImage's opacity.
         using (var scrim = new Image<Rgb24>(workW, workH, scrimColor.ToPixel<Rgb24>()))
             backdrop.Mutate(c => c.DrawImage(scrim, Point.Empty, scrimOpacity));
 
@@ -145,9 +111,7 @@ public static class PaletteImageRenderer
         ctx.DrawImage(backdrop, Point.Empty, 1f);
     }
 
-    // 12 display-formatted metadata fields drawn into the strip/overlay. Camera, Lens, Focal,
-    // Aperture, Shutter, Iso, and Date are user-editable in the settings UI; the rest
-    // (FocalEq, ExposureBias, WhiteBalance, ExpProgram, Serial) are always auto-read from EXIF.
+    // 12 display-formatted metadata fields. Camera, Lens, Focal, Aperture, Shutter, Iso and Date are user-editable; the rest are always read from EXIF.
     public record PhotoMetadata(
         string Camera, string Lens,
         string Focal,  string FocalEq,
@@ -186,9 +150,7 @@ public static class PaletteImageRenderer
             labelScale, swatchScale, showPercent, swatchShape, sortOrder, customBackground, compositionGuide, useBlurredBackground, qr);
     }
 
-    // Renders from an already-decoded image (caller owns disposal) — skips a redundant
-    // re-decode when the caller (e.g. the mobile pipeline) already holds the working copy
-    // in memory. The image is assumed already auto-oriented by the caller.
+    // Renders from an already-decoded image (caller owns disposal and has auto-oriented it).
     public static void Render(
         Image<Rgb24> original,
         ColorPalette palette,
@@ -258,8 +220,7 @@ public static class PaletteImageRenderer
 
         if (exportPreset != ExportPreset.Original)
         {
-            // (width, height, safe-top, safe-bottom) — safe margins keep content clear of
-            // the story UI chrome (profile/timestamp bar on top, reply box on bottom).
+            // (width, height, safe-top, safe-bottom); safe margins keep content clear of story UI chrome.
             var (targetW, targetH, safeTop, safeBottom) = exportPreset switch
             {
                 ExportPreset.Square            => (1080, 1080, 0, 0),
@@ -278,18 +239,13 @@ public static class PaletteImageRenderer
             if (format == OutputFormat.Jpeg)
                 canvas.SaveAsJpeg(outputPath, new JpegEncoder { Quality = ExportDefaults.JpegQuality });
             else
-                // Adaptive filtering (ImageSharp's default) tries all 5 PNG row filters
-                // per scanline and picks the smallest — ~2x+ slower than a fixed filter
-                // for ~30-45% smaller output. Not worth it on multi-thousand-pixel photo
-                // canvases where this encode was the single largest cost in the pipeline.
+                // Adaptive filtering tries all 5 PNG row filters per scanline: ~2x slower for 30-45% smaller output, not worth it on large canvases.
                 canvas.SaveAsPng(outputPath, new PngEncoder { FilterMethod = PngFilterMethod.None });
         }
     }
 
-    // Scales the finished card to fit inside a fixed-size frame (never cropping) and
-    // centers it on the theme background — used for social presets (§ExportPreset).
-    // safeTop/safeBottom shrink the region the content is allowed to occupy (and center
-    // within), without changing the frame's actual pixel dimensions.
+    // Scales the finished card to fit a fixed-size frame (never cropping) and centers it on the theme background.
+    // safeTop/safeBottom shrink the usable region without changing the frame's pixel size.
     private static Image<Rgb24> FitToFrame(Image<Rgb24> canvas, int targetW, int targetH, Color background, int safeTop = 0, int safeBottom = 0)
     {
         int innerH = targetH - safeTop - safeBottom;
@@ -309,8 +265,7 @@ public static class PaletteImageRenderer
         return frame;
     }
 
-    // Shared padding unit: 2.5% of the card width, never below 12 px. Used for the outer
-    // margin, the gaps between photo / palette / plate, and (halved) between swatch tiles.
+    // Shared padding unit: 2.5% of the card width, at least 12 px; used for margins, gaps and (halved) between swatch tiles.
     internal static int CardPadding(int cardWidth) => Math.Max(12, (int)Math.Round(cardWidth * 0.025));
 
     // ── Landscape: photo → swatches → [filmstrip] ──────────────────────────
@@ -329,10 +284,8 @@ public static class PaletteImageRenderer
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
 
-        // Swatch panel (computed always; only added to canvas when showSwatches=true)
-        // Every size derives from the card width (here: the photo width), not from fixed
-        // pixel clamps — otherwise labels read tiny on small photos and huge on big ones, and
-        // spacing drifts between photos. One padding unit P is shared by every edge and gap.
+        // Swatch panel (always computed, added only when showSwatches).
+        // Every size derives from the card width, not fixed pixel clamps, so labels and spacing scale with the photo. One padding unit P is shared by every edge and gap.
         int margin   = CardPadding(original.Width);
         int gap      = n >= 6 ? Math.Max(4, original.Width / 100) : Math.Max(4, margin / 2);
         int swatchH  = (int)(Math.Max(44, original.Height * 0.15) * swatchScale);
@@ -344,12 +297,10 @@ public static class PaletteImageRenderer
             ? FitSwatchFont(swatchFs, swatchW - 2 * textPad, showHex)
             : null;
 
-        // QR first: when the camera plate shares its row (QR bottom-right, plate left), the plate
-        // is fitted to the width the code leaves over.
+        // QR first: when the camera plate shares its row, the plate is fitted to the width the code leaves.
         int qrBoxSize = QrCodeRenderer.SuggestBoxSize(original.Width);
         int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin, downscale);
-        // A dense payload forces a big code (see MinPxPerModule); the plate only moves beside it when
-        // at least 40% of the width is left, otherwise it keeps its own row below the code.
+        // A dense payload forces a big code (see MinPxPerModule); the plate sits beside it only if at least 40% of the width is left.
         int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize, downscale) : 0;
         bool plateBesideQr = qr != null && style == MetaStyle.FilmStrip
             && original.Width - (qrImgSize + 2 * margin) >= original.Width * 0.4;
@@ -360,11 +311,7 @@ public static class PaletteImageRenderer
         bool plateInRow = plateBesideQr && lines.Length > 0;
         int qrRowH = plateInRow ? Math.Max(qrBelowH, stripH) : qrBelowH;
 
-        // Canvas layout — swatch panel is optional. Swatches sit directly under the photo;
-        // the QR below-block (when present) goes right after that, and the filmstrip (when
-        // present) goes after the QR — QR must land immediately under the photo/swatches and
-        // before any text plate (metadata/recipe), never at the very bottom of the whole
-        // composition (v2 spec §1: "Below" is anchored to the photo, not to the full card).
+        // Layout: swatches directly under the photo, then the QR block, then the filmstrip. The QR sits right under the photo/swatches and before any text plate ("Below" is anchored to the photo).
         int swatchPanelY = original.Height;
         int labelH       = labelLines > 0 && hexBelow ? (int)swatchFs * labelLines + textPad : 0;
         int panelH       = margin + swatchH + labelH + margin;
@@ -418,7 +365,7 @@ public static class PaletteImageRenderer
         int n = palette.Swatches.Count;
         var tc = GetThemeColors(theme, customBackground);
 
-        // Swatch panel (computed always; column only added to canvas when showSwatches=true)
+        // Swatch panel (always computed, column added only when showSwatches)
         int panelW   = (int)(Math.Max(100, original.Width / 5) * swatchScale);
         int margin   = CardPadding(original.Width + (showSwatches ? panelW : 0));
         int gap      = n >= 6 ? Math.Max(4, original.Width / 100) : Math.Max(4, margin / 2);
@@ -431,7 +378,7 @@ public static class PaletteImageRenderer
             ? FitSwatchFont(swatchFs, swatchW - 2 * textPad, showHex)
             : null;
 
-        // Reserve extra space per swatch when drawing label below
+        // Reserve extra space per swatch when the label is drawn below
         int labelH  = labelLines > 0 && hexBelow ? (int)swatchFs * labelLines + textPad : 0;
         int swatchH = (original.Height - 2 * margin - (n - 1) * gap - n * labelH) / n;
 
@@ -445,7 +392,7 @@ public static class PaletteImageRenderer
             && canvasW - (qrImgSize + 2 * margin) >= canvasW * 0.4;
         int plateWidth = plateBesideQr ? canvasW - (qrImgSize + 2 * margin) : canvasW;
 
-        // In overlay mode the box covers only the photo, so fit text to photo width
+        // In overlay mode the box covers only the photo, so fit text to the photo width
         int stripWidth = style == MetaStyle.Overlay ? original.Width : plateWidth;
         (string[] lines, int stripH, float metaFs, Font? metaFont) = PrepareStrip(exif, verbosity, stripWidth, labelScale);
         bool plateInRow = plateBesideQr && lines.Length > 0;
@@ -455,8 +402,7 @@ public static class PaletteImageRenderer
             ? original.Height + stripH
             : original.Height) + qrRowH;
 
-        // QR below-block lands right after the photo itself (swatches are a side column here,
-        // not a band below the photo) and before the filmstrip, same anchoring fix as landscape.
+        // QR below-block lands right after the photo (swatches are a side column here) and before the filmstrip.
         int qrBlockY = original.Height;
         int stripY   = style == MetaStyle.FilmStrip
             ? (plateInRow ? qrBlockY + (qrRowH - stripH) / 2 : qrBlockY + qrRowH)
@@ -505,9 +451,7 @@ public static class PaletteImageRenderer
 
     // ── Strip helpers ───────────────────────────────────────────────────────
 
-    // Internal (not private): reused by RecipeCardRenderer to draw the same camera-info
-    // plate strip on the recipe card as the palette card uses, rather than duplicating the
-    // line-building/fitting/drawing logic.
+    // Internal: RecipeCardRenderer reuses it to draw the same camera-info strip.
     internal static (string[] lines, int stripH, float fontSize, Font? font) PrepareStrip(
         PhotoMetadata? exif, MetaVerbosity verbosity, int photoWidth, float labelScale = 1.0f)
     {
@@ -517,11 +461,8 @@ public static class PaletteImageRenderer
         string[] lines = BuildMetaLines(exif, verbosity);
         if (lines.Length == 0) return ([], 0, 0f, null);
 
-        // Font size is picked so a fixed-length reference string just fills the available
-        // width, instead of guessing "photoWidth / N". That keeps how much metadata text
-        // fits roughly constant at any photo resolution *and* across platforms: measuring
-        // against the font actually resolved here also cancels out metric differences
-        // between e.g. desktop Consolas and Android Roboto, which a hardcoded ratio can't.
+        // Font size is picked so a fixed-length reference string just fills the width, which keeps the amount of text constant across
+        // resolutions and platforms (measuring the resolved font also cancels out Consolas vs Roboto metrics).
         const int targetChars = 70;
         var probeFont   = ResolveMetaFont(100f);
         float probeW    = TextMeasurer.MeasureSize(new string('0', targetChars), new TextOptions(probeFont)).Width;
@@ -610,9 +551,7 @@ public static class PaletteImageRenderer
         }
         else
         {
-            // FillCardBackground already painted the blurred backdrop (with its scrim) across
-            // the whole canvas, strip band included — flat-filling here would just paint over
-            // it and silently defeat the blurred-photo option for this region.
+            // FillCardBackground already painted the blurred backdrop across the whole canvas; a flat fill here would defeat it.
             if (!useBlurredBackground)
                 ctx.Fill(tc.Background, new RectangleF(x, y, w, stripH));
             for (int i = 0; i < lines.Length; i++)
@@ -650,8 +589,7 @@ public static class PaletteImageRenderer
         }
     }
 
-    // Builds the 1-2 label lines drawn on/under a swatch — hex on top, percentage below,
-    // when both are enabled; otherwise whichever single one is active.
+    // The 1-2 label lines on/under a swatch: hex on top, percentage below, or whichever single one is active.
     private static string[] BuildSwatchLabelLines(ColorSwatch swatch, bool showHex, bool showPercent)
     {
         if (showHex && showPercent) return [swatch.Hex, swatch.Percentage.ToString("P0")];
@@ -660,16 +598,14 @@ public static class PaletteImageRenderer
         return [];
     }
 
-    // Draws 1-2 stacked label lines either below the swatch (down: true, top-aligned at origin)
-    // or centered inside it (down: false, origin is the swatch's vertical center).
+    // Draws the labels below the swatch (down: true, top-aligned at origin) or centered inside it (down: false, origin is the vertical center).
     private static void DrawSwatchLabelLines(
         IImageProcessingContext ctx, Font font, string[] lines, float centerX, float originY, float lineHeight, Color color, bool down)
     {
         if (lines.Length == 0) return;
 
-        // Single centered line keeps pixel-perfect glyph-metric centering via VerticalAlignment.
-        // Below-swatch or multi-line labels are stacked top-down from a computed start instead,
-        // since VerticalAlignment.Center only centers a single line, not a block of several.
+        // A single centered line uses VerticalAlignment for exact centering; below-swatch or multi-line labels are stacked from a computed start,
+        // since VerticalAlignment.Center only centers one line.
         if (!down && lines.Length == 1)
         {
             ctx.DrawText(new RichTextOptions(font)
@@ -692,8 +628,7 @@ public static class PaletteImageRenderer
         }
     }
 
-    // Fills a swatch with the requested shape — shared by the landscape row (DrawSwatches)
-    // and the portrait column (BuildPortraitCanvas) so shape support lives in one place.
+    // Fills a swatch with the requested shape, shared by the landscape row and the portrait column.
     private static void FillSwatchShape(IImageProcessingContext ctx, Color color, float x, float y, float w, float h, SwatchShape shape)
     {
         switch (shape)
@@ -711,8 +646,7 @@ public static class PaletteImageRenderer
         }
     }
 
-    // No built-in rounded-rectangle primitive ships with this ImageSharp.Drawing version —
-    // build one from 4 corner arcs joined by straight edges.
+    // No built-in rounded rectangle in this ImageSharp.Drawing version: 4 corner arcs joined by straight edges.
     internal static IPath RoundedRectPath(float x, float y, float w, float h, float r)
     {
         var pb = new PathBuilder();
@@ -774,8 +708,7 @@ public static class PaletteImageRenderer
         }
     }
 
-    // Foot of the perpendicular dropped from p onto line a-b — used to build the two
-    // "golden triangle" legs off the main diagonal.
+    // Foot of the perpendicular from p onto line a-b (builds the golden-triangle legs).
     internal static PointF PerpendicularFoot(PointF p, PointF a, PointF b)
     {
         float abx = b.X - a.X, aby = b.Y - a.Y;
@@ -783,9 +716,7 @@ public static class PaletteImageRenderer
         return new PointF(a.X + t * abx, a.Y + t * aby);
     }
 
-    // Black+white double stroke instead of a single content-adaptive color: keeps the guide
-    // visible on both light and dark photo regions without sampling per-line like
-    // GetOverlayTextColor does for the metadata overlay text.
+    // Black+white double stroke keeps the guide visible on light and dark regions without per-line sampling.
     private static void DrawGuideLine(IImageProcessingContext ctx, PointF p1, PointF p2, float thickness)
     {
         var pb = new PathBuilder();
@@ -821,8 +752,7 @@ public static class PaletteImageRenderer
 
     // ── EXIF reading ────────────────────────────────────────────────────────
 
-    // Reads metadata only, without decoding pixel data — for callers that need to show/edit
-    // metadata fields separately from (and cheaper than) a full render.
+    // Metadata only, without decoding pixels.
     public static PhotoMetadata? ReadMetadata(string path)
     {
         try
@@ -961,13 +891,8 @@ public static class PaletteImageRenderer
 
     // ── Font helpers ────────────────────────────────────────────────────────
 
-    // Embedding JetBrains Mono guarantees the same typography on desktop and Android
-    // regardless of what's installed on the OS, instead of depending on SystemFonts
-    // resolving to whatever monospace family happens to be present (Consolas on Windows,
-    // some Roboto variant on Android) — those differ enough in glyph width that text
-    // capacity per line used to vary by platform. Lazily loaded once; null if anything
-    // about the embedded-resource lookup fails, in which case ResolveMetaFont below
-    // falls through to the pre-existing SystemFonts chain unchanged.
+    // Embedded JetBrains Mono gives the same typography on desktop and Android; system monospace families differ enough in glyph width
+    // to change the text capacity per line. Loaded once; null on failure, in which case ResolveMetaFont uses the SystemFonts chain.
     private static readonly FontFamily? EmbeddedMonoFamily = LoadEmbeddedMonoFont();
 
     private static FontFamily? LoadEmbeddedMonoFont()
@@ -990,9 +915,7 @@ public static class PaletteImageRenderer
         }
     }
 
-    // style defaults to Regular for every existing caller; QR captions are the one caller that
-    // asks for Bold (camera line) — falls back to Regular wherever a family has no bold variant
-    // rather than throwing, since a slightly-wrong weight beats a missing caption entirely.
+    // style defaults to Regular; QR captions ask for Bold (camera line). Falls back to Regular when a family has no bold variant.
     internal static Font ResolveMetaFont(float size, FontStyle style = FontStyle.Regular)
     {
         if (EmbeddedMonoFamily is { } embedded)
@@ -1001,8 +924,7 @@ public static class PaletteImageRenderer
             catch { /* fall through to the system-font chain below */ }
         }
 
-        // Desktop (Windows/Linux) names first, then the common Android system font names,
-        // so mobile doesn't fall through to the "pick anything installed" last resort below.
+        // Desktop names first, then common Android system fonts, so mobile doesn't hit the last resort below.
         foreach (string name in new[]
         {
             "Consolas", "Courier New", "Lucida Console",
@@ -1015,8 +937,7 @@ public static class PaletteImageRenderer
             catch when (style != FontStyle.Regular) { } // family has no such style — try the next
         }
 
-        // Last resort: pick any installed family, but skip emoji/symbol fonts — on some
-        // platforms/devices those sort first and silently render plain text as blank glyphs.
+        // Last resort: any installed family, skipping emoji/symbol fonts (they sort first on some devices and render blank glyphs).
         var families = SystemFonts.Families.ToList();
         var textFamily = families.FirstOrDefault(f =>
             !string.IsNullOrEmpty(f.Name) &&
@@ -1031,13 +952,8 @@ public static class PaletteImageRenderer
         catch when (style != FontStyle.Regular) { return family.CreateFont(size, FontStyle.Regular); }
     }
 
-    // Non-mono counterpart to ResolveMetaFont, for the QR Caption text only (v-final spec §3:
-    // "Моно-шрифт оставить только в сетке цифр рецепта, не в свободном тексте переменной
-    // длины" — camera/lens names are free-form variable-width text, not the fixed-width digit
-    // grid ResolveMetaFont exists for, so they get an ordinary sans family instead). No
-    // embedded fallback family for this one — mono is embedded because glyph WIDTH parity
-    // across platforms mattered for the digit grid; a caption's width already gets measured
-    // and ellipsized per-platform (see EllipsizeToWidth), so there's nothing to keep parity of.
+    // Non-mono counterpart of ResolveMetaFont for QR captions only: camera/lens names are free-form text, not the fixed-width digit grid.
+    // No embedded fallback: mono is embedded for glyph-width parity of the digit grid, while a caption is measured and ellipsized per platform.
     internal static Font ResolveSansFont(float size, FontStyle style = FontStyle.Regular)
     {
         foreach (string name in new[]
@@ -1065,16 +981,13 @@ public static class PaletteImageRenderer
         catch when (style != FontStyle.Regular) { return family.CreateFont(size, FontStyle.Regular); }
     }
 
-    // Shrinks the swatch hex-label font until "#000000" (all hex labels are the same
-    // 7-char width) actually fits inside the swatch, instead of trusting a size guessed
-    // from panel geometry alone — that guess badly overflows on narrow/portrait swatches.
+    // Shrinks the hex-label font until "#000000" fits inside the swatch; panel geometry alone overflows on narrow swatches.
     private static Font FitSwatchFont(float startSize, float maxTextWidth, bool showHex = true)
     {
         const float minSize = 10f;
         if (maxTextWidth <= 0) return ResolveMetaFont(minSize);
 
-        // "#000000" (7 chars) when a hex label is drawn, otherwise the shorter "100%" —
-        // both are the widest string that style of label can ever produce.
+        // "#000000" when a hex label is drawn, else "100%": the widest string each style can produce.
         string probe = showHex ? "#000000" : "100%";
         for (float size = startSize; size > minSize; size -= 2f)
         {
@@ -1094,8 +1007,7 @@ public static class PaletteImageRenderer
     internal static Color ContrastColor(byte r, byte g, byte b)
         => RelativeLuminance(r, g, b) < 0.179 ? Color.White : Color.Black;
 
-    // Standard RGB→hue conversion (0-360, undefined/0 for achromatic colors) — only the hue
-    // component is needed for sorting, so this skips computing saturation/lightness.
+    // RGB to hue (0-360, 0 for achromatic); only hue is needed for sorting.
     internal static float RgbToHue(byte r, byte g, byte b)
     {
         float rf = r / 255f, gf = g / 255f, bf = b / 255f;

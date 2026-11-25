@@ -10,15 +10,10 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Avalonia.Services;
 
-// The one place that turns "a source photo + a settings snapshot" into a saved palette
-// file — used by both the single Save PNG/JPEG flow and batch export, so they can never
-// drift apart in behavior.
+// Turns a source photo and a settings snapshot into a saved palette file; shared by single save and batch export.
 public static class PaletteExportService
 {
-    // Stand-in used whenever ComputeColors is false (InfoOnly/Recipe/CollageInfoOnly) —
-    // k-means never runs, so there's nothing real to put here; showSwatches:false on the
-    // Render call means it's never drawn. ColorPalette's constructor requires at least one
-    // swatch, so this is the minimal legal instance rather than an empty one.
+    // Stand-in when ComputeColors is false: k-means never runs and the swatches aren't drawn, but ColorPalette needs at least one swatch.
     private static readonly PhSpectre.Models.ColorPalette NoColorsPlaceholder =
         new([new PhSpectre.Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
 
@@ -27,12 +22,7 @@ public static class PaletteExportService
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null,
         PhSpectre.ColorGrading.GradeStack? look = null, PhSpectre.Rendering.PhotoAdjust? adjust = null)
     {
-        // Decoded once and reused for both palette extraction and the final render (see the
-        // Image<Rgb24> overload below). Previously extraction opened its own FileStream (a full
-        // decode) and the render separately passed sourcePath straight to
-        // PaletteImageRenderer.Render, which decodes the same file a second time — for a
-        // full-resolution camera photo, that's a real decode paid twice on every single export,
-        // in every mode (it doesn't depend on ComputeColors/k-means at all).
+        // Decoded once and reused for palette extraction and the final render, instead of decoding the full-resolution file twice.
         using var original = await Task.Run(() =>
         {
             using var fs = System.IO.File.OpenRead(sourcePath);
@@ -44,18 +34,13 @@ public static class PaletteExportService
         cancellationToken.ThrowIfCancellationRequested();
         look?.Apply(original); // the Look is part of the picture the card is built from
 
-        // Auto-detect the film recipe from the decoded image's own EXIF when the caller
-        // didn't already resolve one (e.g. batch export, one photo at a time) — same
-        // "auto-read unless overridden" convention as PhotoMetadata, and cheap since the
-        // profile is already in memory, no extra disk read.
+        // Auto-detect the film recipe from the image's EXIF when the caller didn't resolve one (cheap: the profile is in memory).
         recipe ??= PhSpectre.Recipes.RecipeReader.Read(original);
 
         await ExportAsync(original, destPath, settings, cancellationToken, metadataOverride, recipe);
     }
 
-    // In-memory twin of ExportAsync above — for a caller (the desktop live-preview VM) that
-    // already holds a decoded, auto-oriented working copy of the photo for its own on-screen
-    // preview and would otherwise force a second full decode just to hand this method a path.
+    // In-memory twin of ExportAsync, for callers that already hold a decoded, oriented working copy.
     public static async Task ExportAsync(
         Image<Rgb24> original, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
@@ -72,10 +57,7 @@ public static class PaletteExportService
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // A QR content preset can include Recipe/PhotoInfo regardless of ExportMode (a Card
-        // export can still carry a QR pointing at recipe data even though it draws no plate
-        // grid itself) — resolve the same PhotoMetadata the renderer itself would use so the
-        // QR's "Camera + Lens" fields agree with what's actually printed on the card.
+        // A QR preset can include Recipe/PhotoInfo in any mode; resolve the same PhotoMetadata the renderer uses so the QR agrees with the card.
         var qr = settings.BuildQrRenderOptions(metadataOverride ?? PaletteImageRenderer.ReadMetadata(original), recipe);
 
         await Task.Run(() => PaletteImageRenderer.Render(
@@ -101,23 +83,14 @@ public static class PaletteExportService
             qr:               qr), cancellationToken);
     }
 
-    // Collage twin of ExportAsync — several source photos become one composed collage
-    // (see CollageComposer), palette pooled across them by displayed area, then rendered
-    // through the same PaletteImageRenderer pipeline as a single photo.
-    //
-    // Unlike ExportAsync, none of CollageService.RenderCollageAsync's steps (decoding N
-    // full-res photos, compositing, sampling, k-means, drawing/encoding) are genuinely
-    // async I/O — left unwrapped, the whole pipeline would run synchronously on whichever
-    // thread called this (the UI thread, when invoked from the Avalonia VMs), freezing it
-    // for the full render. Task.Run pushes all of it onto the thread pool instead.
+    // Collage twin of ExportAsync: sources are composed, the palette is pooled by displayed area, then rendered as for a single photo.
+    // None of the steps are real async I/O, so Task.Run keeps them off the calling (UI) thread.
     public static Task ExportCollageAsync(
         IReadOnlyList<string> sourcePaths, string destPath, PaletteExportSettings settings,
         CancellationToken cancellationToken,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
     {
-        // Collage's EXIF source is always the first tray photo (CollageService.RenderCollageAsync
-        // re-derives it the same way when metadataOverride is null) — good enough for the QR's
-        // Camera/Lens fields too; a QR-specific re-read isn't worth a second EXIF decode here.
+        // The EXIF source is the first tray photo (as in CollageService.RenderCollageAsync); good enough for the QR's Camera/Lens.
         var qrMetadata = metadataOverride ?? PaletteImageRenderer.ReadMetadata(sourcePaths[0]);
         var qr = settings.BuildQrRenderOptions(qrMetadata, recipe);
 
@@ -150,8 +123,7 @@ public static class PaletteExportService
             cancellationToken);
     }
 
-    // Cheap live-preview twin of ExportCollageAsync — no palette, no card, just the
-    // composed layout. See CollageService.ComposePreviewAsync.
+    // Cheap live-preview twin of ExportCollageAsync: layout only (see CollageService.ComposePreviewAsync).
     public static Task<Image<Rgb24>> ComposeCollagePreviewAsync(
         IReadOnlyList<string> sourcePaths, PaletteExportSettings settings, CancellationToken cancellationToken) =>
         CollageService.ComposePreviewAsync(sourcePaths, settings.GutterColor, settings.GutterThickness, settings.ExportPreset,

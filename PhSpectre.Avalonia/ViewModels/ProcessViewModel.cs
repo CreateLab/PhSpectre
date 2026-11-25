@@ -34,6 +34,8 @@ public partial class GradeItemViewModel : ObservableObject
     public string Detail => string.IsNullOrEmpty(Entry.Category) ? "" : Entry.Category;
     public bool CanDelete => !Entry.Bundled;
     public string Badge => Entry.Kind == GradeKind.Preset ? "PRESET" : "LUT";
+    public string FavoriteMenuText => IsFavorite ? "Remove from favorites" : "Add to favorites";
+    partial void OnIsFavoriteChanged(bool value) => OnPropertyChanged(nameof(FavoriteMenuText));
     public bool HasThumb => Thumb != null;
     partial void OnThumbChanged(Bitmap? value) => OnPropertyChanged(nameof(HasThumb));
     public GradeItemViewModel(GradeEntry e, ProcessViewModel owner) { Entry = e; Owner = owner; _isFavorite = e.Favorite; }
@@ -121,7 +123,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ClearPhoto()
     {
         _source?.Dispose(); _source = null;
-        Original = null; Graded = null; _loadedPath = null; PhotoName = "";
+        Original = null; Graded = null; _loadedPath = null; PhotoName = ""; _fullSize = (0, 0); UpdateExportSize();
         ResetThumbs();
         PhotoChanged?.Invoke();
         OnPropertyChanged(nameof(PhotoCount)); OnPropertyChanged(nameof(CanExportAll)); OnPropertyChanged(nameof(ExportAllText));
@@ -163,11 +165,13 @@ public partial class ProcessViewModel : ViewModelBase
         _loadingPath = path;
         try
         {
+            int fullW = 0, fullH = 0;
             var img = await Task.Run(() =>
             {
                 // Decode straight to ~preview size: JPEG decoders can skip most of the work by scaling in the DCT,
                 // which matters on phones (a 24 MP photo no longer gets fully decoded just to be shrunk).
                 var info = Image.Identify(path);
+                fullW = info?.Width ?? 0; fullH = info?.Height ?? 0;
                 int big = info == null ? 0 : Math.Max(info.Width, info.Height);
                 Image<Rgb24> i;
                 if (info != null && big > PreviewLongSide)
@@ -182,6 +186,7 @@ public partial class ProcessViewModel : ViewModelBase
                 }
                 else i = Image.Load<Rgb24>(path);
                 i.Mutate(x => x.AutoOrient());
+                if (fullW > 0 && (i.Width >= i.Height) != (fullW >= fullH)) (fullW, fullH) = (fullH, fullW);
                 int longSide = Math.Max(i.Width, i.Height);
                 if (longSide > PreviewLongSide)
                 {
@@ -194,12 +199,14 @@ public partial class ProcessViewModel : ViewModelBase
             if (_settings.CurrentPhotoProvider?.Invoke()?.FullPath != path) { img.Dispose(); return; }
             _source?.Dispose();
             _source = img;
+            _fullSize = (fullW, fullH);
             _loadedPath = path;
             PhotoName = fileName;
             ErrorText = "";
             Original = ToBitmap(img);
             Graded = null;
             ResetPhotoAdjust();
+            UpdateExportSize();
             ResetThumbs();
             if (_libraryBuilt) { foreach (var it in Items) it.Thumb = null; ScheduleThumbs(); } else RefreshLibrary();
             ScheduleRender();
@@ -264,9 +271,16 @@ public partial class ProcessViewModel : ViewModelBase
             Items.Add(item);
         }
         Groups.Clear();
-        foreach (var g in Items.GroupBy(i => string.IsNullOrWhiteSpace(i.Entry.Category) ? "Imported" : i.Entry.Category)
-                               .OrderBy(g => g.Key == "Imported" ? 1 : 0).ThenBy(g => g.Key, StringComparer.CurrentCultureIgnoreCase))
-            Groups.Add(new GradeGroup(g.Key, g.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList()));
+        // Mixed tabs (All, Fav) split presets and LUTs into separate sections.
+        bool mixed = kind == null;
+        foreach (var g in Items.GroupBy(i => (Kind: mixed ? i.Entry.Kind : GradeKind.Preset,
+                                              Cat: string.IsNullOrWhiteSpace(i.Entry.Category) ? "Imported" : i.Entry.Category))
+                               .OrderBy(g => g.Key.Kind).ThenBy(g => g.Key.Cat == "Imported" ? 1 : 0)
+                               .ThenBy(g => g.Key.Cat, StringComparer.CurrentCultureIgnoreCase))
+        {
+            string title = mixed ? $"{(g.Key.Kind == GradeKind.Preset ? "Presets" : "LUTs")} · {g.Key.Cat}" : g.Key.Cat;
+            Groups.Add(new GradeGroup(title, g.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList()));
+        }
         OnPropertyChanged(nameof(HasItems)); OnPropertyChanged(nameof(ShowLibraryEmpty)); OnPropertyChanged(nameof(LibraryEmptyText));
         _ = FillThumbsAsync();
     }
@@ -378,14 +392,20 @@ public partial class ProcessViewModel : ViewModelBase
     [RelayCommand]
     private void UseItem(GradeItemViewModel item)
     {
+        if (item.IsActive)
+        {
+            if (item.Entry.Kind == GradeKind.Preset) ClearPreset(); else ClearLut();
+            return;
+        }
         if (!TryLoad(item.Entry, out var obj, out var err)) { ImportStatus = err; return; }
+        // Each newly picked look starts at 100%, like Lightroom.
         if (item.Entry.Kind == GradeKind.Preset)
         {
-            _preset = (LrPreset)obj!; _presetEntry = item.Entry; PresetEnabled = true;
+            _preset = (LrPreset)obj!; _presetEntry = item.Entry; PresetEnabled = true; PresetStrength = 100;
         }
         else
         {
-            _lut = (CubeLut)obj!; _lutEntry = item.Entry; LutEnabled = true;
+            _lut = (CubeLut)obj!; _lutEntry = item.Entry; LutEnabled = true; LutStrength = 100;
         }
         Grades.MarkUsed(item.Entry.Id);
         LayersChanged();
@@ -438,8 +458,17 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnPresetEnabledChanged(bool value) => LayersChanged();
     partial void OnLutEnabledChanged(bool value) => LayersChanged();
 
-    [RelayCommand] private void ClearPreset() { _preset = null; _presetEntry = null; LayersChanged(); CommitNow(); RefreshLibrary(); }
-    [RelayCommand] private void ClearLut() { _lut = null; _lutEntry = null; LayersChanged(); CommitNow(); RefreshLibrary(); }
+    [RelayCommand] private void ClearPreset() { _preset = null; _presetEntry = null; PresetStrength = 100; LayersChanged(); CommitNow(); RefreshLibrary(); }
+    [RelayCommand] private void ClearLut() { _lut = null; _lutEntry = null; LutStrength = 100; LayersChanged(); CommitNow(); RefreshLibrary(); }
+
+    /// <summary>Removes the preset and the LUT in one step (the "Remove the look" link in the Recipe warning).</summary>
+    [RelayCommand]
+    private void ClearLook()
+    {
+        _preset = null; _presetEntry = null; PresetStrength = 100;
+        _lut = null; _lutEntry = null; LutStrength = 100;
+        LayersChanged(); CommitNow(); RefreshLibrary();
+    }
 
     private void LayersChanged(bool commit = true)
     {
@@ -722,8 +751,18 @@ public partial class ProcessViewModel : ViewModelBase
         finally { _noReclamp = false; }
     }
 
+    private (int Width, int Height) _fullSize;
+
+    // The Original size in Export is the full-resolution photo after crop and straighten.
+    private void UpdateExportSize()
+    {
+        var (w, h) = _fullSize.Width > 0 ? CurrentAdjustSettings().OutputSize(_fullSize.Width, _fullSize.Height) : (0, 0);
+        _settings.SourceWidth = w; _settings.SourceHeight = h;
+    }
+
     private void AdjustChanged(bool commit, bool geometry = true)
     {
+        if (geometry) UpdateExportSize();
         if (!_restoring) ReclampPan();
         RaiseAdjustTexts();
         // In Crop the picture is moved by transforms, so nothing is rebuilt (and nothing else is told) until the section is left.

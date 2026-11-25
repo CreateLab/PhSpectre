@@ -7,9 +7,7 @@ using SixLabors.ImageSharp;
 
 namespace PhSpectre.Avalonia.Services;
 
-// Immutable snapshot of the settings panel, taken once at the start of an export (single
-// or batch) so the parameters used for a whole batch can't drift if the user keeps
-// adjusting the live panel while it's running.
+// Immutable snapshot of the settings panel taken at the start of an export, so a batch can't drift while the user keeps adjusting the panel.
 public sealed record PaletteExportSettings(
     int? Colors,
     SamplingMode SamplingMode,
@@ -47,19 +45,14 @@ public sealed record PaletteExportSettings(
 {
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 
-    // Resolves the raw settings above into a render-ready QrRenderOptions for one photo —
-    // can't be done inside SnapshotFrom itself, since the preset needs the per-photo
-    // PhotoMetadata/FilmRecipe that are only known at each render call site (mirrors how
-    // MainViewModel resolves recipeForRender inline right before dispatching to
-    // RecipeCardRenderer.Render). Returns null when QR is off, Custom URL is blank, or a
-    // Generated-link preset needs data (e.g. RecipeOnly) that isn't actually available.
+    // Resolves the raw settings into a render-ready QrRenderOptions for one photo. Done here, not in SnapshotFrom, because the preset needs the per-photo
+    // PhotoMetadata/FilmRecipe known at each render call site. Returns null when QR is off, Custom URL is blank,
+    // or a Generated-link preset needs data that isn't available.
     public QrRenderOptions? BuildQrRenderOptions(PaletteImageRenderer.PhotoMetadata? metadata, FilmRecipe? recipe)
     {
         if (!ShowQrCode) return null;
 
-        // Caption is independent of Content source/preset (v4 spec §1b/§3) — a Custom URL QR
-        // can still be captioned "Camera + Lens", and a fully-detailed Generated-link QR can
-        // still show no caption at all.
+        // Caption is independent of the Content source/preset: a Custom URL QR can be captioned "Camera + Lens", a detailed Generated-link QR can have none.
         string? captionCamera = QrCaption != QrCaption.None ? metadata?.Camera : null;
         string? captionLens = QrCaption == QrCaption.CameraAndLens ? metadata?.Lens : null;
 
@@ -78,42 +71,31 @@ public sealed record PaletteExportSettings(
         return new QrRenderOptions(QrPlacement, url, QrCaption, captionCamera, captionLens);
     }
 
-    // Whether k-means palette extraction should run at all for this snapshot — mirrors
-    // SettingsViewModel.ComputeColors, kept in sync here so the render pipeline (which only
-    // sees this record, not the live VM) can gate the expensive step without needing a
-    // back-reference to Settings.
+    // Whether k-means extraction runs for this snapshot; mirrors SettingsViewModel.ComputeColors so the render pipeline can gate it without the live VM.
     public bool ComputeColors => Mode is ExportMode.Card or ExportMode.Collage;
 
-    // Collage is deliberately excluded from the blurred-photo background for now — the
-    // composed grid isn't "one photo" a blurred backdrop reads well against, and this is the
-    // single choke point that guarantees a stray true never reaches CollageService/
-    // CollageComposer regardless of what BackgroundMode the settings panel has selected.
+    // Collage is excluded from the blurred-photo background: a composed grid isn't one photo to blur behind.
+    // This is the one choke point that keeps a stray true from reaching CollageService/CollageComposer.
     public bool UseBlurredBackground =>
         BackgroundMode == BackgroundMode.BlurredPhoto && Mode is not (ExportMode.Collage or ExportMode.CollageInfoOnly);
 
     public static PaletteExportSettings SnapshotFrom(SettingsViewModel s)
     {
         var customBackground = s.BackgroundMode == BackgroundMode.Custom ? ParseHexOrNull(s.CustomBackgroundHex) ?? ParseHexOrNull(s.LastValidCustomHex) : null;
-        // The camera-info plate only actually draws when EffectiveShowCameraInfo is true
-        // (the manual toggle, or forced on for InfoOnly/CollageInfoOnly) — otherwise force
-        // MetaVerbosity.Off regardless of what the (now-hidden) Metadata section last had,
-        // so the toggle actually controls the rendered output and not just section visibility.
+        // The camera-info plate draws only when EffectiveShowCameraInfo is true (the toggle, or forced for InfoOnly/CollageInfoOnly);
+        // otherwise force MetaVerbosity.Off so the toggle controls the output, not just section visibility.
         var effectiveVerbosity = s.EffectiveShowCameraInfo ? s.MetaVerbosity : MetaVerbosity.Off;
         return new(
             s.Colors, s.SamplingMode, s.ShowHex, s.HexBelow, effectiveVerbosity, s.MetaStyle,
             s.Theme, s.ComputeColors, s.HalfSize, s.OutputFormat, s.ExportPreset,
             s.LabelScale, s.SwatchScale, s.ShowPercent, s.SwatchShape, s.SortOrder,
             customBackground, s.CompositionGuide,
-            // The collage gutter must be the exact same color as the card background it
-            // sits inside (theme/custom background) — otherwise the gap between photos
-            // visibly seams against the card behind it. Not a user-facing choice anymore.
+            // The collage gutter must match the card background (theme/custom) or the gap seams against it.
             GutterColor: PaletteImageRenderer.GetBackgroundColor(s.Theme, customBackground),
             GutterThickness: s.GutterThickness,
             BackgroundMode: s.BackgroundMode,
-            // Mobile-only: desktop never surfaces WorkingQuality and stays at the fixed
-            // 2400 default it always had — this is purely to make mobile's "Working size"
-            // dial actually control collage speed/output size, same as it already does for
-            // the single-photo path (see MainViewModel.MaxWorkingDimension).
+            // Mobile only: desktop stays at the fixed 2400 default. This makes mobile's Working size control collage speed and output size
+            // (see MainViewModel.MaxWorkingDimension).
             CollageSourceMaxDimension: s.IsMobile ? s.WorkingMaxDimension : 2400,
             Mode: s.ExportMode,
             ShowQrCode: s.ShowQrCode,

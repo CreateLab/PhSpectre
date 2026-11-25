@@ -106,8 +106,8 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                 <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto,Auto,Auto">
 
                     <!-- Collage tray: order = packing order, the first photo supplies the EXIF -->
-                    <Border Grid.Row="0" IsVisible="{Binding IsCollageMode}" Padding="16,10,16,8">
-                        <StackPanel Spacing="8">
+                    <Border Grid.Row="0" IsVisible="{Binding IsCollageMode}" Padding="16,6,16,4">
+                        <StackPanel Spacing="4">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Text="{Binding PhotosHeaderText}" Classes="section-title first" Margin="0"/>
                                 <TextBlock Grid.Column="1" Text="Use ‹ › to reorder" Classes="hint"/>
@@ -122,7 +122,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate x:DataType="models:FileEntry">
-                                                <Border Width="76" Height="76" CornerRadius="10" ClipToBounds="True"
+                                                <Border Width="64" Height="64" CornerRadius="10" ClipToBounds="True"
                                                         Background="{DynamicResource SurfaceBrush}">
                                                     <Panel>
                                                         <Image Source="{Binding ThumbnailBitmap}" Stretch="UniformToFill"/>
@@ -135,19 +135,19 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                                                 HorizontalAlignment="Right" VerticalAlignment="Top" Margin="3"
                                                                 Command="{Binding #CollageTrayItems.((vm:MainViewModel)DataContext).RemoveFromCollageCommand}"
                                                                 CommandParameter="{Binding}">
-                                                            <materialIcons:MaterialIcon Kind="Close" Width="13" Height="13"/>
+                                                            <materialIcons:MaterialIcon Kind="Close" Width="13" Height="13" Foreground="White"/>
                                                         </Button>
                                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                                                     Margin="3" Spacing="2">
                                                             <Button Classes="tray-overlay" Width="24" Height="24" Padding="0"
                                                                     Command="{Binding #CollageTrayItems.((vm:MainViewModel)DataContext).MoveCollageItemUpCommand}"
                                                                     CommandParameter="{Binding}">
-                                                                <materialIcons:MaterialIcon Kind="ChevronLeft" Width="13" Height="13"/>
+                                                                <materialIcons:MaterialIcon Kind="ChevronLeft" Width="14" Height="14" Foreground="White"/>
                                                             </Button>
                                                             <Button Classes="tray-overlay" Width="24" Height="24" Padding="0"
                                                                     Command="{Binding #CollageTrayItems.((vm:MainViewModel)DataContext).MoveCollageItemDownCommand}"
                                                                     CommandParameter="{Binding}">
-                                                                <materialIcons:MaterialIcon Kind="ChevronRight" Width="13" Height="13"/>
+                                                                <materialIcons:MaterialIcon Kind="ChevronRight" Width="14" Height="14" Foreground="White"/>
                                                             </Button>
                                                         </StackPanel>
                                                     </Panel>
@@ -155,7 +155,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    <Button Width="76" Height="76" Padding="0" Background="Transparent"
+                                    <Button Width="64" Height="64" Padding="0" Background="Transparent"
                                             Command="{Binding AddPhotosToCollageCommand}" ToolTip.Tip="Add photos"
                                             BorderThickness="1" BorderBrush="{DynamicResource FieldBorderBrush}" CornerRadius="10">
                                         <materialIcons:MaterialIcon Kind="Plus" Width="24" Height="24"
@@ -186,9 +186,10 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                                 HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
                                 Background="Transparent" BorderThickness="0">
                             <StackPanel Spacing="12" HorizontalAlignment="Center">
-                                <materialIcons:MaterialIcon Kind="ImagePlusOutline" Width="40" Height="40"
+                                <materialIcons:MaterialIcon Kind="ImageOutline" Width="40" Height="40"
                                                              Foreground="{DynamicResource TextMutedBrush}"/>
-                                <TextBlock Text="{Binding EmptyStageText}" Classes="hint" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding EmptyStageText}" FontSize="15" TextAlignment="Center"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
                             </StackPanel>
                         </Button>
 

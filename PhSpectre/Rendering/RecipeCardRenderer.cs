@@ -11,10 +11,8 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// Renders a standalone film-recipe card: the source photo (downscaled, rounded corners) on
-// top, a grid of parameter plates below. Sibling to PaletteImageRenderer, reusing its Theme/
-// OutputFormat enums and a few of its drawing helpers (promoted to internal) rather than
-// duplicating rounded-rect/theme/font logic.
+// Renders a standalone film-recipe card: the photo (downscaled, rounded corners) on top, a grid of parameter plates below.
+// Reuses PaletteImageRenderer's enums and drawing helpers.
 public static class RecipeCardRenderer
 {
     private const int CardWidth = 1200;
@@ -42,8 +40,7 @@ public static class RecipeCardRenderer
         Save(canvas, outputPath, format);
     }
 
-    // From an already-decoded image (caller owns disposal) — mirrors PaletteImageRenderer's
-    // equivalent overload for callers that already hold the working copy in memory.
+    // From an already-decoded image (caller owns disposal).
     public static void Render(
         Image<Rgb24> original,
         FilmRecipe recipe,
@@ -69,9 +66,7 @@ public static class RecipeCardRenderer
         RenderPerfLog.OnStage?.Invoke("Save/encode", sw.ElapsedMilliseconds);
     }
 
-    // In-memory variant — used by the app's live preview so what's shown on screen for
-    // Recipe mode is pixel-for-pixel the same composite Save recipe card exports, not just a
-    // visually-similar approximation. Caller owns disposal of the returned image.
+    // In-memory variant: the live preview is the same composite Save recipe card exports. Caller owns disposal of the result.
     public static Image<Rgb24> RenderToImage(
         Image<Rgb24> original,
         FilmRecipe recipe,
@@ -96,10 +91,7 @@ public static class RecipeCardRenderer
             canvas.SaveAsPng(outputPath, new PngEncoder { FilterMethod = PngFilterMethod.None });
     }
 
-    // Non-null (Label, Value) rows only — shared by the renderer and any UI code wanting the
-    // exact same "what's shown" logic (kept here since it's a rendering concern, not a
-    // ViewModel concern; the Avalonia ViewModel builds an equivalent list independently for
-    // its own live display, since it doesn't reference PhSpectre.Rendering's raster types).
+    // Non-null (Label, Value) rows, shared by the renderer and UI code that wants the same logic.
     internal static List<(string Label, string Value)> BuildRows(FilmRecipe r, IReadOnlySet<string>? hidden = null) =>
         RecipeFields.BuildVisible(r, hidden).Select(f => (f.FullLabel, f.Value)).ToList();
 
@@ -117,23 +109,17 @@ public static class RecipeCardRenderer
         MetaStyle metaStyle = MetaStyle.FilmStrip)
     {
         var prepSw = System.Diagnostics.Stopwatch.StartNew();
-        // Independent of QR (v3 spec §1a): unchecking "Show recipe card" drops the title +
-        // parameter-plate grid entirely, so Show QR + Show recipe card off together leaves
-        // just the photo and the QR block — no duplicated text. Camera-info strip (metaVerbosity)
-        // is a separate toggle and unaffected.
+        // Independent of QR: unchecking "Show recipe card" drops the title and plate grid, leaving just the photo and QR block.
+        // The camera-info strip (metaVerbosity) is a separate toggle.
         var rows = showRecipeCard ? BuildRows(recipe, RecipeFields.ParseKeys(hiddenRecipeFields)) : [];
 
-        // Camera info plate (bugfix §2): only actually drawn when metaVerbosity isn't Off —
-        // callers pass PaletteExportSettings.MetaVerbosity, which is already forced to Off
-        // whenever the "Show camera info plate" toggle is unchecked, so this one check is
-        // both the "is the toggle on" check and the verbosity-level check at once.
+        // The camera plate is drawn only when metaVerbosity isn't Off; callers pass PaletteExportSettings.MetaVerbosity, already Off when the toggle is unchecked.
         PaletteImageRenderer.PhotoMetadata? exif = metaVerbosity == MetaVerbosity.Off
             ? null
             : (metadataOverride ?? PaletteImageRenderer.ReadMetadata(original));
         int margin = PaletteImageRenderer.CardPadding(CardWidth);
 
-        // QR first: the camera plate shares the bottom row with the code (code bottom-right, plate
-        // left), so the plate is fitted to the width the code leaves over.
+        // QR first: the camera plate shares the bottom row with the code, so it is fitted to the width the code leaves.
         int qrBoxSize = QrCodeRenderer.SuggestBoxSize(CardWidth);
         int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin);
         int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize) : 0;
@@ -148,30 +134,20 @@ public static class RecipeCardRenderer
         bool plateInRow = plateBesideQr && metaLines.Length > 0;
         var text = PaletteImageRenderer.GetTextColor(theme, customBackground);
         var plateFill = theme == Theme.Light ? Color.ParseHex("EAEAEA") : Color.ParseHex("222222");
-        // Over a blurred-photo backdrop, a fully opaque plate reads as a harsh, out-of-place
-        // cutout — letting some of the backdrop show through (frosted-glass style) keeps the
-        // parameter plates from looking glaringly sharp against the softened background. Stays
-        // the plain opaque color here; the opacity below is applied via DrawImage
-        // (ctx.Fill(color, path) with a translucent color replaces pixels outright instead of
-        // blending in this ImageSharp version, so it can't be used directly for this).
+        // Over a blurred backdrop a fully opaque plate reads as a harsh cutout, so it is blended in frosted-glass style.
+        // The color stays opaque here; the opacity is applied via DrawImage (ctx.Fill with a translucent color replaces pixels in this ImageSharp version).
         const float platesOpacityOnBlur = 0.4f;
 
         int photoH = Math.Max(1, (int)Math.Round(CardWidth * (double)original.Height / original.Width));
         float photoRadius = CardWidth * 0.02f;
 
         string title = string.IsNullOrEmpty(recipe.FilmSimulation) ? "Custom Recipe" : recipe.FilmSimulation!;
-        // labelScale drives the title/plate-label/plate-value fonts together — plateH,
-        // titleH and the plate grid below are all derived from titleFs, so scaling just
-        // this one value cascades through the whole card layout (same "Label size" dial
-        // as the Swatches section's LabelScale, reused here for card appearance).
+        // labelScale drives the title, plate label and value fonts together; plateH, titleH and the grid derive from titleFs.
         float titleFs = CardWidth / 22f * Math.Clamp(labelScale, 0.5f, 2f);
         var titleFont = PaletteImageRenderer.ResolveMetaFont(titleFs);
         int titleH = showRecipeCard ? (int)(titleFs * 1.8f) : 0;
 
-        // Grid geometry: as many columns as fit a comfortable target plate width, wrapped
-        // into rows — same "evenly divide available width" spirit as the swatch panel in
-        // PaletteImageRenderer, generalized to multiple rows since a recipe can have up to
-        // ~11 parameters versus a handful of swatches in one row.
+        // Grid geometry: as many columns as fit a comfortable plate width, wrapped into rows (a recipe has up to ~11 parameters).
         const int targetPlateW = 260;
         int gap = margin / 2;
         // Always 4 columns: the plate width comes from the full grid, so with fewer visible fields
@@ -179,10 +155,8 @@ public static class RecipeCardRenderer
         const int cols = 4;
         int plateW = (CardWidth - 2 * margin - gap * (cols - 1)) / cols;
 
-        // Even after RecipeValueAbbreviations.Shorten, a value can still be too wide for a
-        // one-line fit at the plate's fixed width (bugfix-pass §2) — rather than let it spill
-        // past the plate's rounded-rect, every plate in the grid gets extra height for a
-        // second wrapped line whenever ANY value needs it, so the grid stays visually even.
+        // A value can still be too wide for one line after RecipeValueAbbreviations.Shorten; when any value needs it,
+        // every plate gets height for a second line so the grid stays even.
         var valueFontProbe = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.5f);
         float wrapWidth = plateW * 0.88f;
         bool anyValueWraps = rows.Any(r =>
@@ -237,10 +211,8 @@ public static class RecipeCardRenderer
 
                     if (useBlurredBackground)
                     {
-                        // Paint the plate at full opacity onto its own small transparent canvas,
-                        // then composite that onto the card via DrawImage's opacity parameter —
-                        // the one blending path in this ImageSharp version that's actually proven
-                        // to alpha-composite correctly (see ApplyRoundedCorners below).
+                        // Paint the plate opaque on its own transparent canvas, then composite with DrawImage's opacity,
+                        // the blending path that alpha-composites correctly in this ImageSharp version (see ApplyRoundedCorners).
                         using var plateImg = new Image<Rgba32>(plateW, plateH);
                         plateImg.Mutate(pc => pc.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(0, 0, plateW, plateH, plateH * 0.12f)));
                         ctx.DrawImage(plateImg, new Point(x, y), platesOpacityOnBlur);
@@ -294,20 +266,12 @@ public static class RecipeCardRenderer
         return canvas;
     }
 
-    // Downscales the source photo to (w, h) covering the target box (crop-to-fill, matching
-    // the "cover" convention already used elsewhere in this app's cell/preview rendering)
-    // and clips it to a rounded rectangle. Standard ImageSharp technique: paint the source
-    // through an ImageBrush onto a fully-transparent Rgba32 canvas, restricted to the rounded
-    // path — everything outside the path stays transparent and shows the card background
-    // through when composited onto it.
+    // Downscales the photo to cover (w, h) (crop-to-fill) and clips it to a rounded rect: paint through an ImageBrush onto a transparent canvas,
+    // restricted to the rounded path, so the card background shows through outside it.
     private static Image<Rgba32> ApplyRoundedCorners(Image<Rgb24> source, int w, int h, float radius)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        // No Sampler specified here used to mean ImageSharp's default (Bicubic) — measured at
-        // ~2s on-device for this ~1.67x crop-to-fill downscale (working-size photo -> CardWidth),
-        // dwarfing every other stage of the card render combined. At a ratio this small, Box
-        // (already the choice for the same kind of small trim in ImageLoader.LoadWorkingCopy's
-        // native-decode path) is visually indistinguishable but dramatically cheaper.
+        // The default sampler (Bicubic) took ~2s on-device for this ~1.67x downscale; Box (as in ImageLoader.LoadWorkingCopy) looks the same and is far cheaper.
         using var resized = source.Clone(ctx => ctx.Resize(new ResizeOptions
         {
             Size    = new Size(w, h),

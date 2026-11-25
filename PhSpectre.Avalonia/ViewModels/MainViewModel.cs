@@ -43,41 +43,26 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool    _isSaved;
     [ObservableProperty] private bool    _isRegenerateAvailable;
 
-    // Temporary on-screen perf overlay for the "why is mobile still slow" investigation —
-    // same stage timings as the AppLogger [perf] lines, just shown directly instead of
-    // requiring adb to pull app.log off the device. Hidden (not removed) now that the
-    // investigation's done — flip this back to true to bring the on-screen panel back; all
-    // the underlying stage timing/logging keeps running either way.
+    // On-screen perf overlay, hidden; flip to true to show it.
     private const bool DebugPerfOverlayEnabled = false;
     [ObservableProperty] private string? _debugPerfText;
     public bool ShowDebugPerfOverlay => DebugPerfOverlayEnabled && !string.IsNullOrEmpty(DebugPerfText);
     partial void OnDebugPerfTextChanged(string? value) => OnPropertyChanged(nameof(ShowDebugPerfOverlay));
 
-    // Collage mode — CollageItems is the tray: each picked photo is copied to a stable temp
-    // path (same technique as _currentSourcePath below) and wrapped in a FileEntry, the same
-    // model Desktop's tray uses. Order matters twice over: it's both the row-packing order
-    // and (for the first item) the EXIF source, so there's no separate "main photo" control.
+    // Collage tray: each photo is a stable temp copy wrapped in a FileEntry. Order is both the packing order and the EXIF source (first item).
     [ObservableProperty] private bool _isCollageMode;
     [ObservableProperty] private ObservableCollection<FileEntry> _collageItems = [];
 
-    // Session-local "recent photos" — mobile has no folder browser (no Android SAF
-    // integration in this pass), so this is the practical middle ground per the base spec's
-    // "browser instead of Pick a Photo into the void" ask: every single photo ingested this
-    // session (not collage adds) stays reachable via its own stable temp copy, most-recent
-    // first, capped so temp disk usage doesn't grow unbounded.
+    // Photos picked this session, most recent first. Each keeps a stable temp copy; capped to bound disk use.
     [ObservableProperty] private ObservableCollection<FileEntry> _recentPhotos = [];
     private const int MaxRecentPhotos = 8;
     public bool HasRecentPhotos => RecentPhotos.Count > 0;
 
-    // Cheap "just the layout" preview (no palette/card) that updates live as the tray is
-    // edited — PaletteBitmap only ever holds a real, expensive full render, triggered
-    // explicitly via Generate/Regenerate. DisplayedCollageBitmap is what the view actually
-    // shows: the full render once one exists, falling back to the live preview otherwise.
+    // Cheap layout-only preview. PaletteBitmap holds the full render; DisplayedCollageBitmap shows it when present, else this preview.
     [ObservableProperty] private Bitmap? _collagePreviewBitmap;
     public Bitmap? DisplayedCollageBitmap => PaletteBitmap ?? CollagePreviewBitmap;
 
-    // Compare-to-original — single-photo modes only (collage has no single "original" to
-    // fall back to), toggled by a tap on the result frame. Mirrors MainWindowViewModel.
+    // Compare with the original; single-photo modes only.
     [ObservableProperty] private bool _isComparingToOriginal;
     public Bitmap? DisplayedResultBitmap =>
         IsComparingToOriginal && !IsCollageMode && OriginalBitmap != null ? OriginalBitmap : DisplayedCollageBitmap;
@@ -88,8 +73,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleCompareToOriginal() => IsComparingToOriginal = !IsComparingToOriginal;
 
-    // The collage Regenerate button reads "Generate" until the first real render exists,
-    // then "Regenerate" from then on — a materially different action the first time.
+    // "Generate" until the first full render exists, then "Regenerate".
     public string RegenerateButtonLabel => IsCollageMode && PaletteBitmap == null ? "Generate" : "Regenerate";
 
     public Func<Task<(Stream Stream, string FileName)?>>?              PickImageAsync  { get; set; }
@@ -101,35 +85,25 @@ public partial class MainViewModel : ViewModelBase
     private string                   _lastExtension = ".png";
     private CancellationTokenSource? _renderCts;
 
-    // Single-slot memoization, mirrors MainWindowViewModel — reuse the last successful
-    // render instead of recomputing (skips k-means again) when the (photo/tray, settings —
-    // ExportMode included) combination hasn't actually changed since last time.
+    // The last successful render is reused when photo/tray and settings are unchanged.
     private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe, string Look)? _lastSingleRenderKey;
     private string?                                        _cachedSingleRenderOutput;
     private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
     private string?                                          _cachedCollageRenderOutput;
 
-    // Kept on disk across renders (unlike the old single-shot tmpIn) so a settings/metadata
-    // change can be re-rendered without asking the user to pick the same photo again.
+    // Kept on disk so a settings change can re-render without re-picking.
     private string? _currentSourcePath;
     private string? _collageExifSourcePath;
     private bool     _suspendTrayNotifications;
 
-    // Guards SyncCollageModeWithExportModeAsync against overlapping runs — it awaits
-    // (BuildCollageEntryAsync's thumbnail decode) partway through a migration, and on
-    // mobile that's plenty of time for a second chip tap to land before IsCollageMode has
-    // flipped. Without this, that second tap's run would see IsCollageMode still at its
-    // pre-migration value, conclude "already matches, nothing to do", and silently drop the
-    // tap — leaving ExportMode and IsCollageMode out of sync with no chip left on screen to
-    // fix it from (SelectedPhotoCount jumping to 2+ hides the single-photo chips). See the
-    // bugfix "коллаж/карта переключение туда-обратно" for the repro.
+    // Guards SyncCollageModeWithExportModeAsync against overlapping runs: a second chip tap during its await
+    // would see a stale IsCollageMode and be dropped.
     private bool _isSyncingCollageMode;
     private bool _collageSyncPending;
 
     public MainViewModel()
     {
-        // No photo and no collage tray yet — every Export Mode chip is shown (bugfix
-        // "mobile Export Mode на главный экран" §1's "0 photos → all 5 chips" rule).
+        // No photo and no tray: every export mode chip is shown.
         Settings.SelectedPhotoCount = 0;
 
         _recentPhotos.CollectionChanged += (_, _) =>
@@ -143,12 +117,22 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ShowCompactActionBar));
         };
 
-        // Mirrors Desktop's MainWindowViewModel: a settings change never re-renders on its
-        // own — it only surfaces the Regenerate button. Actual re-render is user-triggered.
+        // A settings change only surfaces Regenerate; re-rendering is user-triggered.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
         Settings.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName is nameof(SettingsViewModel.ShowCardBody) or nameof(SettingsViewModel.IsEditMode)) OnPropertyChanged(nameof(ShowTabletExport));
+        };
+        // Mobile persists only the working quality; load it before the handler below is attached.
+        Settings.WorkingQuality = SettingsStorage.Load().WorkingQuality;
+        Settings.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(SettingsViewModel.WorkingQuality))
+            {
+                var s = SettingsStorage.Load();
+                s.WorkingQuality = Settings.WorkingQuality;
+                SettingsStorage.Save(s);
+            }
         };
         Settings.PhotosProvider = () => RecentPhotos;
         Settings.CurrentPhotoProvider = () => RecentPhotos.FirstOrDefault(r => r.IsCurrent);
@@ -156,26 +140,15 @@ public partial class MainViewModel : ViewModelBase
         Settings.OpenPhotosCommand = PickPhotoCommand;
         Settings.CardSaveCommand = SavePngCommand;
 
-        // Mirrors OnSelectedFileChanged/IngestNewPhotoAsync's "picking new content re-renders
-        // immediately" rule: editing the tray (add/remove/reorder) is a content change, not a
-        // settings tweak, so it renders right away rather than waiting on Regenerate.
-        // Editing the tray does update the on-screen collage instantly — but only the cheap
-        // layout preview (RenderCollagePreviewAsync: decode + arrange, no palette). The
-        // expensive part (pooled k-means over all sources) never runs automatically; it's
-        // gated behind Generate/Regenerate, same as any other settings change, since running
-        // it on every single add made the tray feel like it could only take one photo at a time.
-        // _suspendTrayNotifications additionally batches a multi-photo pick into one update —
-        // without it, adding N photos fires N of these in a row, each re-decoding every photo
-        // added so far for its own preview, which is what actually made adds feel serialized.
+        // Tray edits re-render the cheap layout preview right away; the palette pass waits for Generate.
+        // _suspendTrayNotifications batches a multi-photo pick into one update.
         _collageItems.CollectionChanged += (_, _) =>
         {
             if (!_suspendTrayNotifications) OnCollageTrayChanged();
         };
     }
 
-    // ── V2 shell (png/V2-Mobile, V2-Tablet) ─────────────────────────────────────────────────
-    // IsWide is set by MainView from the window width (≥ 840 dp → tablet layout with the
-    // inspector as a right-hand column; below that the inspector is a bottom sheet).
+    // V2 shell. IsWide (>= 840 dp, set by MainView) is the tablet layout with a side inspector; narrower uses a bottom sheet.
     [ObservableProperty] private bool _isWide;
     // The same Export button for every frame (None / Border / Film / Card / Recipe card), like the desktop top bar.
     public bool ShowTabletExport => IsWide && (Settings.ShowCardBody || Settings.IsEditMode);
@@ -264,19 +237,10 @@ public partial class MainViewModel : ViewModelBase
         RegenerateCommand.NotifyCanExecuteChanged();
         if (!IsCollageMode) return;
 
-        // Floored at 2 rather than the raw tray count: while a collage session is active
-        // (IsCollageMode true), the chip row should keep showing Collage/Collage (fast) even
-        // with 0 or 1 photos in the tray (mid add, or mid manual removal) — exiting collage
-        // is now an explicit chip tap or the toolbar "X" (SyncCollageModeWithExportModeAsync),
-        // not something a shrinking tray should trigger on its own. This also sidesteps the
-        // old bug where migrating a single photo in created a momentary 1-item tray that
-        // ExportModeRules.ClosestValidMode would immediately bounce back out of Collage.
+        // Floored at 2 in collage mode so the chips don't flip back while the tray holds 0 or 1 photos.
         Settings.SelectedPhotoCount = Math.Max(CollageItems.Count, 2);
 
-        // The first tray item's EXIF represents the whole collage and feeds the editable
-        // "Edit metadata" fields in Settings, same as picking a single photo does — only
-        // reload when that first item's identity actually changes, so reordering the rest
-        // of the tray doesn't clobber an in-progress edit.
+        // The first tray item's EXIF feeds the metadata fields; reload only when that item changes.
         var newExifSource = CollageItems.Count > 0 ? CollageItems[0].FullPath : null;
         if (newExifSource != _collageExifSourcePath)
         {
@@ -286,8 +250,7 @@ public partial class MainViewModel : ViewModelBase
                 newExifSource != null ? RecipeReader.Read(newExifSource) : null);
         }
 
-        // A previously-generated full render no longer reflects the tray as soon as it
-        // changes — clear it so DisplayedCollageBitmap falls back to the live preview.
+        // A full render is stale once the tray changes; fall back to the live preview.
         PaletteBitmap  = null;
         _lastTempPng   = null;
         OutputSizeText = null;
@@ -316,11 +279,7 @@ public partial class MainViewModel : ViewModelBase
         if (e.PropertyName is nameof(SettingsViewModel.ExportMode) or nameof(SettingsViewModel.OutputFormat))
             OnPropertyChanged(nameof(SuggestedNameText));
 
-        // Single-button pick/add entry point (bugfix "одна кнопка выбора фото вместо двух,
-        // управляется ExportMode"): the chip is now the only thing that decides single vs
-        // collage, so every ExportMode change re-syncs IsCollageMode/CollageItems against it
-        // — migrating whatever's currently on screen rather than losing it — instead of
-        // requiring a separate explicit Create/Exit Collage action to stay in sync.
+        // The export mode chip decides single vs collage; every change re-syncs IsCollageMode/CollageItems.
         if (e.PropertyName == nameof(SettingsViewModel.ExportMode))
         {
             OnPropertyChanged(nameof(IsCollageExportMode));
@@ -335,14 +294,15 @@ public partial class MainViewModel : ViewModelBase
         // Collage is a heavy render, so it keeps the manual Generate/Regenerate button.
         if (IsCollageMode)
         {
+            // ShowCardBody only flips when switching tabs; nothing in the collage changed.
+            if (e.PropertyName == nameof(SettingsViewModel.ShowCardBody)) return;
             ErrorMessage = null;
             if (!IsGenerating) IsRegenerateAvailable = true;
             return;
         }
 
-        // Single photo: live preview on the working copy (Settings.WorkingQuality). Debounced
-        // so a burst of edits produces one render; the previous result stays visible meanwhile.
-        // Outside the card layout (Edit, Camera) there is nothing on screen to refresh.
+        // Single photo: debounced live preview on the working copy; the previous result stays visible meanwhile.
+        // Outside the card layout there is nothing on screen to refresh.
         if (!Settings.ShowCardBody) return;
         ScheduleLiveRender();
     }
@@ -399,54 +359,35 @@ public partial class MainViewModel : ViewModelBase
         IsRegenerateAvailable = false;
     }
 
-    // Photos above the chosen cap (long edge) get downscaled before processing — running
-    // the full extract/render/PNG-encode pipeline at native mobile-camera resolution is
-    // what makes it take minutes. Settings.WorkingQuality (Settings screen → "Working
-    // size") picks which cap: faster & smaller, or slower & closer to desktop detail.
+    // Photos above the working-quality cap (long edge) are downscaled before processing.
     private int MaxWorkingDimension => Settings.WorkingMaxDimension;
 
     public bool ShowPlaceholder => !IsGenerating && DisplayedCollageBitmap == null && string.IsNullOrEmpty(ErrorMessage);
     public bool HasResult       => DisplayedCollageBitmap != null;
 
-    // Empty-state redesign (bugfix "mobile Export Mode/empty state" §2): the dashed
-    // "No photo selected" box is reserved for the app's very first use — once there's any
-    // picking history, a thumbnail grid fills the same space instead of sitting empty.
-    // RecentPhotos already stands in for "browser" per the base mobile spec's scoped-down
-    // photo browser (no Android SAF folder access yet). Excluded in collage mode: an empty
-    // tray already has its own "Add photos to the collage" prompt, and SelectRecentPhotoAsync
-    // is a no-op while IsCollageMode anyway, so showing the grid there would tap-to-nothing.
+    // The dashed empty box is for first use; once there is history a thumbnail grid replaces it.
+    // Not in collage mode, where the tray has its own prompt.
     public bool ShowEmptyBrowserGrid       => ShowPlaceholder && HasRecentPhotos && !IsCollageMode;
     public bool ShowEmptyDashedPlaceholder => ShowPlaceholder && (!HasRecentPhotos || IsCollageMode);
 
-    // The old always-visible horizontal RECENT strip stays for quick photo-switching once a
-    // result is already showing; once the empty-state grid takes over instead it would just
-    // duplicate the same thumbnails a second time.
+    // The recent strip is for switching once a result shows; the empty-state grid would duplicate it.
     public bool ShowRecentStrip => HasRecentPhotos && !ShowPlaceholder;
 
-    // "Pick a Photo"/"Create Collage" are the sole content only for a true first-time empty
-    // state; once the browser grid exists they become a compact bar above it instead.
+    // Pick/Create are the only content on a true first run; otherwise a compact bar above the grid.
     public bool ShowFullWidthStartButtons => ShowStartButtons && !HasRecentPhotos;
     public bool ShowCompactActionBar      => ShowStartButtons && HasRecentPhotos;
 
-    // Hidden in collage mode — picking a single replacement photo there would leave
-    // IsCollageMode/CollageItems and the single-photo bitmaps in an inconsistent mix.
+    // Hidden in collage mode: replacing the photo there would desync IsCollageMode and CollageItems.
     public bool ShowPickPhotoToolbarButton => HasResult && !IsCollageMode;
 
-    // The two start buttons ("Pick a Photo" / "Create Collage") only make sense before any
-    // flow has been entered — once collage mode is on, the tray below is the only relevant
-    // action and these would otherwise linger, with "Pick a Photo" actively breaking state
-    // if tapped mid-collage.
+    // Only before any flow has started; in collage mode the tray is the only relevant action.
     public bool ShowStartButtons => !HasResult && !IsCollageMode;
 
-    // The result card's dashed empty-state box is shared by both modes — its label and
-    // tap action switch with IsCollageMode rather than needing two overlapping buttons.
+    // Shared dashed empty box; its label and action follow IsCollageMode.
     public string EmptyStateText => IsCollageMode ? "Add photos to the collage" : "No photo selected";
-    public string EmptyStageText => IsCollageMode || IsCollageExportMode ? "Add photos to start a collage" : "Pick a photo to begin";
+    public string EmptyStageText => IsCollageMode || IsCollageExportMode ? "Add photos to start a collage" : "Open a photo to start";
 
-    // True whenever the ExportMode chip currently selected is one of the two collage modes —
-    // independent of whether a tray actually has any photos in it yet, since switching the
-    // chip alone (before picking anything) only changes the button label/behavior, per the
-    // bugfix's own "никакого отдельного экрана не открывает" rule.
+    // True when the selected chip is a collage mode, even with an empty tray.
     public bool IsCollageExportMode => Settings.ExportMode is ExportMode.Collage or ExportMode.CollageInfoOnly;
     public string MainPhotoButtonLabel => IsCollageExportMode ? "Add Photos" : "Pick a Photo";
 
@@ -556,9 +497,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task PickPhotoAsync()
     {
-        // Not available in collage mode — picking a single replacement photo there would
-        // leave IsCollageMode/CollageItems and the single-photo bitmaps in an inconsistent
-        // mix (mirrors ShowPickPhotoToolbarButton, which hides the toolbar entry point).
+        // Unavailable in collage mode (see ShowPickPhotoToolbarButton).
         if (IsCollageMode || PickImageAsync == null) return;
         var picked = await PickImageAsync();
         if (picked == null) return;
@@ -566,12 +505,9 @@ public partial class MainViewModel : ViewModelBase
         await IngestNewPhotoAsync(picked.Value.Stream, picked.Value.FileName);
     }
 
-    // ── Collage mode ─────────────────────────────────────────────────────────────
-    // No separate Create/Exit Collage flow any more (bugfix "одна кнопка выбора фото вместо
-    // двух, управляется ExportMode") — the ExportMode chip is the single source of truth for
-    // single-vs-collage, synced by SyncCollageModeWithExportModeAsync below whenever it
-    // changes. AddPhotosToCollageAsync is what actually flips IsCollageMode on, the first
-    // time photos really land in the tray (not just because the chip says Collage).
+    // ── Collage mode ──
+    // The chip is the source of truth for single vs collage (SyncCollageModeWithExportModeAsync);
+    // AddPhotosToCollageAsync flips IsCollageMode once photos land in the tray.
 
     private static async Task<FileEntry> BuildCollageEntryAsync(string tempPath, string fileName)
     {
@@ -599,10 +535,7 @@ public partial class MainViewModel : ViewModelBase
         IsCollageMode = true;
         Settings.ShowCollageOptions = true;
 
-        // Suspended for the whole batch — otherwise each Add fires its own tray-changed
-        // preview render, which re-decodes every photo added *so far* on every single one,
-        // turning an N-photo pick into an O(N²) sequence of renders that looked like photos
-        // were only ever added one at a time.
+        // Suspended for the batch: otherwise every add re-decodes all photos so far (O(N²)).
         _suspendTrayNotifications = true;
         try
         {
@@ -624,23 +557,14 @@ public partial class MainViewModel : ViewModelBase
         OnCollageTrayChanged();
     }
 
-    // Exit shortcut (toolbar "X" once a tray exists) — just switches the chip back to Card,
-    // same as tapping the Card chip directly, so the single<->collage migration rule in
-    // SyncCollageModeWithExportModeAsync is the only place that logic lives.
+    // Toolbar X: switch the chip back to Card; the migration lives in SyncCollageModeWithExportModeAsync.
     [RelayCommand]
     private void ExitCollage() => Settings.ExportMode = ExportMode.Card;
 
-    // Keeps IsCollageMode/CollageItems in sync whenever the ExportMode chip crosses the
-    // single<->collage boundary, migrating whatever's already on screen instead of losing it.
-    // Only acts when there's actually content to migrate either way — a chip flip with
-    // nothing picked yet (or an already-matching state) is a no-op here, matching the "chip
-    // alone never opens a separate screen" rule.
+    // Migrates content across the single<->collage boundary when the chip changes; no-op with nothing to migrate.
     private async Task SyncCollageModeWithExportModeAsync()
     {
-        // Reentrancy guard: if a run is already migrating state, don't start a second one
-        // (that's what let a tap during the first run's await get silently dropped) — just
-        // flag that ExportMode moved again, and the in-flight run's loop below will re-check
-        // and finish the job once it's done with its current step.
+        // Reentrancy guard: if a run is in progress, flag that ExportMode moved and let that run's loop re-check.
         if (_isSyncingCollageMode)
         {
             _collageSyncPending = true;
@@ -668,8 +592,7 @@ public partial class MainViewModel : ViewModelBase
 
         if (wantsCollage && !IsCollageMode && _currentSourcePath != null && File.Exists(_currentSourcePath))
         {
-            // A single photo was already selected — it becomes the tray's first item rather
-            // than being discarded.
+            // The selected photo becomes the tray's first item.
             var migrated = await BuildCollageEntryAsync(_currentSourcePath, _lastFileName ?? Path.GetFileName(_currentSourcePath));
 
             OriginalBitmap = null;
@@ -689,9 +612,7 @@ public partial class MainViewModel : ViewModelBase
         }
         else if (!wantsCollage && IsCollageMode)
         {
-            // Default per the author's own note: keep the tray's first photo, drop the rest
-            // from this session (their temp copies are deleted; nothing on-device/gallery is
-            // touched — the tray never held originals to begin with).
+            // Keep the first photo and drop the rest (their temp copies are deleted; originals are untouched).
             var first = CollageItems.Count > 0 ? CollageItems[0] : null;
 
             _suspendTrayNotifications = true;
@@ -748,21 +669,16 @@ public partial class MainViewModel : ViewModelBase
         if (i >= 0 && i < CollageItems.Count - 1) CollageItems.Move(i, i + 1);
     }
 
-    // Cheap "just the layout" preview — no palette extraction, no card, just decode +
-    // arrange with the gutter. Runs on every tray edit (see the CollectionChanged handler
-    // above) so the collage always looks assembled immediately; shares _renderCts with the
-    // full render so whichever starts most recently (a tray edit or a Generate tap) wins.
+    // Layout-only preview (decode + arrange, no palette), run on every tray edit.
+    // Shares _renderCts with the full render; the latest one wins.
     private async Task RenderCollagePreviewAsync()
     {
         _renderCts?.Cancel();
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        // Whatever this cancelled (a stale single-photo/full-collage render) leaves
-        // IsGenerating stuck true — its own finally block only clears it when its token
-        // *wasn't* cancelled, precisely to avoid a cancelled task clobbering a newer one's
-        // "Generating…" state. But this preview never sets IsGenerating itself, so nothing
-        // would ever clear it otherwise.
+        // Cancelling a stale render leaves IsGenerating true (its finally skips the reset when cancelled),
+        // and this preview never sets it, so clear it here.
         IsGenerating = false;
 
         if (CollageItems.Count == 0) return;
@@ -790,10 +706,8 @@ public partial class MainViewModel : ViewModelBase
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        // OriginalBitmap has no single-photo equivalent for a collage — the tray thumbnails
-        // already show the sources, so it's just left blank. PaletteBitmap/CollagePreviewBitmap
-        // are deliberately left alone here — clearing them would blank the preview for the
-        // whole duration of the render instead of just showing "Generating…" over what's there.
+        // A collage has no single original; OriginalBitmap stays blank. PaletteBitmap and CollagePreviewBitmap are kept
+        // so the preview isn't blanked for the duration of the render.
         OriginalBitmap = null;
         ErrorMessage   = null;
         _lastTempPng   = null;
@@ -824,8 +738,7 @@ public partial class MainViewModel : ViewModelBase
             }
 
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
-            // ExportCollageAsync already offloads its own work to the thread pool, so this
-            // doesn't need (and shouldn't double up) an outer Task.Run.
+            // ExportCollageAsync already runs on the thread pool.
             await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
                 metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
 
@@ -854,10 +767,7 @@ public partial class MainViewModel : ViewModelBase
         }
     }
 
-    // Single unified save button (bugfix §1, mirrors MainWindowViewModel.SavePngAsync2) —
-    // one command for Save PNG/JPEG and Save recipe card alike. _lastTempPng already holds
-    // whichever composite is currently on screen, so saving it verbatim guarantees the saved
-    // file always matches the preview.
+    // One save command for the image and the recipe card; _lastTempPng is what is on screen, so the file matches the preview.
     [RelayCommand(CanExecute = nameof(CanSavePng))]
     private async Task SavePng()
     {
@@ -896,11 +806,8 @@ public partial class MainViewModel : ViewModelBase
     private bool CanSavePng() =>
         (IsCollageMode ? CollageItems.Count > 0 : PaletteBitmap != null) && !IsGenerating;
 
-    // Copies a newly picked photo to a stable temp path and renders it. Unlike a one-shot
-    // render, this path survives afterwards — see _currentSourcePath — so a later settings/
-    // metadata change can re-render without asking the user to pick the same photo again.
-    // The old current photo isn't deleted outright any more — it's kept alive as long as
-    // it's still referenced by RecentPhotos (see IngestFromStablePathAsync).
+    // Copies a picked photo to a stable temp path and renders it. The copy survives so settings changes can re-render;
+    // the previous photo is kept while RecentPhotos still references it.
     private async Task IngestNewPhotoAsync(Stream sourceStream, string fileName)
     {
         var newSourcePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}_{fileName}");
@@ -911,8 +818,7 @@ public partial class MainViewModel : ViewModelBase
         await IngestFromStablePathAsync(newSourcePath, fileName, addToRecent: true);
     }
 
-    // Re-selects a photo already sitting in RecentPhotos — no copy needed, the temp file
-    // from its original pick is still on disk (kept alive precisely so this works).
+    // Re-selects a photo from RecentPhotos; its temp copy is still on disk.
     [RelayCommand]
     private async Task SelectRecentPhotoAsync(FileEntry entry)
     {
@@ -922,7 +828,7 @@ public partial class MainViewModel : ViewModelBase
             RecentPhotos.Remove(entry); // temp file vanished under us (OS cleanup) — drop the dead entry
             return;
         }
-        // Re-promote to the front of the "most recent" order, same as picking it fresh would.
+        // Moves it to the front of the recent order.
         var idx = RecentPhotos.IndexOf(entry);
         if (idx > 0) RecentPhotos.Move(idx, 0);
         await IngestFromStablePathAsync(entry.FullPath, entry.FileName, addToRecent: false);
@@ -950,7 +856,7 @@ public partial class MainViewModel : ViewModelBase
             long len = 0;
             try { len = new FileInfo(path).Length; } catch { }
             foreach (var dup in RecentPhotos
-                         .Where(r => r.FileName == fileName && r.FullPath != path && SameLength(r.FullPath, len)).ToList())
+                         .Where(r => (r.FullPath == path || (r.FileName == fileName && SameLength(r.FullPath, len)))).ToList())
                 RecentPhotos.Remove(dup);
 
             var entry = new FileEntry(fileName, path);
@@ -974,9 +880,7 @@ public partial class MainViewModel : ViewModelBase
         Settings.LoadMetadataFields(metaRead, recipeRead);
         // Only now: the photo is in the list and marked current, so Edit can find and load it.
         Settings.NotifyPhotoChanged();
-        // Temporary diagnostics for the "why is even InfoOnly slow on mobile" investigation —
-        // stage timings land in AppLogger's app.log so a slow device's actual bottleneck can be
-        // read back after the fact instead of guessed at from a desktop benchmark.
+        // Stage timings go to app.log for diagnosing mobile slowness.
         AppLogger.LogInfo($"[perf] EXIF/recipe metadata read: {metaSw.ElapsedMilliseconds} ms ({fileName})");
         IsRegenerateAvailable = false; // the render below is already current — nothing to regenerate yet
         Settings.SelectedPhotoCount = 1;
@@ -1040,14 +944,9 @@ public partial class MainViewModel : ViewModelBase
             DebugPerfText = perfLog.ToString();
             stageSw.Restart();
         }
-        // Renderers (currently RecipeCardRenderer) report their own internal sub-stage
-        // timings through this hook — fires from whatever thread Task.Run below uses, so the
-        // overlay/log update is marshalled back to the UI thread. Cleared in finally, but only
-        // if it's still THIS render's own subscription: _renderCts.Cancel() above doesn't stop
-        // a prior in-flight render synchronously, so its finally can still run (and null this
-        // out) after a newer render has already installed its own hook — silently losing every
-        // sub-stage line for that newer render. The reference check below is what a naive
-        // `OnStage = null` was missing.
+        // Renderers report sub-stage timings here, possibly from a pool thread, so marshal to the UI thread.
+        // Cleared only if this render's subscription is still current: a cancelled older render's finally can run
+        // after a newer one installed its own hook.
         Action<string, long> perfHook = (label, ms) =>
         {
             AppLogger.LogInfo($"[perf] {label}: {ms} ms");
@@ -1060,8 +959,7 @@ public partial class MainViewModel : ViewModelBase
         PhSpectre.Rendering.RenderPerfLog.OnStage = perfHook;
         try
         {
-            // Re-decoded from disk every time (not cached across renders) so a Working size
-            // change picks up its new cap immediately instead of reusing an old downscale.
+            // Decoded every time so a Working size change takes effect immediately.
             working = await Task.Run(() => ImageLoader.LoadWorkingCopy(sourcePath, MaxWorkingDimension), token);
             token.ThrowIfCancellationRequested();
             LogStage($"decode+downscale to {MaxWorkingDimension}px cap ({working.Width}x{working.Height})");
@@ -1079,8 +977,7 @@ public partial class MainViewModel : ViewModelBase
             Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            // Recipe mode's composite depends on the current recipe too — see the matching
-            // comment in MainWindowViewModel.GeneratePaletteAsync.
+            // The recipe composite depends on the current recipe (see MainWindowViewModel.GeneratePaletteAsync).
             var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
             var cacheKey = (sourcePath, exportSettings, recipeForRender, lookKey);
 
@@ -1099,10 +996,7 @@ public partial class MainViewModel : ViewModelBase
             stageSw.Restart();
             if (recipeForRender != null)
             {
-                // Recipe mode: main preview = the exact same composite Save recipe card
-                // exports — reuse RecipeCardRenderer directly, same as desktop.
-                // exportSettings.MetaVerbosity already reflects the "Show camera info plate"
-                // toggle (Off when unchecked — see PaletteExportSettings.SnapshotFrom).
+                // Recipe mode: the preview is the same composite Save recipe card exports.
                 var recipeMetadataOverride = Settings.BuildMetadataOverride();
                 var recipeQr = exportSettings.BuildQrRenderOptions(
                     recipeMetadataOverride ?? PaletteImageRenderer.ReadMetadata(working), recipeForRender);
@@ -1117,10 +1011,7 @@ public partial class MainViewModel : ViewModelBase
             }
             else
             {
-                // ComputeColors false (InfoOnly) — skip k-means entirely, same as the shared
-                // PaletteExportService.ExportAsync path used elsewhere; this method stays a
-                // separate inline implementation (working copy is already decoded above) but
-                // must not run the expensive extraction the mode exists to avoid.
+                // InfoOnly skips k-means entirely, as in PaletteExportService.ExportAsync.
                 PhSpectre.Models.ColorPalette palette;
                 if (exportSettings.ComputeColors)
                 {

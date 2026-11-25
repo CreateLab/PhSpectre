@@ -16,6 +16,7 @@ public partial class EditCanvas : UserControl
     private readonly Image? _image;
     private ProcessViewModel? _vm;
     private Point? _last;
+    private double? _pinchStart;
     private double _dispW, _dispH;
 
     public EditCanvas()
@@ -31,6 +32,22 @@ public partial class EditCanvas : UserControl
         _host.PointerMoved += OnMoved;
         _host.PointerReleased += OnReleased;
         _host.PointerCaptureLost += (_, _) => _last = null;
+        _host.PointerWheelChanged += (_, e) =>
+        {
+            if (_vm == null) return;
+            _vm.Zoom = Math.Clamp(_vm.Zoom * Math.Pow(1.1, e.Delta.Y), 1, 4);
+            e.Handled = true;
+        };
+        _host.GestureRecognizers.Add(new PinchGestureRecognizer());
+        _host.AddHandler(InputElement.PinchEvent, (_, e) =>
+        {
+            if (_vm == null) return;
+            _last = null; // two fingers: stop single-finger panning
+            _pinchStart ??= _vm.Zoom;
+            _vm.Zoom = Math.Clamp(_pinchStart.Value * e.Scale, 1, 4);
+            e.Handled = true;
+        });
+        _host.AddHandler(InputElement.PinchEndedEvent, (_, _) => _pinchStart = null);
         DataContextChanged += (_, _) =>
         {
             if (_vm != null) _vm.PropertyChanged -= OnVmChanged;

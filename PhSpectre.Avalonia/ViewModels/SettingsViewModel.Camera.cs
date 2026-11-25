@@ -18,7 +18,19 @@ public partial class SettingsViewModel
     private DispatcherTimer? _statusTimer;
 
     public RecipeLibraryViewModel Library => _library ??= new RecipeLibraryViewModel(this);
-    public CameraDialogViewModel Camera => _camera ??= new CameraDialogViewModel(this, SetRecipeStatus);
+    public CameraDialogViewModel Camera => _camera ??= CreateCamera();
+
+    private CameraDialogViewModel CreateCamera()
+    {
+        var camera = new CameraDialogViewModel(this, SetRecipeStatus);
+        camera.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(CameraDialogViewModel.SetupOpen)) return;
+            OnPropertyChanged(nameof(TopModeIndex));
+            OnPropertyChanged(nameof(TopModeSelection));
+        };
+        return camera;
+    }
 
     // Persisted: the feature stays off until the user turns it on (CAMERA.md: Experimental).
     [ObservableProperty] private bool _cameraExperimental;

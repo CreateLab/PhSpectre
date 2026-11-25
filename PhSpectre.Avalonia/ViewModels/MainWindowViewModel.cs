@@ -37,8 +37,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private bool       _isGenerating;
     [ObservableProperty] private bool       _isComparingToOriginal;
 
-    // Single-photo preview now shows one frame, not two — this picks which bitmap it shows.
-    // Only meaningful outside collage mode (collage has no single "original" to compare to).
+    // Which bitmap the single-photo preview shows. Not meaningful in collage mode (no single original).
     public Bitmap? DisplayedSingleBitmap => IsComparingToOriginal ? OriginalBitmap : PaletteBitmap;
 
     partial void OnIsComparingToOriginalChanged(bool value) { OnPropertyChanged(nameof(DisplayedSingleBitmap)); OnPropertyChanged(nameof(CompareIndex)); }
@@ -55,8 +54,7 @@ public partial class MainWindowViewModel : ViewModelBase
     }
     public bool CanCompare => !IsCollageMode && OriginalBitmap != null;
 
-    // Preview error card (V2-Errors): the message stays out of the photo, the last good
-    // result stays visible underneath, and the user can copy the details or retry.
+    // Preview error card: the message stays out of the photo, the last good result stays visible, and the user can copy details or retry.
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     [RelayCommand]
@@ -96,23 +94,16 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string?    _outputSizeText;
     [ObservableProperty] private bool       _isRegenerateAvailable;
 
-    // Collage mode — CollageItems is the tray: FileEntry.IsChecked (list/grid checkboxes)
-    // adds/removes entries, then reordering happens independently within the tray. Order
-    // matters twice over: it's both the row-packing order and (for the first item) the
-    // EXIF source, so there's no separate "main photo" control.
+    // Collage tray: FileEntry.IsChecked adds/removes entries, then reordering happens within the tray.
+    // Order is both the packing order and the EXIF source (first item).
     [ObservableProperty] private bool _isCollageMode;
     [ObservableProperty] private ObservableCollection<FileEntry> _collageItems = [];
 
-    // Cheap "just the layout" preview (no palette/card) that updates live as the tray is
-    // edited — PaletteBitmap only ever holds a real, expensive full render, triggered
-    // explicitly via Generate/Regenerate. DisplayedCollageBitmap is what the view actually
-    // shows: the full render once one exists, falling back to the live preview otherwise.
+    // Cheap layout-only preview. PaletteBitmap holds the full render; DisplayedCollageBitmap shows it when present, else this preview.
     [ObservableProperty] private Bitmap? _collagePreviewBitmap;
     public Bitmap? DisplayedCollageBitmap => PaletteBitmap ?? CollagePreviewBitmap;
 
-    // The collage Regenerate button reads "Generate" until the first real render exists,
-    // then "Regenerate" from then on — it's a materially different action the first time
-    // (nothing has been produced yet) versus a settings/tray change touching a real result.
+    // "Generate" until the first full render exists, then "Regenerate".
     public string RegenerateButtonLabel => IsCollageMode && PaletteBitmap == null ? "Generate" : "Regenerate";
 
     // Batch export
@@ -123,9 +114,7 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty] private string?   _batchResultText;
     [ObservableProperty] private ObservableCollection<BatchExportError> _batchErrors = [];
 
-    // Toolbar update banner — same underlying check as Android's Settings row
-    // (AppUpdateService.Instance), just rendered differently since Desktop has a
-    // toolbar and Android doesn't.
+    // Toolbar update banner; the same check as Android's Settings row (AppUpdateService.Instance).
     public bool    IsUpdateAvailable  => AppUpdateService.Instance.IsAvailable;
     public string  UpdateBannerText   => $"Update available: {AppUpdateService.Instance.LatestVersionText}";
     public Func<string, Task>? OpenUrlAsync { get; set; }
@@ -150,9 +139,7 @@ public partial class MainWindowViewModel : ViewModelBase
         !IsGenerating && string.IsNullOrEmpty(ErrorMessage) &&
         (IsCollageMode ? DisplayedCollageBitmap == null : PaletteBitmap == null);
 
-    // Left preview pane has no single-photo equivalent in collage mode — it's hidden
-    // entirely there (the tray above already shows the sources) rather than shown with
-    // an explanatory placeholder.
+    // No single-photo original in collage mode: the pane is hidden (the tray already shows the sources).
     public string OriginalPanePlaceholderText => "No photo selected";
 
     // Live preview: while a re-render runs, the previous result stays on screen dimmed with an
@@ -233,11 +220,9 @@ public partial class MainWindowViewModel : ViewModelBase
         }
     }
 
-    // Batch computed state — the button labels/visibility/enablement all flow from
-    // BatchState, never toggled directly from code-behind.
+    // Batch button labels, visibility and enablement all flow from BatchState.
     public bool IsBatchActive     => BatchState is BatchExportState.Running or BatchExportState.Cancelling;
-    // Batch export stays single-photo only for v1 — collage mode hides it entirely rather
-    // than leaving a button that's always disabled.
+    // Batch export is single-photo only; collage mode hides it.
     public bool ShowSaveAllButton => !IsBatchActive && !IsCollageMode;
     public bool ShowBatchProgress => IsBatchActive;
     public bool ShowBatchResult   => BatchState is BatchExportState.Finished or BatchExportState.Cancelled;
@@ -277,11 +262,8 @@ public partial class MainWindowViewModel : ViewModelBase
     private string?                  _lastTempPng;
     private string                   _lastExtension = ".png";
 
-    // Single-slot memoization: if a Generate/Regenerate is triggered for the exact same
-    // (photo, settings — ExportMode included) combination as the last successful render,
-    // reuse that output instead of recomputing (skips k-means again on a no-op click). Only
-    // one slot is needed — the app always has exactly one active single-photo selection or
-    // collage tray at a time, never several to remember at once.
+    // Single-slot memoization: a Generate for the same (photo, settings incl. ExportMode) as the last successful render reuses it.
+    // One slot is enough: there is only ever one active selection or tray.
     private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe, string Look)? _lastSingleRenderKey;
     private string?                                        _cachedSingleRenderOutput;
     private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
@@ -309,16 +291,12 @@ public partial class MainWindowViewModel : ViewModelBase
             SaveAllCommand.NotifyCanExecuteChanged();
         };
 
-        // [ObservableProperty]'s generated On{X}Changed only fires on reassigning the whole
-        // BatchErrors reference — but Add()/Clear() mutate the same instance, so BatchHasErrors
-        // needs its own subscription to actually track them.
+        // The generated On{X}Changed only fires when BatchErrors is reassigned, but Add()/Clear() mutate it,
+        // so BatchHasErrors needs its own subscription.
         _batchErrors.CollectionChanged += (_, _) => OnPropertyChanged(nameof(BatchHasErrors));
 
-        // Editing the tray does update the on-screen collage instantly — but only the cheap
-        // layout preview (RenderCollagePreviewAsync: decode + arrange, no palette). The
-        // expensive part (pooled k-means over all sources) never runs automatically; it's
-        // gated behind Generate/Regenerate, same as any other settings change, since running
-        // it on every single checkbox click made the UI stutter/freeze while assembling a tray.
+        // Tray edits update the on-screen collage through the cheap layout preview (RenderCollagePreviewAsync).
+        // The pooled k-means pass waits for Generate/Regenerate; running it per checkbox click froze the UI.
         _collageItems.CollectionChanged += (_, _) =>
         {
             for (int i = 0; i < CollageItems.Count; i++)
@@ -330,10 +308,7 @@ public partial class MainWindowViewModel : ViewModelBase
             Settings.SelectedPhotoCount = CollageItems.Count;
             Settings.ExportMode = ExportModeRules.ClosestValidMode(Settings.ExportMode, CollageItems.Count);
 
-            // The first tray item's EXIF represents the whole collage and feeds the
-            // editable "Edit metadata" fields in Settings, same as selecting a single
-            // photo does — only reload when that first item's identity actually changes,
-            // so reordering the rest of the tray doesn't clobber an in-progress edit.
+            // The first tray item's EXIF feeds the metadata fields; reload only when that item changes.
             var newExifSource = CollageItems.Count > 0 ? CollageItems[0].FullPath : null;
             if (newExifSource != _collageExifSourcePath)
             {
@@ -343,8 +318,7 @@ public partial class MainWindowViewModel : ViewModelBase
                     newExifSource != null ? RecipeReader.Read(newExifSource) : null);
             }
 
-            // A previously-generated full render no longer reflects the tray as soon as it
-            // changes — clear it so DisplayedCollageBitmap falls back to the live preview.
+            // A full render is stale once the tray changes; fall back to the live preview.
             PaletteBitmap  = null;
             _lastTempPng   = null;
             OutputSizeText = null;
@@ -364,10 +338,7 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         };
 
-        // The settings sidebar is always visible and applies live, but changing a setting
-        // never re-renders on its own — that's a forced/surprising cost the user explicitly
-        // didn't want. Instead a settings change just surfaces the Regenerate button; the
-        // actual re-render only happens when the user clicks it.
+        // A settings change only surfaces the Regenerate button; re-rendering happens when the user clicks it.
         Settings.PropertyChanged += OnSettingsPropertyChanged;
         Settings.TopModeHandler = HandleTopMode;
         Settings.PhotosProvider = () => Files;
@@ -412,10 +383,9 @@ public partial class MainWindowViewModel : ViewModelBase
             return;
         }
 
-        // Single photo: live preview. Any settings change re-renders after a short pause so a
-        // burst of edits (typing a hex, dragging a slider) produces one render. Changes that
-        // don't alter the export snapshot are served from the single-slot render cache.
-        // The card layout is only on screen outside Edit-Look and Camera; coming back to it raises ShowCardBody, which lands here.
+        // Single photo: live preview. Settings changes re-render after a short pause so a burst of edits produces one render;
+        // changes that don't alter the export snapshot are served from the render cache.
+        // The card layout is on screen outside Edit-Look and Camera; ShowCardBody raising brings it back here.
         if (!Settings.ShowCardBody) return;
         ScheduleLiveRender();
     }
@@ -454,12 +424,11 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.HasPhoto = value != null;
         _liveDebounceCts?.Cancel();
         OnPropertyChanged(nameof(FilePositionText));
-        // Reading EXIF / the recipe touches the file: off the UI thread (it made photo switching stutter on phones).
+        // EXIF/recipe reads touch the file, so they run off the UI thread (it made photo switching stutter on phones).
         Settings.NotifyPhotoChanged(); // start decoding the photo for the canvas right away
         _ = LoadMetadataAsync(value);
         IsRegenerateAvailable = false; // the fresh render below is already current — nothing to regenerate yet
-        // In collage mode, clicking a row to check/inspect it shouldn't steal the big preview
-        // away from the collage — only the tray (CollageItems) drives collage rendering.
+        // In collage mode, checking a row shouldn't replace the big preview; only the tray drives collage rendering.
         if (!IsCollageMode)
         {
             Settings.SelectedPhotoCount = value != null ? 1 : 0;
@@ -480,8 +449,7 @@ public partial class MainWindowViewModel : ViewModelBase
         Settings.NotifyPhotoChanged();
     }
 
-    // Top-bar Card / Recipe / Collage segment. Collage opens the tray (seeded with the photo
-    // currently on screen); Card/Recipe close it first, then set the single-photo mode.
+    // Top-bar Card / Recipe / Collage segment. Collage opens the tray seeded with the current photo; Card/Recipe close it first.
     private void HandleTopMode(int index)
     {
         if (index == 2)
@@ -512,14 +480,11 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public void LoadFolder(string folder)
     {
-        // A different folder invalidates whatever's currently in the tray (it references
-        // FileEntry objects from the folder about to be cleared below).
+        // A different folder invalidates the tray (it references FileEntry objects about to be cleared).
         if (IsCollageMode) ExitCollageMode();
 
         _thumbnailCts?.Cancel();
-        // Drop the old selection and render state first: Files.Clear() alone leaves
-        // SelectedFile/PaletteBitmap pointing at the previous folder, and the mode/Save-label
-        // state then disagreed with the (now empty) list.
+        // Drop the old selection and render state first: Files.Clear() alone leaves SelectedFile/PaletteBitmap pointing at the old folder.
         SelectedFile = null;
         Files.Clear();
 
@@ -607,22 +572,16 @@ public partial class MainWindowViewModel : ViewModelBase
         if (i >= 0 && i < CollageItems.Count - 1) CollageItems.Move(i, i + 1);
     }
 
-    // Cheap "just the layout" preview — no palette extraction, no card, just decode +
-    // arrange with the gutter. Runs on every tray edit (see the CollectionChanged handler
-    // above) so the collage always looks assembled immediately; shares _renderCts with the
-    // full render so whichever starts most recently (a tray edit or a Generate click) wins.
+    // Layout-only preview (decode + arrange, no palette), run on every tray edit.
+    // Shares _renderCts with the full render; the latest one wins.
     private async Task RenderCollagePreviewAsync()
     {
         _renderCts?.Cancel();
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        // Whatever this cancelled (a stale single-photo/full-collage render) leaves
-        // IsGenerating stuck true — its own finally block only clears it when its token
-        // *wasn't* cancelled, precisely to avoid a cancelled task clobbering a newer one's
-        // "Generating…" state. But this preview never sets IsGenerating itself, so nothing
-        // would ever clear it otherwise, and both the "Generating…" text and the
-        // Generate/Regenerate button (CanRegenerate requires !IsGenerating) would get stuck.
+        // Cancelling a stale render leaves IsGenerating true (its finally skips the reset when cancelled),
+        // and this preview never sets it, so clear it here or CanRegenerate stays false.
         IsGenerating = false;
 
         if (CollageItems.Count == 0) return;
@@ -650,11 +609,8 @@ public partial class MainWindowViewModel : ViewModelBase
         _renderCts = new CancellationTokenSource();
         var token = _renderCts.Token;
 
-        // Left preview pane (single-photo "original") has no single equivalent for a
-        // collage — the tray thumbnails already show the sources, so it's just left blank.
-        // PaletteBitmap/CollagePreviewBitmap are deliberately left alone here — clearing
-        // them would blank the preview for the whole duration of the render instead of
-        // just showing "Generating…" over whatever was already there.
+        // A collage has no single original; the left pane stays blank. PaletteBitmap and CollagePreviewBitmap are kept
+        // so the preview isn't blanked for the duration of the render.
         OriginalBitmap = null;
         ErrorMessage   = null;
         _lastTempPng   = null;
@@ -750,11 +706,7 @@ public partial class MainWindowViewModel : ViewModelBase
         if (idx < Files.Count - 1) SelectedFile = Files[idx + 1];
     }
 
-    // Single unified save button (bugfix §1) — one command for Save PNG/JPEG and Save recipe
-    // card alike. _lastTempPng already holds whichever composite is currently on screen
-    // (RecipeCardRenderer's output in Recipe mode, PaletteImageRenderer's/CollageService's
-    // otherwise — see GeneratePaletteAsync/GenerateCollagePaletteAsync), so saving it verbatim
-    // guarantees the exported file always matches the preview, with no separate re-render.
+    // One save command for the image and the recipe card. _lastTempPng is what is on screen, so the file matches the preview.
     [RelayCommand(CanExecute = nameof(CanSavePng))]
     private async Task SavePngAsync2()
     {
@@ -882,10 +834,7 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             var filePath = entry.FullPath;
 
-            // Decoded once and reused below for the render (Recipe or the normal palette
-            // pipeline) instead of handing those a path and letting each re-decode the same
-            // full-resolution file from disk again — see PaletteExportService.ExportAsync's
-            // matching comment for why that redundant decode is worth avoiding.
+            // Decoded once and reused for the render instead of each path re-decoding the full-resolution file.
             working = await Task.Run(() =>
             {
                 return Services.FastDecode.LoadUpright(filePath);
@@ -906,10 +855,8 @@ public partial class MainWindowViewModel : ViewModelBase
             Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
             var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            // Recipe mode's composite depends on the current recipe too (which can change
-            // independently via manual edit without touching any PaletteExportSettings
-            // field), so it has to be part of the cache key or an edit while staying on the
-            // same photo/settings would serve a stale render.
+            // Recipe mode's composite depends on the current recipe, which can change without touching any PaletteExportSettings field;
+            // it has to be in the cache key.
             var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
             var cacheKey = (filePath, exportSettings, recipeForRender, Settings.CardLookKey);
 
@@ -926,11 +873,8 @@ public partial class MainWindowViewModel : ViewModelBase
             var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
             if (recipeForRender != null)
             {
-                // Recipe mode: the main preview must be the exact same composite Save recipe
-                // card would export — reuse RecipeCardRenderer directly rather than the
-                // palette pipeline. exportSettings.MetaVerbosity already reflects the "Show
-                // camera info plate" toggle (Off when unchecked — see PaletteExportSettings.
-                // SnapshotFrom), so the checkbox reaches the render params here (bugfix §2).
+                // Recipe mode: the preview is the same composite Save recipe card exports, so use RecipeCardRenderer directly.
+                // exportSettings.MetaVerbosity already reflects the "Show camera info plate" toggle.
                 var metadataOverride = Settings.BuildMetadataOverride();
                 var qr = exportSettings.BuildQrRenderOptions(
                     metadataOverride ?? PaletteImageRenderer.ReadMetadata(working), recipeForRender);
@@ -986,8 +930,7 @@ public partial class MainWindowViewModel : ViewModelBase
         var defaultDir = _lastBatchDestFolder ?? Path.Combine(sourceFolder, "palettes");
         Directory.CreateDirectory(defaultDir);
 
-        // The folder picker itself is the "are you sure" — Esc/Cancel here leaves
-        // everything untouched and the button stays "Save all (N)".
+        // The folder picker is the confirmation; Esc/Cancel leaves everything untouched.
         var destFolder = await PickBatchFolderAsync(defaultDir);
         if (destFolder == null) return;
 
@@ -1025,9 +968,8 @@ public partial class MainWindowViewModel : ViewModelBase
         BatchEtaText = left >= 90 ? $"≈ {left / 60} min left" : $"≈ {Math.Max(left, 1)} s left";
     }
 
-    // One file of a Save all in Recipe mode: each photo's own film recipe, same renderer and
-    // options as the single-photo Recipe preview. A photo without a recipe is reported as a
-    // failure (shown under "Details") instead of silently exporting a different card.
+    // One file of a Save all in Recipe mode: each photo's own recipe, same renderer as the single-photo preview.
+    // A photo without a recipe is reported as a failure instead of exporting a different card.
     private static void RenderRecipeCardFile(string sourcePath, string destPath, PaletteExportSettings s)
     {
         var recipe = RecipeReader.Read(sourcePath)
@@ -1071,11 +1013,8 @@ public partial class MainWindowViewModel : ViewModelBase
         int saved = 0, failed = 0, overwritten = 0, processed = 0;
         bool diskFull = false;
 
-        // Bounded parallelism — the pipeline (k-means clustering + full-res ImageSharp
-        // draw) is CPU/memory heavy enough that unlimited concurrency would thrash on a
-        // folder of 40MP photos, but strictly sequential leaves cores idle. A file that
-        // has already started a export always finishes (CancellationToken.None below) —
-        // cancelling only stops the loop from *starting* new ones via the semaphore wait.
+        // Bounded parallelism: unlimited concurrency thrashes on 40MP photos, strictly sequential leaves cores idle.
+        // A started export always finishes; cancelling only stops new ones from starting.
         var degree = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
         using var gate = new SemaphoreSlim(degree);
         var tasks = new List<Task>();

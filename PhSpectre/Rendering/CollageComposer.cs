@@ -5,23 +5,18 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// GutterColor/GutterThickness control the background strip between and around photos.
-// TargetAspect is the desired width/height of the composed collage (before
-// PaletteImageRenderer adds its swatch panel / metadata strip). MaxLongEdge caps the
-// composed canvas resolution — the collage is just the "photo" fed into the existing
-// render pipeline, so it doesn't need to exceed what that pipeline already targets.
+// GutterColor/GutterThickness: the background strip between and around photos.
+// TargetAspect: desired width/height of the collage (before PaletteImageRenderer adds its swatch panel / metadata strip).
+// MaxLongEdge caps the canvas resolution; the collage is just the "photo" fed into the render pipeline.
 public sealed record CollageOptions(Color GutterColor, int GutterThickness, double TargetAspect, int MaxLongEdge = 2400);
 
-// AreaWeights are parallel to the input photo list and sum to 1 — each is the fraction of
-// the collage's total displayed photo area that photo occupies, used to weight palette
-// extraction so photos shown larger contribute proportionally more color.
+// AreaWeights parallel the input photos and sum to 1: each photo's fraction of the displayed area, used to weight palette extraction.
 public sealed record CollageResult(Image<Rgb24> Image, IReadOnlyList<double> AreaWeights);
 
 public static class CollageComposer
 {
-    // One row of the layout: photos [StartIndex, StartIndex+Count) laid out side by side,
-    // each keeping its own aspect ratio, sharing the row's height. HeightFraction is this
-    // row's share of the total canvas height (all rows' fractions sum to 1).
+    // One layout row: photos [StartIndex, StartIndex+Count) side by side at their own aspect ratios, sharing the row's height.
+    // HeightFraction is the row's share of the canvas height (all rows sum to 1).
     internal readonly record struct PlannedRow(int StartIndex, int Count, double HeightFraction);
 
     public static CollageResult Compose(IReadOnlyList<Image<Rgb24>> photos, CollageOptions options)
@@ -52,9 +47,7 @@ public static class CollageComposer
         {
             ctx.Fill(options.GutterColor);
 
-            // Rows are planned in gutter-free normalized space (HeightFraction sums to 1 over
-            // canvasH); the gutter is then carved out of each cell's pixel rect so photo
-            // content never touches the gutter color, rather than being centered around it.
+            // Rows are planned in gutter-free normalized space; the gutter is then carved out of each cell's pixel rect so photos never touch the gutter color.
             double y = 0;
             foreach (var row in rows)
             {
@@ -92,12 +85,8 @@ public static class CollageComposer
         return new CollageResult(canvas, areaWeights);
     }
 
-    // Resizes+crops the photo to exactly fill the cell (cover+center, via ImageSharp's
-    // built-in ResizeMode.Crop) after insetting the cell by half the gutter on each edge —
-    // that's what gives a `gutter`-px gap between neighbors and around the collage edge.
-    // Returns the rect actually drawn into, which may equal the un-inset cell if the gutter
-    // is larger than the cell itself (pathological input; better to draw edge-to-edge than
-    // to vanish the photo).
+    // Resizes and crops the photo to fill the cell (cover + center, ResizeMode.Crop) after insetting it by half the gutter per edge.
+    // Returns the rect drawn into, which equals the un-inset cell when the gutter exceeds the cell (better edge-to-edge than a vanished photo).
     private static Rectangle DrawPhotoIntoCell(IImageProcessingContext ctx, Image<Rgb24> photo, Rectangle cellRect, int gutter)
     {
         int insetX = gutter / 2, insetY = gutter / 2;
@@ -116,12 +105,9 @@ public static class CollageComposer
         return inner;
     }
 
-    // Finds the contiguous row partition of `aspectRatios` whose resulting overall canvas
-    // aspect ratio is closest to `targetAspect` (a "justified gallery" layout: each row's
-    // height is whatever makes its photos, side by side at their own aspect ratios, exactly
-    // fill the row width). With the ~2-9 photo soft cap this feature targets, there are at
-    // most 2^(n-1) contiguous partitions — cheap enough to search exhaustively for the true
-    // best fit instead of a greedy approximation.
+    // Finds the contiguous row partition whose canvas aspect ratio is closest to `targetAspect` (justified-gallery layout:
+    // each row's height makes its photos exactly fill the width). With ~2-9 photos there are at most 2^(n-1) partitions,
+    // so an exhaustive search beats a greedy approximation.
     internal static IReadOnlyList<PlannedRow> PlanRows(IReadOnlyList<double> aspectRatios, double targetAspect)
     {
         int n = aspectRatios.Count;

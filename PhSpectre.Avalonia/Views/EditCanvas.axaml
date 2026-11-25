@@ -13,10 +13,23 @@
         <!-- Crop: the whole photo, moved / rotated / scaled by transforms under a clipped window (no re-render per drag) -->
         <Grid x:Name="CropHost" Margin="{Binding StageMargin}" Background="Transparent" IsVisible="{Binding ShowCropView}">
             <Border x:Name="CropWindow" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Canvas x:Name="CropCanvas">
-                    <Image x:Name="CropImage" Source="{Binding CropBase}" Stretch="Fill" RenderTransformOrigin="50%,50%"
-                           RenderOptions.BitmapInterpolationMode="MediumQuality"/>
-                </Canvas>
+                <Grid>
+                    <Canvas x:Name="CropCanvas">
+                        <Image x:Name="CropImage" Source="{Binding CropBase}" Stretch="Fill" RenderTransformOrigin="50%,50%"
+                               RenderOptions.BitmapInterpolationMode="MediumQuality"/>
+                    </Canvas>
+                    <!-- Rule-of-thirds grid for levelling the horizon -->
+                    <Grid IsHitTestVisible="False" ColumnDefinitions="*,*,*" RowDefinitions="*,*,*">
+                        <Border Grid.Row="0" Grid.Column="0" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,1"/>
+                        <Border Grid.Row="0" Grid.Column="1" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,1"/>
+                        <Border Grid.Row="0" Grid.Column="2" BorderBrush="#66FFFFFF" BorderThickness="0,0,0,1"/>
+                        <Border Grid.Row="1" Grid.Column="0" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,1"/>
+                        <Border Grid.Row="1" Grid.Column="1" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,1"/>
+                        <Border Grid.Row="1" Grid.Column="2" BorderBrush="#66FFFFFF" BorderThickness="0,0,0,1"/>
+                        <Border Grid.Row="2" Grid.Column="0" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,0"/>
+                        <Border Grid.Row="2" Grid.Column="1" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,0"/>
+                    </Grid>
+                </Grid>
             </Border>
         </Grid>
 

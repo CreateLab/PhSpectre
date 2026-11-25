@@ -27,6 +27,7 @@ public partial class App : Application
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
+        Views.SliderTapToSeek.Register();
     }
 
     public override void OnFrameworkInitializationCompleted()

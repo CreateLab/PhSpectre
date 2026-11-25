@@ -3,25 +3,14 @@ using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 
 namespace PhSpectre.Services;
 
-// Reads just enough of the ISO-BMFF (HEIF/HEIC) container structure to locate the embedded
-// "Exif" item and hand its raw TIFF/IFD bytes to ImageSharp's ExifProfile — without a full
-// HEIF pixel decoder or any native/third-party dependency. Verified byte-for-byte against 4
-// real Fuji X-T5 HEIC files (ftyp brand "heix"): the Exif item's bytes are laid out as
-// [4-byte TIFF-header-offset]["Exif\0\0"][raw TIFF data], identical to a JPEG APP1 segment
-// minus the APP1 marker — so once located, that payload needs no format-specific handling at
-// all; it goes straight into ExifProfile(byte[]) and from there into FujiRecipeExtractor
-// completely unchanged.
-//
-// Deliberately supports only the common camera/phone shape: construction_method 0 (plain
-// file-offset extents, no idat/item-to-item construction) and iinf/infe version 2 or 3. Any
-// structural surprise (missing box, unsupported version, truncated data) returns null rather
-// than throwing, matching RecipeReader's best-effort contract.
+// Reads just enough of the ISO-BMFF (HEIF/HEIC) container to find the "Exif" item and hand its TIFF bytes to ImageSharp's ExifProfile,
+// with no pixel decoder or native dependency. Checked against 4 real Fuji X-T5 HEIC files: the item is [4-byte TIFF offset]["Exif\0\0"][TIFF data],
+// i.e. a JPEG APP1 payload without the marker, so it feeds FujiRecipeExtractor unchanged.
+// Only the common shape is supported: construction_method 0 (plain file-offset extents) and iinf/infe version 2 or 3.
+// Any structural surprise returns null instead of throwing (best-effort, like RecipeReader).
 public static class HeifContainerReader
 {
-    // Brand check only — never used to decide *how* to decode a file's pixels, only whether
-    // this reader's Exif-item lookup applies. AVIF ("avif"/"av01") is intentionally excluded:
-    // out of scope, and sharing the same ftyp/meta/iinf/iloc mechanism doesn't mean this
-    // reader has been verified against real AVIF files.
+    // Brand check only: decides whether the Exif-item lookup applies, not how pixels are decoded. AVIF is excluded; it shares the box structure but hasn't been verified.
     private static readonly HashSet<string> HeicBrands = new(StringComparer.Ordinal)
     {
         "heic", "heix", "heim", "heis", "hevc", "hevx", "mif1", "msf1",
@@ -63,11 +52,7 @@ public static class HeifContainerReader
         }
     }
 
-    // Stream overload so ImageSharp decoders (which receive a Stream, not a path — see
-    // HeifPixelDecoder in PhSpectre.Heif) can reuse the same parser against the exact stream
-    // they were handed, without needing the original file path. Leaves the stream's position
-    // wherever parsing stopped, same as every other ImageSharp decoder's Stream-consuming
-    // contract; callers needing the position preserved should restore it themselves.
+    // Stream overload for ImageSharp decoders that get a Stream, not a path. Leaves the position where parsing stopped; callers restore it if needed.
     public static ExifProfile? TryReadExifProfile(Stream fs)
     {
         try
@@ -80,10 +65,7 @@ public static class HeifContainerReader
             // meta is a FullBox: 1 byte version + 3 bytes flags before its children.
             fs.Position = metaStart + 4;
 
-            // Single forward pass over meta's children: iinf/iloc order isn't guaranteed
-            // (differs across encoders), so both must be collected in one scan rather than
-            // two independent re-scans that would each only look forward from wherever the
-            // previous one stopped.
+            // One forward pass over meta's children: iinf/iloc order varies by encoder, so both are collected in a single scan.
             var children = FindChildBoxes(fs, reader, metaEnd, "iinf", "iloc");
             if (!children.TryGetValue("iinf", out var iinf) || !children.TryGetValue("iloc", out var iloc))
                 return null;
@@ -103,8 +85,7 @@ public static class HeifContainerReader
             byte[] raw = reader.ReadBytes((int)extentLength);
             if (raw.Length != extentLength) return null;
 
-            // Per ISO/IEC 23008-12 Annex A: 4-byte big-endian offset to the TIFF header,
-            // then the literal ASCII "Exif\0\0", then the TIFF/IFD data itself.
+            // ISO/IEC 23008-12 Annex A: 4-byte big-endian TIFF header offset, the ASCII "Exif\0\0", then the TIFF data.
             uint tiffHeaderOffset = BinaryPrimitives.ReadUInt32BigEndian(raw);
             long tiffStart = 4L + tiffHeaderOffset;
             if (tiffStart < 6 || tiffStart >= raw.Length) return null;
@@ -120,8 +101,7 @@ public static class HeifContainerReader
 
     // ── Generic box walking ─────────────────────────────────────────────────
 
-    // Scans top-level boxes (no FullBox header) for the first one matching `type`.
-    // Returns (contentStart, contentEnd) — contentStart is right after the box header.
+    // Scans top-level boxes for the first of `type`; returns (contentStart, contentEnd), contentStart being right after the header.
     private static (long Start, long End)? FindTopLevelBox(Stream fs, BinaryReader reader, string type)
     {
         fs.Position = 0;
@@ -142,9 +122,7 @@ public static class HeifContainerReader
         return null;
     }
 
-    // One forward pass over [fs.Position, end), collecting the first box matching each of
-    // `types` (order-independent — unlike FindTopLevelBox, this doesn't stop at the first
-    // match, so callers needing more than one sibling box get them from a single scan).
+    // One forward pass over [fs.Position, end) collecting the first box of each of `types`, in any order.
     private static Dictionary<string, (long Start, long End)> FindChildBoxes(Stream fs, BinaryReader reader, long end, params string[] types)
     {
         var found = new Dictionary<string, (long, long)>();
@@ -166,8 +144,7 @@ public static class HeifContainerReader
         return found;
     }
 
-    // Reads a box header at the current position (32-bit size, or 64-bit "largesize" when
-    // size == 1). `limit` bounds how far the declared size may reach.
+    // Reads a box header (32-bit size, or 64-bit "largesize" when size == 1); `limit` bounds the declared size.
     private static bool TryReadBoxHeader(BinaryReader reader, long limit, out long size, out string type, out long headerLen)
     {
         size = 0; type = ""; headerLen = 0;
@@ -200,8 +177,7 @@ public static class HeifContainerReader
 
     // ── iinf / infe ──────────────────────────────────────────────────────────
 
-    // iinf is itself a FullBox; skip version+flags, read entry_count (u16 for v0, u32 for
-    // v>=1), then walk that many "infe" child boxes looking for item_type == "Exif".
+    // iinf is a FullBox: skip version+flags, read entry_count (u16 for v0, u32 for v>=1), then walk the "infe" boxes for item_type == "Exif".
     private static uint? FindExifItemId(Stream fs, BinaryReader reader, long iinfEnd)
     {
         Span<byte> itemType = stackalloc byte[4];
@@ -255,9 +231,8 @@ public static class HeifContainerReader
 
     // ── iloc ─────────────────────────────────────────────────────────────────
 
-    // iloc is a FullBox whose layout depends on its version (0/1/2) for item_ID/item_count
-    // width and whether a construction_method/index field is present. Only construction_method
-    // 0 (plain file-offset extents) is supported — the shape every camera/phone HEIF uses.
+    // iloc is a FullBox whose item_ID/item_count width and construction_method/index fields depend on version (0/1/2).
+    // Only construction_method 0 (plain file-offset extents, what cameras and phones use) is supported.
     private static (long Offset, long Length)? FindItemExtent(Stream fs, BinaryReader reader, long ilocEnd, uint targetItemId)
     {
         byte version = reader.ReadByte();

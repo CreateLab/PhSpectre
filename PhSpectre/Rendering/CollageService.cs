@@ -5,10 +5,8 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.Rendering;
 
-// Carries the same palette/render knobs as the single-photo export flow
-// (PhSpectre.Avalonia's PaletteExportSettings) plus the collage-specific gutter settings.
-// Kept separate from PaletteExportSettings since that type lives in the Avalonia project,
-// which depends on this one — not the other way around.
+// The palette/render knobs of the single-photo export (PaletteExportSettings) plus the collage gutter settings.
+// Separate from PaletteExportSettings because that type lives in the Avalonia project, which depends on this one.
 public sealed record CollageRenderSettings(
     int? Colors,
     SamplingMode SamplingMode,
@@ -36,10 +34,8 @@ public sealed record CollageRenderSettings(
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 }
 
-// The collage twin of the single-photo export path: turns several source photos into one
-// composed collage image, extracts a palette pooled across them (weighted by displayed
-// area so the gutter itself never contributes), and renders it through the existing
-// PaletteImageRenderer pipeline unchanged.
+// The collage twin of the single-photo export: composes several photos into one image, extracts a palette pooled across them
+// (weighted by displayed area, so the gutter never contributes), and renders it through PaletteImageRenderer.
 public static class CollageService
 {
     public static async Task RenderCollageAsync(
@@ -53,10 +49,8 @@ public static class CollageService
         if (sourcePaths.Count == 0)
             throw new ArgumentException("At least one photo is required.", nameof(sourcePaths));
 
-        // Order in sourcePaths is both the collage's packing order and the EXIF source —
-        // the first photo's metadata represents the whole collage. metadataOverride lets a
-        // caller substitute user-edited fields (the Settings "Edit metadata" flow) for a
-        // photo that has no EXIF of its own to read, same as the single-photo export path.
+        // sourcePaths order is both the packing order and the EXIF source (the first photo represents the collage).
+        // metadataOverride substitutes user-edited fields for a photo with no EXIF, as in the single-photo export.
         var metadata = metadataOverride ?? PaletteImageRenderer.ReadMetadata(sourcePaths[0]);
 
         var photos = await LoadSourcePhotosAsync(sourcePaths, settings.SourceMaxDimension, cancellationToken);
@@ -80,9 +74,7 @@ public static class CollageService
                 }
                 else
                 {
-                    // CollageInfoOnly — no k-means over the pooled photos at all (that's the
-                    // expensive step the mode exists to skip). showSwatches:false below means
-                    // this placeholder is never drawn.
+                    // CollageInfoOnly: no k-means over the pooled photos. showSwatches:false below means this placeholder is never drawn.
                     palette = new Models.ColorPalette([new Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
                 }
 
@@ -119,10 +111,7 @@ public static class CollageService
         }
     }
 
-    // Cheap live-preview path: just decode + lay the photos out with a gutter, skipping the
-    // palette extraction (k-means over pooled samples) and card rendering entirely — that's
-    // the expensive part, and the whole point of this method is to update instantly while
-    // the user is still assembling the tray, before they've asked for a real render.
+    // Cheap live preview: decode and lay out the photos with a gutter, skipping palette extraction and card rendering.
     // Caller owns the returned image and must dispose it.
     public static async Task<Image<Rgb24>> ComposePreviewAsync(
         IReadOnlyList<string> sourcePaths,
@@ -149,15 +138,9 @@ public static class CollageService
         }
     }
 
-    // Loads every source photo already downscaled to roughly what the collage canvas can
-    // actually show (sourceMaxDimension ≈ CollageOptions.MaxLongEdge), decoded in parallel
-    // across the thread pool. Full-res mobile camera photos (12-50MP, 20MB+ JPEGs) decoded
-    // serially at native resolution — just to be shrunk into a canvas cell afterwards — is
-    // what made assembling an 8-photo collage take "forever"; nothing downstream ever needs
-    // more detail than the final composed canvas has room for. The cap itself is a caller
-    // choice (CollageRenderSettings.SourceMaxDimension / PaletteExportSettings), so mobile's
-    // "Working size" setting actually controls collage speed/output size, same as it already
-    // does for the single-photo path — a fixed constant here ignored that setting entirely.
+    // Loads every source already downscaled to about what the canvas can show (sourceMaxDimension ~ CollageOptions.MaxLongEdge), decoded in parallel.
+    // Decoding 12-50MP photos serially at native size just to shrink them is what made an 8-photo collage take forever.
+    // The cap is the caller's choice (CollageRenderSettings.SourceMaxDimension), so mobile's Working size also controls collage speed.
     private static async Task<Image<Rgb24>[]> LoadSourcePhotosAsync(IReadOnlyList<string> sourcePaths, int sourceMaxDimension, CancellationToken cancellationToken)
     {
         var loads = sourcePaths
@@ -175,10 +158,8 @@ public static class CollageService
         }
     }
 
-    // Mirrors the ExportPreset → pixel-dimensions mapping in PaletteImageRenderer.RenderCore,
-    // reduced to just the aspect ratio the composed collage canvas should target. Original has
-    // no native aspect for a multi-photo collage (unlike a single photo), so it falls back to
-    // a plain square.
+    // Mirrors the ExportPreset -> pixel mapping in PaletteImageRenderer.RenderCore, reduced to the target aspect ratio.
+    // Original has no native aspect for a collage, so it falls back to a square.
     private static double ExportAspect(ExportPreset preset) => preset switch
     {
         ExportPreset.Square            => 1080.0 / 1080.0,

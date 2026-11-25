@@ -5,19 +5,11 @@ using PhSpectre.Models;
 
 namespace PhSpectre.Qr;
 
-// Real spec-compliant bit-packer for the phspectre-view URL format — mirrors, byte-for-byte,
-// the format comment at the top of that repo's index.html <script> (v3 spec, "root cause"
-// section): flags byte, length-prefixed camera/lens strings, a 5-byte exposure block, an
-// 8-byte recipe block, all multi-bit fields MSB-first. Replaces PlaceholderQrLinkPayloadEncoder
-// (base64url(JSON)), which produced ~27x larger payloads (494 bytes vs ~16-44) purely because
-// it never implemented this format — that's what made every QR unnecessarily dense.
-//
-// PhSpectre's own FilmRecipe/PhotoMetadata vocabularies (FujiRecipeExtractor's decoded strings,
-// RecipeFieldOptions' manual-entry lists) don't exactly match the viewer's fixed SIMS/WB/DR/
-// GRAIN enums — legacy/rare values (e.g. "Studio Portrait", "Velvia (old)") and finer detail
-// PhSpectre doesn't capture at all (grain size, custom-WB Kelvin number) fall back to the
-// closest available slot. This is a lossy but deliberate mapping, not a bug — every fallback is
-// called out at its own mapping table below.
+// Bit-packer for the phspectre-view URL format, mirroring byte-for-byte the format comment at the top of that repo's index.html:
+// flags byte, length-prefixed camera/lens strings, a 5-byte exposure block, an 8-byte recipe block, all multi-bit fields MSB-first.
+// Replaces PlaceholderQrLinkPayloadEncoder (base64url(JSON)), whose payloads were ~27x larger and made every QR dense.
+// PhSpectre's FilmRecipe/PhotoMetadata vocabularies don't exactly match the viewer's fixed SIMS/WB/DR/GRAIN enums, so legacy/rare values and
+// detail PhSpectre doesn't capture fall back to the closest slot. The mapping is lossy by design; each fallback is noted at its table.
 public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
 {
     public string Encode(QrLinkFields fields)
@@ -99,8 +91,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         ms.Write(bytes, 0, bytes.Length);
     }
 
-    // Character-count trim (not byte-slice) so a multi-byte UTF-8 char never gets split —
-    // only matters for the free-text Note field; Camera/Lens are short EXIF strings in practice.
+    // Trim by character count, not bytes, so a multi-byte UTF-8 char is never split (only matters for the free-text Note).
     private static string TruncateToUtf8ByteLimit(string s, int maxBytes)
     {
         int len = s.Length;
@@ -111,9 +102,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
     private static string ToBase64Url(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    // MSB-first bit accumulator mirroring the viewer's own bitWriter(totalBits)/toBytes(byteLen)
-    // — a ulong comfortably holds every field this format ever accumulates (max 62 of 64 bits
-    // for the recipe block), so no need for anything wider.
+    // MSB-first bit accumulator mirroring the viewer's bitWriter/toBytes; a ulong holds every field (max 62 of 64 bits).
     private sealed class BitWriter(int totalBits)
     {
         private ulong _acc;
@@ -139,9 +128,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         }
     }
 
-    // ── exposure field parsers — reverse PaletteImageRenderer.ReadMetadata's own formatting
-    // ("35mm", "f/1.4", "1/500s" or "2s", "ISO 400") back into raw numbers. These strings are
-    // also the user-editable metadata text fields, but always committed in this same format. ──
+    // ── exposure field parsers: reverse PaletteImageRenderer.ReadMetadata's formatting ("35mm", "f/1.4", "1/500s" or "2s", "ISO 400") into numbers ──
 
     private static readonly Regex FocalRegex = new(@"^(\d+)\s*mm$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ApertureRegex = new(@"^f/(\d+(?:\.\d+)?)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -201,9 +188,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
     private static readonly Dictionary<string, int> SimCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Provia/Standard"] = 0,
-        // Legacy Portrait-mode simulations (pre-modern-body, essentially never seen from
-        // FujiRecipeExtractor in practice) — no dedicated viewer slot, fall back to the
-        // closest color character.
+        // Legacy Portrait-mode simulations have no viewer slot; fall back to the closest color character.
         ["Studio Portrait"] = 0,
         ["Studio Portrait Increased Sharpness"] = 0,
         ["Studio Portrait Enhanced Saturation"] = 1,
@@ -257,16 +242,13 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         "DR100" => 1,
         "DR200" => 2,
         "DR400" => 3,
-        // Auto, "Off" (manual-entry-only), "Film Simulation", or any other DR{d} value all fall
-        // back to Auto — the viewer's DR enum has no slot for any of those.
+        // Auto, "Off" (manual-entry-only), "Film Simulation" or any other DR{d} value fall back to Auto; the viewer's DR enum has no slot for them.
         _ => 0,
     };
 
     private static int GrainCode(string? grain) => grain switch
     {
-        // FujiRecipeExtractor only reports Off/Weak/Strong (grain SIZE isn't decoded at all),
-        // so Weak/Strong assume "· Small" — the viewer's more detailed 5-value enum has no way
-        // to distinguish Small from Large from what we have.
+        // FujiRecipeExtractor reports only Off/Weak/Strong (grain size isn't decoded), so Weak/Strong assume "· Small".
         "Weak" => 1,
         "Strong" => 2,
         _ => 0,

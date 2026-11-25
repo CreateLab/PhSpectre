@@ -19,9 +19,8 @@ public static class FilmFrameRenderer
     // Sprocket holes take this share of a margin (the part next to the photo); text uses the rest.
     private const float HoleLane = 0.66f;
 
-    // A real strip runs along the long side of the picture. A style made for a vertical strip is turned a quarter
-    // for a landscape photo (and a horizontal one for a portrait photo): the photo is turned, framed, and turned back.
-    // Half-frame is the exception: its strip runs along the short side (18 mm), so the picture is turned the other way.
+    // A real strip runs along the long side of the picture, so a vertical-strip style is turned a quarter for a landscape photo (and vice versa):
+    // the photo is turned, framed, and turned back. Half-frame is the exception: its strip runs along the short side (18 mm).
     private static bool NeedsTurn(FilmStyle s, int w, int h) =>
         s.Gauge != FilmGauge.Free && w != h && s.VerticalStrip == (s.Gauge == FilmGauge.Mm135Half ? h > w : w > h);
 
@@ -46,9 +45,8 @@ public static class FilmFrameRenderer
         return (photoW + 2 * side, photoH + top + bottom, side, top);
     }
 
-    // The text printed for a token, or "" when there is nothing real to print (the zone then just stays empty).
-    // FilmSim is the applied Look's name, or else the film simulation read from the photo: never an invented name.
-    // frameLabel: the text printed for the frame number; when null the plain frameNumber is used (0 prints nothing).
+    // The text printed for a token, or "" when there is nothing real to print. FilmSim is the applied Look's name or else the film simulation from the photo, never an invented name.
+    // frameLabel: text for the frame number; when null the plain frameNumber is used (0 prints nothing).
     public static string TokenText(FilmToken token, PaletteImageRenderer.PhotoMetadata? m, int frameNumber, string custom,
         string? lookName = null, string? frameLabel = null) => token switch
     {
@@ -82,8 +80,8 @@ public static class FilmFrameRenderer
         string? lookName = null, string? frameLabel = null) =>
         string.Join("  ", ZoneTokens(style, zone, m, frameNumber, lookName, frameLabel));
 
-    // lookName: the applied Look (LUT / preset), printed by the FilmSim token ahead of the photo's own film simulation.
-    // frameNumber also seeds the dust/grain; frameLabel (when not null) is what the frame-number tokens print.
+    // lookName: the applied Look, printed by the FilmSim token ahead of the photo's own film simulation.
+    // frameNumber also seeds dust/grain; frameLabel (when not null) is what the frame-number tokens print.
     public static Image<Rgb24> Render(Image<Rgb24> photo, FilmStyle style, PaletteImageRenderer.PhotoMetadata? meta, int frameNumber = 1,
         string? lookName = null, string? frameLabel = null)
     {

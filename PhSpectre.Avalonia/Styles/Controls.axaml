@@ -120,7 +120,7 @@
         <Setter Property="MinHeight" Value="28"/>
         <Setter Property="Template">
             <ControlTemplate>
-                <Grid Height="28" Background="Transparent">
+                <Grid Height="28" Background="Transparent" Margin="10,0">
                     <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
                             Background="{DynamicResource SwitchOffBrush}"/>
                     <Track Name="PART_Track" Orientation="Horizontal"
@@ -169,6 +169,16 @@
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="MinHeight" Value="36"/>
+    </Style>
+    <Style Selector="TextBox">
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="ComboBox">
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="RadioButton">
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="8,0"/>
     </Style>
     <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>

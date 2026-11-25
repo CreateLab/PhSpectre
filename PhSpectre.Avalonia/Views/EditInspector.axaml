@@ -48,7 +48,8 @@
             </ListBox>
 
             <!-- ═══════════ Look ═══════════ -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsLook}">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsLook}"
+                          IsEnabled="{Binding Settings.HasPhoto}">
                 <StackPanel Margin="16,12,16,16" Spacing="10">
                     <!-- Crop and straighten -->
                     <StackPanel Spacing="12" IsVisible="{Binding LookIsCrop}">
@@ -246,33 +247,33 @@
                             <TextBlock Text="{Binding Name}" Classes="section-title"/>
                     <ItemsControl ItemsSource="{Binding Items}">
                         <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                            <ItemsPanelTemplate><UniformGrid Columns="3"/></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:GradeItemViewModel">
-                                <Button Width="96" Margin="0,0,12,10" Padding="0"
+                              <Panel Margin="0,0,8,10">
+                                <Button Padding="0" HorizontalAlignment="Stretch"
                                         HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0"
                                         Command="{Binding Owner.UseItemCommand}" CommandParameter="{Binding}"
                                         AutomationProperties.Name="{Binding Name}">
                                     <Button.ContextMenu>
                                         <ContextMenu>
-                                            <MenuItem Header="Favorite" Command="{Binding Owner.ToggleFavoriteCommand}" CommandParameter="{Binding}"/>
+                                            <MenuItem Header="{Binding FavoriteMenuText}" Command="{Binding Owner.ToggleFavoriteCommand}" CommandParameter="{Binding}"/>
                                             <MenuItem Header="Delete from library" IsVisible="{Binding CanDelete}" Command="{Binding Owner.DeleteItemCommand}" CommandParameter="{Binding}"/>
                                         </ContextMenu>
                                     </Button.ContextMenu>
                                     <StackPanel Spacing="3">
+                                        <!-- Outer border draws the ring unclipped; the inner one clips the photo -->
                                         <Border Classes="tile-img" Classes.active="{Binding IsActive}"
-                                                Width="96" Height="72" CornerRadius="10" ClipToBounds="True"
+                                                Height="76" CornerRadius="10"
                                                 Background="{DynamicResource SurfaceBrush}" BorderThickness="2">
-                                            <Panel>
-                                                <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
-                                                <TextBlock Text="…" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                           IsVisible="{Binding !HasThumb}" Foreground="{DynamicResource TextMutedBrush}"/>
-                                                <materialIcons:MaterialIcon Kind="Star" Width="14" Height="14" Margin="5"
-                                                                            HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                                            Foreground="{DynamicResource AccentBrush}"
-                                                                            IsVisible="{Binding IsFavorite}"/>
-                                            </Panel>
+                                            <Border CornerRadius="8" ClipToBounds="True">
+                                                <Panel>
+                                                    <Image Source="{Binding Thumb}" Stretch="UniformToFill"/>
+                                                    <TextBlock Text="…" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               IsVisible="{Binding !HasThumb}" Foreground="{DynamicResource TextMutedBrush}"/>
+                                                </Panel>
+                                            </Border>
                                         </Border>
                                         <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="Medium"
                                                    TextTrimming="CharacterEllipsis"
@@ -280,6 +281,20 @@
                                         <TextBlock Text="{Binding Badge}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}"/>
                                     </StackPanel>
                                 </Button>
+                                <Button Width="28" Height="28" Margin="2" Padding="0" Background="Transparent" BorderThickness="0"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        Command="{Binding Owner.ToggleFavoriteCommand}" CommandParameter="{Binding}"
+                                        AutomationProperties.Name="{Binding FavoriteMenuText}">
+                                    <Panel>
+                                        <materialIcons:MaterialIcon Kind="Star" Width="14" Height="14"
+                                                                    Foreground="{DynamicResource AccentBrush}"
+                                                                    IsVisible="{Binding IsFavorite}"/>
+                                        <materialIcons:MaterialIcon Kind="StarOutline" Width="14" Height="14"
+                                                                    Foreground="#E6FFFFFF"
+                                                                    IsVisible="{Binding !IsFavorite}"/>
+                                    </Panel>
+                                </Button>
+                              </Panel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -292,7 +307,8 @@
             </ScrollViewer>
 
             <!-- ═══════════ Frame (None · Border here; Card · Recipe card open the card layout) ═══════════ -->
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsFrame}">
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsFrame}"
+                          IsEnabled="{Binding Settings.HasPhoto}">
                 <StackPanel Margin="16,14,16,16" Spacing="12">
                     <TextBlock Text="Frame type" Classes="section-title first"/>
                     <ListBox Classes="seg" SelectedIndex="{Binding Settings.FrameTypeIndex}">
@@ -302,8 +318,16 @@
                         <ListBoxItem Content="Recipe" IsEnabled="{Binding Settings.RecipeCardAvailable}"/>
                         <ListBoxItem Content="Film"/>
                     </ListBox>
-                    <TextBlock Text="{Binding Settings.RecipeCardReason}" Classes="hint" TextWrapping="Wrap"
-                               IsVisible="{Binding Settings.ShowRecipeCardReason}"/>
+                    <Border IsVisible="{Binding Settings.ShowRecipeCardReason}" CornerRadius="8" Padding="10,8"
+                            BorderThickness="1" BorderBrush="{DynamicResource WarningBrush}"
+                            Background="{DynamicResource ControlBrush}">
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{Binding Settings.RecipeCardReason}" TextWrapping="Wrap" FontSize="12"
+                                       Foreground="{DynamicResource WarningBrush}"/>
+                            <Button Content="Remove the look" Classes="link" HorizontalAlignment="Left"
+                                    IsVisible="{Binding HasLook}" Command="{Binding ClearLookCommand}"/>
+                        </StackPanel>
+                    </Border>
                     <TextBlock Text="{Binding Settings.FrameNotice}" Foreground="{DynamicResource WarningBrush}"
                                FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Settings.HasFrameNotice}"/>
 
@@ -546,7 +570,7 @@
                     <local:CardExportSection DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel" Margin="0,-8,0,-20"/>
                     <TextBlock Text="The original file is never changed." Classes="hint" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding ExportStatus}" IsVisible="{Binding HasExportStatus}" Classes="hint" TextWrapping="Wrap"/>
-                    <Button x:Name="ExportButton" Classes="primary" Height="44" HorizontalAlignment="Stretch"
+                    <Button x:Name="ExportButton" Classes="cta" Height="44" HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center" IsEnabled="{Binding CanExport}"
                             Content="{Binding ExportButtonText}"/>
                     <Button x:Name="ExportAllButton" Classes="secondary" Height="40" HorizontalAlignment="Stretch"
