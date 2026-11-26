@@ -9,11 +9,18 @@ namespace PhSpectre.Avalonia.Views;
 
 /// <summary>
 /// Tapping the track of a Slider.v2 jumps the thumb there (instead of paging by LargeChange),
-/// and the drag then continues from the new position as usual.
+/// and the drag then continues from the new position as usual. A double tap returns the slider to <c>Default</c>.
 /// </summary>
-internal static class SliderTapToSeek
+public class SliderTapToSeek
 {
     private const double ThumbWidth = 22;
+    private static global::System.WeakReference<Slider>? _lastPressed;
+
+    public static readonly AttachedProperty<double> DefaultProperty =
+        AvaloniaProperty.RegisterAttached<SliderTapToSeek, Slider, double>("Default");
+
+    public static double GetDefault(Slider slider) => slider.GetValue(DefaultProperty);
+    public static void SetDefault(Slider slider, double value) => slider.SetValue(DefaultProperty, value);
 
     public static void Register() =>
         InputElement.PointerPressedEvent.AddClassHandler<Slider>(OnPressed, RoutingStrategies.Tunnel);
@@ -22,6 +29,15 @@ internal static class SliderTapToSeek
     {
         if (!slider.Classes.Contains("v2") || !slider.IsEnabled) return;
         if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
+        // The touch click counter also joins quick taps on two neighbouring sliders, so check it is the same one.
+        bool again = _lastPressed != null && _lastPressed.TryGetTarget(out var last) && last == slider;
+        _lastPressed = new(slider);
+        if (again && e.ClickCount >= 2)
+        {
+            slider.Value = GetDefault(slider);
+            e.Handled = true; // keeps the second tap from starting a drag away from the default
+            return;
+        }
         if (e.Source is Visual v && v.FindAncestorOfType<Thumb>(true) != null) return; // dragging the knob itself
         if (slider.Orientation != global::Avalonia.Layout.Orientation.Horizontal) return;
 

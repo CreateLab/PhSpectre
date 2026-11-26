@@ -105,6 +105,7 @@ public partial class MainViewModel : ViewModelBase
     {
         // No photo and no tray: every export mode chip is shown.
         Settings.SelectedPhotoCount = 0;
+        Settings.Process.PhoneStage = true;
 
         _recentPhotos.CollectionChanged += (_, _) =>
         {
@@ -115,6 +116,7 @@ public partial class MainViewModel : ViewModelBase
             OnPropertyChanged(nameof(ShowRecentStrip));
             OnPropertyChanged(nameof(ShowFullWidthStartButtons));
             OnPropertyChanged(nameof(ShowCompactActionBar));
+            OnPropertyChanged(nameof(ShowFilmstrip));
         };
 
         // A settings change only surfaces Regenerate; re-rendering is user-triggered.
@@ -159,14 +161,19 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Phone: the photo strip steps aside while the sheet is open, so the sheet gets the room.</summary>
     private void SyncSheetState()
     {
-        OnPropertyChanged(nameof(ShowSheet)); OnPropertyChanged(nameof(ShowFilmstrip));
+        OnPropertyChanged(nameof(ShowSheet)); OnPropertyChanged(nameof(ShowFilmstrip)); OnPropertyChanged(nameof(ShowPhoneActions));
         Settings.Process.CompareHidden = ShowSheet;
     }
-    public bool ShowFilmstrip => !IsCollageMode && !ShowSheet;
+    // On a phone a strip with a single photo only takes room from that photo; the folder button still adds more.
+    public bool ShowFilmstrip => !IsCollageMode && !ShowSheet && (IsWide || RecentPhotos.Count != 1);
+    public bool ShowPhoneActions => IsPhone && !IsSheetOpen;
+    public global::Avalonia.Thickness CardStageMargin => IsPhone ? new(6, 6, 6, 52) : new(16, 16, 16, 64);
 
     partial void OnIsWideChanged(bool value)
     {
         OnPropertyChanged(nameof(IsPhone));
+        OnPropertyChanged(nameof(CardStageMargin));
+        Settings.Process.PhoneStage = !value;
         OnPropertyChanged(nameof(ShowTabletExport));
         SyncSheetState();
     }

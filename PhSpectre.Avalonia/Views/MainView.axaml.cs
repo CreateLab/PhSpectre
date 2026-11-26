@@ -44,8 +44,8 @@ public partial class MainView : UserControl
     protected override void OnSizeChanged(SizeChangedEventArgs e)
     {
         base.OnSizeChanged(e);
-        // Bottom sheet: ~60% of the screen (the photo strip hides while it is open); the preview above keeps the rest.
-        SheetBorder.Height = Math.Clamp(e.NewSize.Height * 0.5, 320, 560);
+        // Bottom sheet: the preview above keeps the larger part of the screen.
+        SheetBorder.Height = Math.Clamp(e.NewSize.Height * 0.42, 300, 520);
         if (DataContext is MainViewModel vm) vm.IsWide = e.NewSize.Width >= WideBreakpoint;
     }
 

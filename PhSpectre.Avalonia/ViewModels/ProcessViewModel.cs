@@ -82,15 +82,32 @@ public partial class ProcessViewModel : ViewModelBase
     private bool _compareHidden;
     /// <summary>Phone: the Result | Original switch steps aside while the Adjust sheet covers the stage.</summary>
     public bool CompareHidden { get => _compareHidden; set { if (_compareHidden == value) return; _compareHidden = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(StageMargin)); } }
+    private bool _phoneStage;
+    /// <summary>Phone layout: the photo gets almost the whole stage and nothing is laid over its corners.</summary>
+    public bool PhoneStage
+    {
+        get => _phoneStage;
+        set
+        {
+            if (_phoneStage == value) return;
+            _phoneStage = value;
+            OnPropertyChanged(); OnPropertyChanged(nameof(StageMargin));
+            OnPropertyChanged(nameof(CompareMargin)); OnPropertyChanged(nameof(ShowPhotoName));
+        }
+    }
     /// <summary>Room around the photo; the bottom strip is only reserved while the compare switch floats there.</summary>
-    public global::Avalonia.Thickness StageMargin => _compareHidden ? new(32, 28, 32, 16) : new(32, 28, 32, 84);
+    public global::Avalonia.Thickness StageMargin => _phoneStage
+        ? new(4, 4, 4, _compareHidden ? 4 : 52)
+        : new(32, 28, 32, _compareHidden ? 16 : 84);
+    public global::Avalonia.Thickness CompareMargin => new(0, 0, 0, _phoneStage ? 3 : 18);
+    public bool ShowPhotoName => HasPhoto && !_phoneStage;
     public bool ShowCompare => HasPhoto && !_compareHidden;
     public bool HasError => ErrorText.Length > 0;
     public bool ShowEmpty => !HasPhoto && !HasError;
     public Bitmap? Shown => ShowOriginal || Graded == null ? Original : Graded;
     public string? PhotoPath => _loadedPath;
 
-    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView)); OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
+    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView)); OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowPhotoName)); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
     partial void OnGradedChanged(Bitmap? value) => OnPropertyChanged(nameof(Shown));
     partial void OnShowOriginalChanged(bool value) { OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex)); }
 

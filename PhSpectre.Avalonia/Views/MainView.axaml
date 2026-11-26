@@ -25,13 +25,14 @@ to set the actual DataContext for runtime, set the DataContext property in code 
     -->
     <Panel x:Name="RootPanel" Background="{DynamicResource BackgroundBrush}">
 
-        <Grid RowDefinitions="Auto,Auto,*">
+        <Grid RowDefinitions="Auto,*">
 
             <!-- ═══════════ Top bar ═══════════ -->
-            <Border Grid.Row="0" Padding="16,10" Background="{DynamicResource BackgroundBrush}"
+            <Border Grid.Row="0" Padding="12,8" Background="{DynamicResource BackgroundBrush}"
                     BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                 <Grid ColumnDefinitions="*,Auto,*">
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                                IsVisible="{Binding IsWide}">
                         <Image Source="/Assets/PhSpectre.ico" Width="26" Height="26"/>
                         <TextBlock Text="PhSpectre" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
@@ -40,6 +41,14 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     <!-- Tablet: modes live in the top bar -->
                     <ListBox Grid.Column="1" Classes="seg touch" Width="420" VerticalAlignment="Center"
                              IsVisible="{Binding IsWide}" SelectedIndex="{Binding Settings.TopModeSelection}">
+                        <ListBoxItem Content="Edit"/>
+                        <ListBoxItem Content="Collage"/>
+                        <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
+                    </ListBox>
+
+                    <!-- Phone: the modes share the top bar with the buttons, leaving the height to the photo -->
+                    <ListBox Grid.ColumnSpan="3" Classes="seg touch" Margin="0,0,100,0" VerticalAlignment="Center"
+                             IsVisible="{Binding IsPhone}" SelectedIndex="{Binding Settings.TopModeSelection}">
                         <ListBoxItem Content="Edit"/>
                         <ListBoxItem Content="Collage"/>
                         <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
@@ -87,16 +96,8 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                 </Grid>
             </Border>
 
-            <!-- Phone: modes under the top bar -->
-            <ListBox Grid.Row="1" Classes="seg touch" Margin="16,12,16,4" IsVisible="{Binding IsPhone}"
-                     SelectedIndex="{Binding Settings.TopModeSelection}">
-                <ListBoxItem Content="Edit"/>
-                        <ListBoxItem Content="Collage"/>
-                        <ListBoxItem Content="Camera" IsVisible="{Binding Settings.ShowCameraMode}"/>
-            </ListBox>
-
             <!-- ═══════════ Body ═══════════ -->
-            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !Settings.IsCameraMode}">
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto" IsVisible="{Binding !Settings.IsCameraMode}">
 
                 <!-- Tablet: edit tools as a rail at the left edge -->
                 <Panel Grid.Column="0" IsVisible="{Binding IsWide}">
@@ -172,7 +173,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     <Panel Grid.Row="1" Background="{DynamicResource StageBrush}" ClipToBounds="True" MinHeight="200"
                            IsVisible="{Binding Settings.ShowCardBody}">
 
-                        <Panel Margin="16,16,16,64">
+                        <Panel Margin="{Binding CardStageMargin}">
                             <Border HorizontalAlignment="Center" VerticalAlignment="Center"
                                     BoxShadow="0 14 36 0 #66000000" CornerRadius="2">
                                 <Image Source="{Binding DisplayedResultBitmap}" Stretch="Uniform"
@@ -248,7 +249,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
 
                     <!-- Filmstrip (single-photo modes): this session's photos -->
                     <Border Grid.Row="2" IsVisible="{Binding ShowFilmstrip}" Background="{DynamicResource FilmstripBrush}"
-                            Padding="16,8,16,8" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
+                            Padding="12,4" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <ItemsControl ItemsSource="{Binding RecentPhotos}">
@@ -291,18 +292,17 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Border>
 
                     <!-- Phone: Adjust / Export -->
-                    <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="12" Margin="16,8,16,14"
-                          IsVisible="{Binding IsPhone}">
-                        <Button Grid.Column="0" Classes="primary" Height="48" HorizontalAlignment="Stretch"
-                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding OpenAdjustCommand}"
-                                IsVisible="{Binding !IsSheetOpen}">
+                    <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="12" Margin="12,6,12,8"
+                          IsVisible="{Binding ShowPhoneActions}">
+                        <Button Grid.Column="0" Classes="primary" Height="44" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding OpenAdjustCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <materialIcons:MaterialIcon Kind="TuneVariant" Width="18" Height="18"/>
                                 <TextBlock Text="Adjust" FontWeight="SemiBold"/>
                             </StackPanel>
                         </Button>
-                        <Button Grid.Column="1" Classes="cta" Height="48" HorizontalAlignment="Stretch"
-                                Command="{Binding OpenExportCommand}" IsVisible="{Binding !IsSheetOpen}">
+                        <Button Grid.Column="1" Classes="cta" Height="44" HorizontalAlignment="Stretch"
+                                Command="{Binding OpenExportCommand}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
                                 <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="18" Height="18"/>
                                 <TextBlock Text="Export"/>
@@ -366,7 +366,7 @@ to set the actual DataContext for runtime, set the DataContext property in code 
                     </Panel>
                 </Border>
             </Grid>
-            <views:CameraModeView Grid.Row="2" DataContext="{Binding Settings}" IsVisible="{Binding IsCameraMode}"/>
+            <views:CameraModeView Grid.Row="1" DataContext="{Binding Settings}" IsVisible="{Binding IsCameraMode}"/>
         </Grid>
 
 

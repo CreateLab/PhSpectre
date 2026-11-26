@@ -72,7 +72,7 @@
                         </Grid>
                         <Grid ColumnDefinitions="72,*,56">
                             <TextBlock Text="Zoom" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="1" Maximum="4" Value="{Binding Zoom}"
+                            <Slider Grid.Column="1" Classes="v2" Minimum="1" Maximum="4" local:SliderTapToSeek.Default="1" Value="{Binding Zoom}"
                                     AutomationProperties.Name="Crop zoom"/>
                             <TextBlock Grid.Column="2" Text="{Binding ZoomText}" Classes="mono-data"
                                        HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -196,7 +196,7 @@
                             <TextBlock Text="Amount" Classes="section-title first"/>
                             <TextBlock Grid.Column="1" Text="{Binding AmountText}" Classes="mono-data"/>
                         </Grid>
-                        <Slider Classes="v2" Minimum="0" Maximum="100" Value="{Binding Amount}"
+                        <Slider Classes="v2" Minimum="0" Maximum="100" local:SliderTapToSeek.Default="100" Value="{Binding Amount}"
                                 AutomationProperties.Name="Look amount"/>
                     </StackPanel>
 
@@ -349,7 +349,7 @@
                             <StackPanel Spacing="10" Margin="0,8,0,0">
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Border" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" Value="{Binding FrameThickness}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" local:SliderTapToSeek.Default="4" Value="{Binding FrameThickness}"
                                             AutomationProperties.Name="Border thickness"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FrameThicknessText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -446,42 +446,42 @@
                             <StackPanel Spacing="10" Margin="0,8,0,0">
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Sides" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" Value="{Binding FilmSide}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" local:SliderTapToSeek.Default="3" Value="{Binding FilmSide}"
                                             AutomationProperties.Name="Side edge width"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmSideText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Top" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" Value="{Binding FilmTop}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" local:SliderTapToSeek.Default="3" Value="{Binding FilmTop}"
                                             AutomationProperties.Name="Top edge height"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmTopText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" Value="{Binding FilmBottom}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" local:SliderTapToSeek.Default="8" Value="{Binding FilmBottom}"
                                             AutomationProperties.Name="Bottom edge height"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmBottomText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Film feel" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding FilmRealism}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" local:SliderTapToSeek.Default="60" Value="{Binding FilmRealism}"
                                             AutomationProperties.Name="Film feel: grain, uneven light, soft holes"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmRealismText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Dust" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding FilmDust}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" local:SliderTapToSeek.Default="30" Value="{Binding FilmDust}"
                                             AutomationProperties.Name="Dust and scratches"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmDustText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
                                     <TextBlock Text="Corners" Classes="hint" VerticalAlignment="Center"/>
-                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="4" Value="{Binding FilmCorner}"
+                                    <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="4" local:SliderTapToSeek.Default="1" Value="{Binding FilmCorner}"
                                             AutomationProperties.Name="Rounded photo corners"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmCornerText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
@@ -563,7 +563,7 @@
                             <TextBlock Text="Quality" Classes="section-title first" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{Binding ExportQualityText}" Classes="mono-data" VerticalAlignment="Center"/>
                         </Grid>
-                        <Slider Classes="v2" Minimum="50" Maximum="100" Value="{Binding ExportQuality}"
+                        <Slider Classes="v2" Minimum="50" Maximum="100" local:SliderTapToSeek.Default="95" Value="{Binding ExportQuality}"
                                 AutomationProperties.Name="JPEG quality"/>
                     </StackPanel>
                     <!-- Size and Save to: the same for every frame -->
