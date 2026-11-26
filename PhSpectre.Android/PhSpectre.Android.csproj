@@ -7,8 +7,8 @@
         <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
         <Nullable>enable</Nullable>
         <ApplicationId>com.createlab.phspectre</ApplicationId>
-        <ApplicationVersion>19</ApplicationVersion>
-        <ApplicationDisplayVersion>3.0.1</ApplicationDisplayVersion>
+        <ApplicationVersion>20</ApplicationVersion>
+        <ApplicationDisplayVersion>3.0.2</ApplicationDisplayVersion>
         <AndroidPackageFormat>apk</AndroidPackageFormat>
         <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
         <!-- Local dev machine only — CI runners auto-detect SDK/JDK via ANDROID_HOME/JAVA_HOME,

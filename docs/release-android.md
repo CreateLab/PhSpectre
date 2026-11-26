@@ -6,7 +6,7 @@ Package: `com.createlab.phspectre` (fixed in Play Console, do not change). Targe
 ## Build the signed AAB
 
 ```powershell
-.\scripts\build-play-aab.ps1 -VersionCode 19
+.\scripts\build-play-aab.ps1 -VersionCode 20
 ```
 
 The script runs `dotnet publish -c Release -p:PlayStoreBuild=true -p:AndroidPackageFormat=aab -p:ApplicationVersion=<code>`
@@ -28,7 +28,7 @@ Never commit `*.jks`, `*.keystore` or passwords.
 
 - `ApplicationVersion` (versionCode) is passed with `-VersionCode`; every Play upload must be strictly higher than
   the previous one. Play tracks its own codes, so reusing numbers from GitHub releases is fine.
-- `ApplicationDisplayVersion` comes from the csproj (currently 3.0.1).
+- `ApplicationDisplayVersion` comes from the csproj (currently 3.0.2).
 
 ## Checks before uploading
 
