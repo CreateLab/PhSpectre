@@ -146,7 +146,11 @@ public sealed class FilmStyleStore
                 _styles = (JsonSerializer.Deserialize<List<FilmStyle>>(File.ReadAllText(path)) ?? [])
                     .Where(s => !string.IsNullOrWhiteSpace(s.Id)).Select(s => s.Normalized() with { IsBuiltIn = false }).ToList();
         }
-        catch (Exception ex) when (ex is JsonException or IOException) { _styles = []; }
+        catch (Exception ex) when (ex is JsonException or IOException)
+        {
+            _styles = [];
+            PhSpectre.Services.SafeFiles.KeepUnreadable(path);
+        }
     }
 
     public IReadOnlyList<FilmStyle> Styles { get { lock (_gate) return _styles.ToList(); } }

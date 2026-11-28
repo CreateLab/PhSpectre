@@ -7,6 +7,14 @@ using SixLabors.ImageSharp;
 
 namespace PhSpectre.Avalonia.Services;
 
+// Everything a rendered card depends on: the cached render is reused only while all of it is unchanged.
+public sealed record CardRenderKey(string Source, PaletteExportSettings Settings,
+    PaletteImageRenderer.PhotoMetadata Metadata, FilmRecipe? Recipe, string Look)
+{
+    public static CardRenderKey From(string source, SettingsViewModel s) => new(source,
+        PaletteExportSettings.SnapshotFrom(s), s.BuildMetadataOverride(), s.DetectedRecipe, s.CardLookKey);
+}
+
 // Settings frozen at the start of an export, so a batch cannot change midway.
 public sealed record PaletteExportSettings(
     int? Colors,

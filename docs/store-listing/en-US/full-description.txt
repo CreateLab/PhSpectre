@@ -3,7 +3,7 @@ PhSpectre grades a photo with a look, wraps it in a frame and exports it. Everyt
 LOOK
 • 88 built-in looks in categories: Two Tone, Neon, Games, Cinema, Film, Trends, Portrait, B&W, Historic, Alt process, Toy camera
 • Every tile is previewed on your own photo; one Amount slider blends the look in
-• Import your own Lightroom presets (.xmp), .cube LUTs or a .zip of them; favourites are one tap away
+• Import your own presets (.xmp), .cube LUTs or a .zip of them; favourites are one tap away
 
 FRAME
 • Plain border, a Card with colour palette swatches and camera info, a Recipe card, or a Film edge with sprocket holes (135, half-frame, 120)

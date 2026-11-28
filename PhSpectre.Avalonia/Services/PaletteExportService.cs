@@ -27,16 +27,27 @@ public static class PaletteExportService
             using var fs = System.IO.File.OpenRead(sourcePath);
             var img = Image.Load<Rgb24>(fs);
             img.Mutate(ctx => ctx.AutoOrient());
-            if (adjust is { IsNoOp: false }) { var adjusted = adjust.Render(img); img.Dispose(); return adjusted; }
-            return img;
+            // The Look is part of the picture the card is built from.
+            var prepared = Prepare(img, adjust, look);
+            if (!ReferenceEquals(prepared, img)) img.Dispose();
+            return prepared;
         }, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        look?.Apply(original); // The Look is part of the picture the card is built from.
 
         // Read the recipe from EXIF if the caller has none.
         recipe ??= PhSpectre.Recipes.RecipeReader.Read(original);
 
         await ExportAsync(original, destPath, settings, cancellationToken, metadataOverride, recipe);
+    }
+
+    // Crop, light and Look for a card. Returns the photo itself (graded in place) or a new, cropped one. Slow: keep
+    // it off the UI thread.
+    public static Image<Rgb24> Prepare(Image<Rgb24> photo, PhSpectre.Rendering.PhotoAdjust? adjust,
+        PhSpectre.ColorGrading.GradeStack? look)
+    {
+        var result = adjust is { IsNoOp: false } ? adjust.Render(photo) : photo;
+        look?.Apply(result);
+        return result;
     }
 
     // ExportAsync for an already decoded, oriented image.
@@ -47,7 +58,9 @@ public static class PaletteExportService
         PhSpectre.Models.ColorPalette palette;
         if (settings.ComputeColors)
         {
-            palette = await new PaletteExtractor().ExtractAsync(original, settings.Colors, settings.SamplingMode, cancellationToken);
+            // The extractor works synchronously.
+            palette = await Task.Run(() => new PaletteExtractor().ExtractAsync(original, settings.Colors,
+                settings.SamplingMode, cancellationToken), cancellationToken);
         }
         else
         {

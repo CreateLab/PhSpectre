@@ -18,6 +18,7 @@ public class FujiRecipeWriterTests
         public HashSet<ushort> RefuseWrites { get; } = [];
         public HashSet<ushort> IgnoreWrites { get; } = [];
         public List<(int Slot, ushort Property)> SlotWrites { get; } = [];
+        public HashSet<ushort> RefuseReadsAfterWrite { get; } = [];
 
         public FakeFuji(string model, int slotCount)
         {
@@ -52,7 +53,10 @@ public class FujiRecipeWriterTests
                 case PtpSession.OperationGetDeviceInfo:
                     return Ok(DeviceInfo(_model));
                 case PtpSession.OperationGetDevicePropValue:
-                    return Ok(Read((ushort)parameters[0]));
+                    var asked = (ushort)parameters[0];
+                    if (RefuseReadsAfterWrite.Contains(asked) && SlotWrites.Any(w => w.Property == asked))
+                        return Task.FromResult(new PtpResponse(0x201C, [], null));
+                    return Ok(Read(asked));
                 case PtpSession.OperationSetDevicePropValue:
                     return Task.FromResult(new PtpResponse(Write((ushort)parameters[0], dataOut!), [], null));
             }
@@ -78,6 +82,8 @@ public class FujiRecipeWriterTests
             SlotWrites.Add((Selector, prop));
             if (RefuseWrites.Contains(prop)) return 0x201C;
             var bank = Banks[Selector];
+            // A stored DR is accepted only while D-Range Priority is off.
+            if (prop == FujiSlotCodec.PropDynamicRange && bank[FujiSlotCodec.PropDRangePriority][0] != 0) return 0x201C;
             if (prop == FujiSlotCodec.PropGrain)
             {
                 if (value[0] is 0 or >= 6) return 0x201C;
@@ -491,5 +497,48 @@ public class FujiRecipeWriterTests
     public void EncodeString_MatchesPtpStringLayout()
     {
         Assert.Equal(new byte[] { 3, (byte)'A', 0, (byte)'B', 0, 0, 0 }, FujiSlotEncoder.EncodeString("AB"));
+    }
+
+    [Fact]
+    public async Task RollBack_RestoresDynamicRange_WhenTheSlotHadDRangePriorityOn()
+    {
+        var camera = new FakeFuji("X-T5", 7);
+        camera.Banks[1][FujiSlotCodec.PropDRangePriority] = [1, 0];
+        camera.RefuseWrites.Add(FujiSlotCodec.PropClarity);
+
+        var report = await Run(camera, 1, Recipe(), Apply);
+
+        Assert.False(report.Success);
+        Assert.True(report.RolledBack, string.Join("; ", report.Problems));
+        Assert.Equal(new byte[] { 100, 0 }, camera.Banks[1][FujiSlotCodec.PropDynamicRange]);
+        Assert.Equal(new byte[] { 1, 0 }, camera.Banks[1][FujiSlotCodec.PropDRangePriority]);
+    }
+
+    [Fact]
+    public async Task ARefusedReadBack_RollsTheSlotBack()
+    {
+        var camera = new FakeFuji("X-T5", 7);
+        camera.RefuseReadsAfterWrite.Add(FujiSlotCodec.PropClarity);
+
+        var report = await Run(camera, 1, Recipe(), Apply);
+
+        Assert.False(report.Success);
+        Assert.Equal(new byte[] { 1, 0 }, camera.Banks[1][FujiSlotCodec.PropFilmSimulation]);
+    }
+
+    [Fact]
+    public async Task Backup_ReadsTheSlot_AndPutsTheSelectorBack()
+    {
+        var camera = new FakeFuji("X-T5", 7);
+        camera.Banks[2][FujiSlotCodec.PropFilmSimulation] = [2, 0];
+        await using var session = new PtpSession(camera);
+        await session.OpenAsync();
+
+        var backup = await FujiRecipeWriter.BackupAsync(session, 2);
+
+        Assert.Equal(2, backup.Slot);
+        Assert.Equal(new byte[] { 2, 0 }, backup.Properties[FujiSlotCodec.PropFilmSimulation]);
+        Assert.Equal(4, camera.Selector);
+        Assert.Empty(camera.SlotWrites);
     }
 }

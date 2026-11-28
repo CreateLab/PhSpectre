@@ -50,6 +50,7 @@ public sealed class RecipeLibrary
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
         {
             // A damaged file must not stop the app.
+            PhSpectre.Services.SafeFiles.KeepUnreadable(path);
         }
         return library;
     }

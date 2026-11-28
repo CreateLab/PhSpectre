@@ -81,9 +81,9 @@ public partial class MainViewModel : ViewModelBase
     private CancellationTokenSource? _renderCts;
 
     // The last render is reused while photo, tray and settings are unchanged.
-    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe, string Look)? _lastSingleRenderKey;
+    private CardRenderKey?                                         _lastSingleRenderKey;
     private string?                                        _cachedSingleRenderOutput;
-    private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
+    private CardRenderKey?                                         _lastCollageRenderKey;
     private string?                                          _cachedCollageRenderOutput;
 
     private string? _currentSourcePath;
@@ -305,9 +305,8 @@ public partial class MainViewModel : ViewModelBase
 
     private bool IsPreviewCurrent(string path)
     {
-        var recipe = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
         return PaletteBitmap != null && _cachedSingleRenderOutput != null
-            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe, Settings.CardLookKey));
+            && _lastSingleRenderKey == CardRenderKey.From(path, Settings);
     }
     private CancellationTokenSource? _liveDebounceCts;
 
@@ -705,10 +704,10 @@ public partial class MainViewModel : ViewModelBase
             FileInfoText = Loc.N(sourcePaths.Count, "Collage · {0} photo", "Collage · {0} photos");
 
             _lastExtension = Settings.FileExtension;
-            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            var cacheKey = (string.Join('', sourcePaths), exportSettings);
+            var cacheKey = CardRenderKey.From(string.Join("\n", sourcePaths), Settings) with { Look = "" };
+            var exportSettings = cacheKey.Settings;
 
-            if (Equals(_lastCollageRenderKey, cacheKey) && _cachedCollageRenderOutput != null && File.Exists(_cachedCollageRenderOutput))
+            if (_lastCollageRenderKey == cacheKey && _cachedCollageRenderOutput != null && File.Exists(_cachedCollageRenderOutput))
             {
                 _lastTempPng   = _cachedCollageRenderOutput;
                 var cachedSize = new FileInfo(_lastTempPng).Length;
@@ -718,9 +717,9 @@ public partial class MainViewModel : ViewModelBase
                 return;
             }
 
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
+            var tmpOut = NewTempCard();
             await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
-                metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
+                metadataOverride: cacheKey.Metadata, recipe: cacheKey.Recipe);
 
             token.ThrowIfCancellationRequested();
 
@@ -746,6 +745,9 @@ public partial class MainViewModel : ViewModelBase
             }
         }
     }
+
+    private string NewTempCard() =>
+        CardTempFiles.New(_lastExtension, _lastTempPng, _cachedSingleRenderOutput, _cachedCollageRenderOutput);
 
     // _lastTempPng is what is on screen, so the file matches the preview.
     [RelayCommand(CanExecute = nameof(CanSavePng))]
@@ -943,16 +945,12 @@ public partial class MainViewModel : ViewModelBase
             var ps = OriginalBitmap.PixelSize;
             FileInfoText = $"{_lastFileName}  ·  {ps.Width}×{ps.Height}";
 
-            var lookKey = Settings.CardLookKey;
-            if (Settings.CardAdjust is { } cardAdjust) { var adjusted = cardAdjust.Render(working); working.Dispose(); working = adjusted; }
-            Settings.CardLook?.Apply(working);
             _lastExtension = Settings.FileExtension;
-            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            // The recipe card depends on the current recipe.
-            var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
-            var cacheKey = (sourcePath, exportSettings, recipeForRender, lookKey);
+            var cacheKey = CardRenderKey.From(sourcePath, Settings);
+            var exportSettings = cacheKey.Settings;
+            var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? cacheKey.Recipe : null;
 
-            if (Equals(_lastSingleRenderKey, cacheKey) && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
+            if (_lastSingleRenderKey == cacheKey && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
             {
                 _lastTempPng   = _cachedSingleRenderOutput;
                 var cachedSize = new FileInfo(_lastTempPng).Length;
@@ -962,15 +960,22 @@ public partial class MainViewModel : ViewModelBase
                 return;
             }
 
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
+            // Frame → Card is built from the cropped and graded photo.
+            var cardAdjust = Settings.CardAdjust;
+            var cardLook = Settings.CardLook;
+            var source = working;
+            var prepared = await Task.Run(() => PaletteExportService.Prepare(source, cardAdjust, cardLook));
+            if (!ReferenceEquals(prepared, working)) { working.Dispose(); working = prepared; }
+            token.ThrowIfCancellationRequested();
+
+            var tmpOut = NewTempCard();
 
             stageSw.Restart();
             if (recipeForRender != null)
             {
                 // Same composite as Save recipe card.
-                var recipeMetadataOverride = Settings.BuildMetadataOverride();
-                var recipeQr = exportSettings.BuildQrRenderOptions(
-                    recipeMetadataOverride ?? PaletteImageRenderer.ReadMetadata(working), recipeForRender);
+                var recipeMetadataOverride = cacheKey.Metadata;
+                var recipeQr = exportSettings.BuildQrRenderOptions(recipeMetadataOverride, recipeForRender);
                 await Task.Run(() => RecipeCardRenderer.Render(working, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
                     metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: recipeMetadataOverride,
@@ -986,7 +991,9 @@ public partial class MainViewModel : ViewModelBase
                 PhSpectre.Models.ColorPalette palette;
                 if (exportSettings.ComputeColors)
                 {
-                    palette = await new PaletteExtractor().ExtractAsync(working, Settings.Colors, Settings.SamplingMode, token);
+                    var sampled = working;
+                    palette = await Task.Run(() => new PaletteExtractor().ExtractAsync(sampled, exportSettings.Colors,
+                        exportSettings.SamplingMode, token), token);
                     token.ThrowIfCancellationRequested();
                     LogStage("PaletteExtractor.ExtractAsync (k-means)");
                 }
@@ -995,9 +1002,8 @@ public partial class MainViewModel : ViewModelBase
                     palette = new PhSpectre.Models.ColorPalette([new PhSpectre.Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
                 }
 
-                var metadataOverride = Settings.BuildMetadataOverride();
-                var qr = exportSettings.BuildQrRenderOptions(
-                    metadataOverride ?? PaletteImageRenderer.ReadMetadata(working), Settings.DetectedRecipe);
+                var metadataOverride = cacheKey.Metadata;
+                var qr = exportSettings.BuildQrRenderOptions(metadataOverride, cacheKey.Recipe);
                 await Task.Run(() => PaletteImageRenderer.Render(
                     working, palette, tmpOut,
                     showHex:          exportSettings.ShowHex,

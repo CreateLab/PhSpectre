@@ -1,5 +1,7 @@
 using System.IO.Compression;
 using System.Text.Json;
+using PhSpectre.Localization;
+using PhSpectre.Services;
 
 namespace PhSpectre.ColorGrading;
 
@@ -87,6 +89,7 @@ public sealed class GradeLibrary
         catch (Exception ex) when (ex is JsonException or IOException)
         {
             _entries = []; // corrupt index: files stay on disk, user can re-import
+            SafeFiles.KeepUnreadable(IndexPath);
         }
         _entries.RemoveAll(e => !File.Exists(PathOf(e)));
 
@@ -144,13 +147,13 @@ public sealed class GradeLibrary
         try
         {
             var info = new FileInfo(path);
-            if (!info.Exists) return new(path, null, "Файл не найден.");
-            if (info.Length > MaxFileBytes) return new(path, null, "Файл слишком большой.");
+            if (!info.Exists) return new(path, null, Loc.T("File not found."));
+            if (info.Length > MaxFileBytes) return new(path, null, Loc.T("The file is too large."));
             return ImportBytes(Path.GetFileName(path), File.ReadAllBytes(path), category);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            return new(path, null, $"Не удалось прочитать файл: {ex.Message}");
+            return new(path, null, Loc.F("Couldn't read the file: {0}", ex.Message));
         }
     }
 
@@ -173,23 +176,23 @@ public sealed class GradeLibrary
             {
                 var ext = Path.GetExtension(e.Name).ToLowerInvariant();
                 if (ext is not (".cube" or ".xmp")) continue;
-                if (++n > MaxZipEntries) { results.Add(new(zipPath, null, "В архиве слишком много файлов.")); break; }
-                if (e.Length > MaxFileBytes) { results.Add(new(e.Name, null, "Файл слишком большой.")); continue; }
+                if (++n > MaxZipEntries) { results.Add(new(zipPath, null, Loc.T("The archive holds too many files."))); break; }
+                if (e.Length > MaxFileBytes) { results.Add(new(e.Name, null, Loc.T("The file is too large."))); continue; }
                 using var s = e.Open();
                 using var ms = new MemoryStream();
                 s.CopyTo(ms);
                 // Leaf name only, so zip entries cannot escape.
                 results.Add(ImportBytes(e.Name, ms.ToArray(), category));
             }
-            if (n == 0) results.Add(new(zipPath, null, "В архиве нет файлов .cube или .xmp."));
+            if (n == 0) results.Add(new(zipPath, null, Loc.T("The archive has no .cube or .xmp files.")));
         }
         catch (InvalidDataException)
         {
-            results.Add(new(zipPath, null, "Архив повреждён."));
+            results.Add(new(zipPath, null, Loc.T("The archive is damaged.")));
         }
         catch (IOException ex)
         {
-            results.Add(new(zipPath, null, $"Не удалось прочитать архив: {ex.Message}"));
+            results.Add(new(zipPath, null, Loc.F("Couldn't read the archive: {0}", ex.Message)));
         }
         return results;
     }
@@ -199,7 +202,7 @@ public sealed class GradeLibrary
         var ext = Path.GetExtension(fileName).ToLowerInvariant();
         string text;
         try { text = new System.Text.UTF8Encoding(false, true).GetString(data); }
-        catch (System.Text.DecoderFallbackException) { return new(fileName, null, "Файл не является текстовым (UTF-8)."); }
+        catch (System.Text.DecoderFallbackException) { return new(fileName, null, Loc.T("The file is not UTF-8 text.")); }
 
         GradeKind kind;
         string name = Path.GetFileNameWithoutExtension(fileName);
@@ -219,7 +222,7 @@ public sealed class GradeLibrary
                 if (!string.IsNullOrWhiteSpace(p.Name)) name = p.Name!.Trim();
                 skipped.AddRange(p.Skipped);
             }
-            else return new(fileName, null, "Поддерживаются только .cube и .xmp.");
+            else return new(fileName, null, Loc.T("Only .cube and .xmp files are supported."));
         }
         catch (FormatException ex)
         {

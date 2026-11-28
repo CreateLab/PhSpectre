@@ -1,7 +1,7 @@
 # PhSpectre
 
 Open a photo, give it a look, frame it, export it. PhSpectre grades a picture with
-Lightroom presets and `.cube` LUTs, wraps it in a border or a card that carries its colour palette,
+`.xmp` presets and `.cube` LUTs, wraps it in a border or a card that carries its colour palette,
 camera info or — for Fujifilm shooters — the exact in-camera film recipe, and can write
 that recipe straight into the camera over USB. Add a QR code and the card can stay clean
 on the surface while carrying the full data underneath, one scan away.
@@ -21,7 +21,7 @@ The app has three modes: **Edit** (one photo, three tabs: Look · Frame · Expor
 
 **Everything above is available on Android too** — the same Edit, Collage and Camera modes, looks and recipe writing over USB (OTG), with the layout adapted for tablets and phones.
 
-- **Look** — 88 bundled looks sorted into categories (Two Tone, Neon, Games, Cinema, Film, Trends, Portrait, B&W, Historic, Alt process, Toy camera): 28 Lightroom-style presets and 60 `.cube` LUTs, every tile rendered on *your* photo. A single Amount slider blends the look in; Glow and Halation under Effects add bloom around lights and neon and a film-like warm fringe. Import your own `.xmp` presets, `.cube` LUTs or a `.zip` of them; imports are kept between sessions, and favourites are one click away.
+- **Look** — 88 bundled looks sorted into categories (Two Tone, Neon, Games, Cinema, Film, Trends, Portrait, B&W, Historic, Alt process, Toy camera): 28 `.xmp` presets and 60 `.cube` LUTs, every tile rendered on *your* photo. A single Amount slider blends the look in; Glow and Halation under Effects add bloom around lights and neon and a film-like warm fringe. Import your own `.xmp` presets, `.cube` LUTs or a `.zip` of them; imports are kept between sessions, and favourites are one click away.
 - **Frame** — None, a plain **Border**, a **Card** (palette swatches, camera info plate, QR), a **Recipe** card or a **Film** edge (sprocket holes with the shot data printed on them). Border, Card and Film are built on the graded photo, so a Look carries through to the export.
 - **Export** — JPEG or PNG, original size, half size or a social preset (square, IG post, story, TG landscape). One Export button for everything, and "Export all" for a whole folder.
 - **Palette** — dominant colors from any JPEG or HEIF/HEIC photo, k-means++ in HSL space, auto or fixed color count.
@@ -135,7 +135,7 @@ GitHub APKs. One-time setup: create an upload key (`keytool -genkeypair -v -keys
 Then:
 
 ```powershell
-.\scripts\build-play-aab.ps1 -VersionCode 18      # versionCode must be higher than the last upload
+.\scripts\build-play-aab.ps1 -VersionCode 21      # versionCode must be higher than the last upload
 ```
 
 It builds with `-p:PlayStoreBuild=true` (no INTERNET permission, no GitHub update check) and prints the signed
@@ -152,7 +152,7 @@ Open a folder or a single photo, pick a look, frame it and export.
 photos underneath, and one inspector on the right with three tabs.
 
 - **Look** — Amount slider, the active preset and LUT (each can be switched off or removed), search, and the
-  library of looks grouped by category. Presets are Lightroom `.xmp` files; basic tone, colour, HSL, tone curves,
+  library of looks grouped by category. Presets are `.xmp` files; basic tone, colour, HSL, tone curves,
   sharpening, noise reduction, grain and vignette settings are applied, and anything the engine can't reproduce
   (for example Texture, Clarity, Dehaze) is listed under the preset as *Not applied*. LUTs are `.cube` files.
   The bundled looks are read-only; your imports can be renamed, favourited, categorised and deleted.

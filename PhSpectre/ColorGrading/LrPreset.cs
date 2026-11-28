@@ -3,8 +3,7 @@ using System.Xml.Linq;
 
 namespace PhSpectre.ColorGrading;
 
-// A Lightroom / Camera Raw preset (.xmp): numeric settings and tone curves. What cannot be reproduced is listed in
-// Skipped.
+// An .xmp photo preset: numeric settings and tone curves. What cannot be reproduced is listed in Skipped.
 public sealed class LrPreset
 {
     private static readonly XNamespace Crs = "http://ns.adobe.com/camera-raw-settings/1.0/";
@@ -40,7 +39,7 @@ public sealed class LrPreset
         catch (System.Xml.XmlException ex) { throw new FormatException($"Invalid XMP: {ex.Message}", ex); }
 
         var desc = doc.Descendants(Rdf + "Description").FirstOrDefault(d => d.Attributes().Any(a => a.Name.Namespace == Crs))
-                   ?? throw new FormatException("No crs: settings found; not a Lightroom preset.");
+                   ?? throw new FormatException("No crs: settings found; not a photo preset.");
 
         var values = new Dictionary<string, float>();
         string? name = null, treatment = null;

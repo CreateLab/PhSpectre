@@ -59,7 +59,7 @@ public sealed partial class CameraSlotItem : ObservableObject
     public double TitleOpacity => IsEmpty ? 0.55 : 1.0;
 }
 
-public sealed class RestorePointItem
+public sealed partial class RestorePointItem : ObservableObject
 {
     internal RestorePointItem(RestorePointEntry entry, ICommand restore)
     {
@@ -69,6 +69,10 @@ public sealed class RestorePointItem
 
     internal RestorePointEntry Entry { get; }
     public ICommand RestoreCommand { get; }
+
+    // Restoring replaces a slot, so the first press only asks.
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ButtonText))] private bool _isArmed;
+    public string ButtonText => IsArmed ? Loc.T("Replace slot?") : Loc.T("Restore");
 
     public string Title => $"C{Entry.Backup.Slot} · {FormatWhen(Entry.Backup.Created)}";
     public string Subtitle => Entry.Backup.SlotName is { Length: > 0 } n ? Loc.F("Was: {0}", n) : Loc.T("Was empty");
@@ -584,8 +588,15 @@ public sealed partial class CameraDialogViewModel : ObservableObject
             _toast(Loc.F("That restore point is from {0}, not {1}", item.Entry.Backup.Model, _snapshot.Model));
             return;
         }
+        if (!item.IsArmed)
+        {
+            foreach (var other in RestorePoints) other.IsArmed = other == item;
+            return;
+        }
+        item.IsArmed = false;
         _restorePoint = item.Entry.Backup;
         await RestorePreviousAsync(fromDone: false, toTab: true);
+        RefreshRestorePoints();
     }
 
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ConfirmWriteCommand))]
@@ -784,6 +795,11 @@ public sealed partial class CameraDialogViewModel : ObservableObject
             {
                 await using var session = await CameraService.OpenAsync(CancellationToken.None)
                     ?? throw new FujiWriteException(Loc.T("The camera is not connected. Connect it and try again."));
+                // Restoring from the list overwrites whatever the slot holds now, so that is saved first. Undo and
+                // "Restore previous" go back from our own write.
+                if (toTab)
+                    RestorePointStore.Save(await FujiRecipeWriter.BackupAsync(session, _restorePoint.Slot),
+                        _settings.RestoreKeepLast);
                 var report = await FujiRecipeWriter.RestoreAsync(session, _restorePoint.Slot, _restorePoint.Properties);
                 if (report.Success)
                 {

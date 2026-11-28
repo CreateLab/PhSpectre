@@ -47,6 +47,8 @@ if (args.Length > 0 && args[0] == "lut")
 
         using var img = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgb24>(inPath);
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        if (preset != null && preset.Get("SkinSmoothing") > 0)
+            Console.WriteLine("Skin smoothing is not applied: the command line has no skin model.");
         if (preset != null) PhSpectre.ColorGrading.LrPresetApplier.Apply(img, preset, strength);
         else PhSpectre.ColorGrading.LutApplier.Apply(img, lut!, strength);
         Console.WriteLine($"Graded {img.Width}x{img.Height} in {sw.ElapsedMilliseconds} ms");

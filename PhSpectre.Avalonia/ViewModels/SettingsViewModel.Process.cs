@@ -141,8 +141,8 @@ public partial class SettingsViewModel
     {
         var r = FrameAvailability.Check(type, HasRecipe, _process?.HasLook == true);
         if (!r.Available) { RaiseLayoutChanged(); return; }
-        if (type != FrameType.RecipeCard && type != FrameType.Card) { /* keep notice until user acts */ }
-        else if (FrameNotice.Length > 0 && type == FrameType.RecipeCard) FrameNotice = "";
+        // Other frame types keep the notice until the user acts.
+        if (type == FrameType.RecipeCard) FrameNotice = "";
         Process.SetBorder(type == FrameType.Border);
         Process.SetFilm(type == FrameType.Film);
         FrameType = type;

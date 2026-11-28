@@ -3,7 +3,7 @@ namespace PhSpectre.Rendering;
 // Grain sized relative to the photo, so preview and export match. Deterministic per pixel.
 internal static class FilmGrain
 {
-    // Lightroom's default for GrainSize.
+    // The default GrainSize of .xmp presets.
     public const float DefaultSize = 25f;
 
     public static float CellSize(int photoLongSide, float size = DefaultSize) =>

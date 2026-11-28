@@ -168,7 +168,8 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (e.Key == Key.S && e.KeyModifiers == KeyModifiers.Control)
+        // In Edit, Ctrl+S exports the photo: OnEditKeyDown runs after this and must see the key unhandled.
+        if (e.Key == Key.S && e.KeyModifiers == KeyModifiers.Control && !vm.Settings.IsProcessMode)
         {
             if (vm.SavePngAsync2Command.CanExecute(null))
                 vm.SavePngAsync2Command.Execute(null);

@@ -101,7 +101,10 @@ public static class CollageComposer
         return inner;
     }
 
-    // Exhaustive search for the contiguous row partition closest to targetAspect: cheap for a handful of photos.
+    // Every partition is tried up to this many photos; the count doubles with each one more.
+    private const int ExhaustiveLimit = 16;
+
+    // The contiguous row partition closest to targetAspect.
     internal static IReadOnlyList<PlannedRow> PlanRows(IReadOnlyList<double> aspectRatios, double targetAspect)
     {
         int n = aspectRatios.Count;
@@ -110,6 +113,7 @@ public static class CollageComposer
 
         var prefix = new double[n + 1];
         for (int i = 0; i < n; i++) prefix[i + 1] = prefix[i] + aspectRatios[i];
+        if (n > ExhaustiveLimit) return PlanBalancedRows(prefix, targetAspect);
 
         IReadOnlyList<PlannedRow>? best = null;
         double bestScore = double.MaxValue;
@@ -150,6 +154,39 @@ public static class CollageComposer
                     .Select((row, r) => new PlannedRow(row.Start, row.Count, heights[r] / totalHeight))
                     .ToList();
             }
+        }
+
+        return best!;
+    }
+
+    // For many photos: for each number of rows, cut where the running width passes an equal share.
+    private static IReadOnlyList<PlannedRow> PlanBalancedRows(double[] prefix, double targetAspect)
+    {
+        int n = prefix.Length - 1;
+        List<PlannedRow>? best = null;
+        double bestScore = double.MaxValue;
+
+        for (int rows = 1; rows <= n; rows++)
+        {
+            var spans = new List<(int Start, int Count)>();
+            int start = 0;
+            for (int r = 1; r <= rows; r++)
+            {
+                double share = prefix[n] * r / rows;
+                int end = start + 1;
+                // Leave at least one photo for each row still to come.
+                while (end < n - (rows - r) && Math.Abs(prefix[end + 1] - share) <= Math.Abs(prefix[end] - share)) end++;
+                if (r == rows) end = n;
+                spans.Add((start, end - start));
+                start = end;
+            }
+
+            var heights = spans.Select(s => 1.0 / (prefix[s.Start + s.Count] - prefix[s.Start])).ToList();
+            double total = heights.Sum();
+            double score = Math.Abs(Math.Log(1.0 / total / targetAspect));
+            if (score >= bestScore) continue;
+            bestScore = score;
+            best = spans.Select((s, i) => new PlannedRow(s.Start, s.Count, heights[i] / total)).ToList();
         }
 
         return best!;

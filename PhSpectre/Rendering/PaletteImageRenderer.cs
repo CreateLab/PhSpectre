@@ -792,15 +792,11 @@ public static class PaletteImageRenderer
 
         string aperture = "";
         if (p.TryGetValue(ExifTag.FNumber, out var fn) && fn.Value.Denominator != 0)
-            aperture = $"f/{(double)fn.Value.Numerator / fn.Value.Denominator:0.#}";
+            aperture = string.Create(CultureInfo.InvariantCulture, $"f/{(double)fn.Value.Numerator / fn.Value.Denominator:0.#}");
 
         string shutter = "";
         if (p.TryGetValue(ExifTag.ExposureTime, out var et) && et.Value.Denominator != 0)
-        {
-            uint num = et.Value.Numerator, den = et.Value.Denominator;
-            uint g = Gcd(num, den); num /= g; den /= g;
-            shutter = den == 1 ? $"{num}s" : $"1/{den}s";
-        }
+            shutter = ShutterText(et.Value.Numerator, et.Value.Denominator);
 
         string iso = "";
         if (p.TryGetValue(ExifTag.ISOSpeedRatings, out var isoVal) &&
@@ -816,7 +812,7 @@ public static class PaletteImageRenderer
         if (p.TryGetValue(ExifTag.ExposureBiasValue, out var evTag) && evTag.Value.Denominator != 0)
         {
             double evVal = (double)evTag.Value.Numerator / evTag.Value.Denominator;
-            ev = evVal == 0 ? "0 EV" : $"{evVal:+0.#;-0.#} EV";
+            ev = evVal == 0 ? "0 EV" : string.Create(CultureInfo.InvariantCulture, $"{evVal:+0.#;-0.#} EV");
         }
 
         string wb = "";
@@ -868,7 +864,16 @@ public static class PaletteImageRenderer
         return null;
     }
 
-    private static uint Gcd(uint a, uint b) => b == 0 ? a : Gcd(b, a % b);
+    // Cameras print fast speeds as fractions and slow ones in seconds. The invariant dot is what the QR link and the
+    // metadata editor read back.
+    private static string ShutterText(uint numerator, uint denominator)
+    {
+        if (numerator == 0) return "";
+        double seconds = (double)numerator / denominator;
+        return seconds < 0.3
+            ? string.Create(CultureInfo.InvariantCulture, $"1/{Math.Round(1 / seconds):0}s")
+            : string.Create(CultureInfo.InvariantCulture, $"{seconds:0.#}s");
+    }
 
     // Embedded JetBrains Mono gives the same glyph widths on desktop and Android.
     private static readonly FontFamily? EmbeddedMonoFamily = LoadEmbeddedMonoFont();

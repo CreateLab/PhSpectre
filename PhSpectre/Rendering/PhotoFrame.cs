@@ -98,7 +98,11 @@ public sealed class PhotoFrameStore
                 _frames = (JsonSerializer.Deserialize<List<PhotoFrame>>(File.ReadAllText(path)) ?? [])
                     .Where(f => !string.IsNullOrWhiteSpace(f.Id)).Select(f => f.Normalized() with { IsBuiltIn = false }).ToList();
         }
-        catch (Exception ex) when (ex is JsonException or IOException) { _frames = []; }
+        catch (Exception ex) when (ex is JsonException or IOException)
+        {
+            _frames = [];
+            PhSpectre.Services.SafeFiles.KeepUnreadable(path);
+        }
     }
 
     public IReadOnlyList<PhotoFrame> Frames { get { lock (_gate) return _frames.ToList(); } }

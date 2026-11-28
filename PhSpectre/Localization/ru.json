@@ -532,7 +532,7 @@
   "PRESET": "ПРЕСЕТ",
   "This photo can't be opened for grading.": "Это фото не удаётся открыть для обработки.",
   "Nothing matches.": "Ничего не найдено.",
-  "No presets yet. Import Lightroom .xmp files.": "Пресетов пока нет. Импортируйте файлы Lightroom .xmp.",
+  "No presets yet. Import .xmp files.": "Пресетов пока нет. Импортируйте файлы .xmp.",
   "No LUTs yet. Import .cube files.": "LUT пока нет. Импортируйте файлы .cube.",
   "No looks yet. Import presets (.xmp) or LUTs (.cube).": "Стилей пока нет. Импортируйте пресеты (.xmp) или LUT (.cube).",
   "Presets": "Пресеты",
@@ -652,5 +652,15 @@
   "Histogram": "Гистограмма",
   "Set the sliders below from the histogram": "Выставить ползунки ниже по гистограмме",
   "Show the histogram over the photo": "Показывать гистограмму поверх фото",
-  "Auto light": "Автокоррекция света"
+  "Auto light": "Автокоррекция света",
+  "File not found.": "Файл не найден.",
+  "The file is too large.": "Файл слишком большой.",
+  "Couldn't read the file: {0}": "Не удалось прочитать файл: {0}",
+  "The archive holds too many files.": "В архиве слишком много файлов.",
+  "The archive has no .cube or .xmp files.": "В архиве нет файлов .cube или .xmp.",
+  "The archive is damaged.": "Архив повреждён.",
+  "Couldn't read the archive: {0}": "Не удалось прочитать архив: {0}",
+  "The file is not UTF-8 text.": "Файл не является текстом в UTF-8.",
+  "Only .cube and .xmp files are supported.": "Поддерживаются только .cube и .xmp.",
+  "Replace slot?": "Заменить слот?"
 }

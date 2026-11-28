@@ -257,9 +257,9 @@ public partial class MainWindowViewModel : ViewModelBase
     private string                   _lastExtension = ".png";
 
     // Reuses the last render when photo and settings are unchanged.
-    private (string Path, PaletteExportSettings Settings, FilmRecipe? Recipe, string Look)? _lastSingleRenderKey;
+    private CardRenderKey?                                         _lastSingleRenderKey;
     private string?                                        _cachedSingleRenderOutput;
-    private (string Paths, PaletteExportSettings Settings)? _lastCollageRenderKey;
+    private CardRenderKey?                                         _lastCollageRenderKey;
     private string?                                         _cachedCollageRenderOutput;
     private string?                  _collageExifSourcePath;
     private CancellationTokenSource? _renderCts;
@@ -381,9 +381,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
     private bool IsPreviewCurrent(string path)
     {
-        var recipe = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
         return PaletteBitmap != null && _cachedSingleRenderOutput != null
-            && Equals(_lastSingleRenderKey, (path, PaletteExportSettings.SnapshotFrom(Settings), recipe, Settings.CardLookKey));
+            && _lastSingleRenderKey == CardRenderKey.From(path, Settings);
     }
     private CancellationTokenSource? _liveDebounceCts;
 
@@ -609,10 +608,10 @@ public partial class MainWindowViewModel : ViewModelBase
             var sourcePaths = CollageItems.Select(i => i.FullPath).ToList();
             FileInfoText = Loc.N(sourcePaths.Count, "Collage · {0} photo", "Collage · {0} photos");
             _lastExtension = Settings.FileExtension;
-            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            var cacheKey = (string.Join("", sourcePaths), exportSettings);
+            var cacheKey = CardRenderKey.From(string.Join("\n", sourcePaths), Settings) with { Look = "" };
+            var exportSettings = cacheKey.Settings;
 
-            if (Equals(_lastCollageRenderKey, cacheKey) && _cachedCollageRenderOutput != null && File.Exists(_cachedCollageRenderOutput))
+            if (_lastCollageRenderKey == cacheKey && _cachedCollageRenderOutput != null && File.Exists(_cachedCollageRenderOutput))
             {
                 _lastTempPng   = _cachedCollageRenderOutput;
                 var cachedSize = new FileInfo(_lastTempPng).Length;
@@ -622,9 +621,9 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
+            var tmpOut = NewTempCard();
             await PaletteExportService.ExportCollageAsync(sourcePaths, tmpOut, exportSettings, token,
-                metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
+                metadataOverride: cacheKey.Metadata, recipe: cacheKey.Recipe);
 
             token.ThrowIfCancellationRequested();
 
@@ -651,6 +650,9 @@ public partial class MainWindowViewModel : ViewModelBase
             }
         }
     }
+
+    private string NewTempCard() =>
+        CardTempFiles.New(_lastExtension, _lastTempPng, _cachedSingleRenderOutput, _cachedCollageRenderOutput);
 
     private bool CanOpenFolder() => !IsBatchActive;
 
@@ -700,7 +702,7 @@ public partial class MainWindowViewModel : ViewModelBase
             await GenerateCollagePaletteAsync();
             IsRegenerateAvailable = false;
         }
-        if (SavePngAsync == null || _lastTempPng == null) return;
+        if (SavePngAsync == null || _lastTempPng is not { } rendered) return;
 
         string suggested, folder;
         if (IsCollageMode)
@@ -719,7 +721,13 @@ public partial class MainWindowViewModel : ViewModelBase
         var dest = await SavePngAsync(suggested, folder);
         if (dest != null)
         {
-            File.Copy(_lastTempPng, dest, overwrite: true);
+            try { File.Copy(rendered, dest, overwrite: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                ErrorMessage = Loc.F("Couldn't save: {0}", e.Message);
+                AppLogger.LogError("Saving the card failed", e);
+                return;
+            }
             ShowSavedToast(dest);
             if (!IsCollageMode && SelectedFile != null) SelectedFile.IsExported = true;
             if (Settings.ShowInFolderAfterSave) RevealInFolder(dest);
@@ -832,15 +840,12 @@ public partial class MainWindowViewModel : ViewModelBase
                 FileInfoText = $"{entry.FileName}  ·  {working.Width}×{working.Height}";
             }
 
-            if (Settings.CardAdjust is { } cardAdjust) { var adjusted = cardAdjust.Render(working); working.Dispose(); working = adjusted; }
-            Settings.CardLook?.Apply(working); // Frame → Card is built from the graded photo
             _lastExtension = Settings.FileExtension;
-            var exportSettings = PaletteExportSettings.SnapshotFrom(Settings);
-            // The recipe is part of the cache key: it changes without touching the settings.
-            var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? Settings.DetectedRecipe : null;
-            var cacheKey = (filePath, exportSettings, recipeForRender, Settings.CardLookKey);
+            var cacheKey = CardRenderKey.From(filePath, Settings);
+            var exportSettings = cacheKey.Settings;
+            var recipeForRender = Settings.ExportMode == ExportMode.Recipe ? cacheKey.Recipe : null;
 
-            if (Equals(_lastSingleRenderKey, cacheKey) && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
+            if (_lastSingleRenderKey == cacheKey && _cachedSingleRenderOutput != null && File.Exists(_cachedSingleRenderOutput))
             {
                 _lastTempPng   = _cachedSingleRenderOutput;
                 var cachedSize = new FileInfo(_lastTempPng).Length;
@@ -850,12 +855,19 @@ public partial class MainWindowViewModel : ViewModelBase
                 return;
             }
 
-            var tmpOut = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid()}{_lastExtension}");
+            // Frame → Card is built from the cropped and graded photo.
+            var cardAdjust = Settings.CardAdjust;
+            var cardLook = Settings.CardLook;
+            var source = working;
+            var prepared = await Task.Run(() => PaletteExportService.Prepare(source, cardAdjust, cardLook));
+            if (!ReferenceEquals(prepared, working)) { working.Dispose(); working = prepared; }
+            token.ThrowIfCancellationRequested();
+
+            var tmpOut = NewTempCard();
             if (recipeForRender != null)
             {
-                var metadataOverride = Settings.BuildMetadataOverride();
-                var qr = exportSettings.BuildQrRenderOptions(
-                    metadataOverride ?? PaletteImageRenderer.ReadMetadata(working), recipeForRender);
+                var metadataOverride = cacheKey.Metadata;
+                var qr = exportSettings.BuildQrRenderOptions(metadataOverride, recipeForRender);
                 await Task.Run(() => RecipeCardRenderer.Render(working, recipeForRender, tmpOut,
                     theme: exportSettings.Theme, format: exportSettings.Format, customBackground: exportSettings.CustomBackground,
                     metaVerbosity: exportSettings.MetaVerbosity, metadataOverride: metadataOverride,
@@ -867,7 +879,7 @@ public partial class MainWindowViewModel : ViewModelBase
             else
             {
                 await PaletteExportService.ExportAsync(working, tmpOut, exportSettings, token,
-                    metadataOverride: Settings.BuildMetadataOverride(), recipe: Settings.DetectedRecipe);
+                    metadataOverride: cacheKey.Metadata, recipe: cacheKey.Recipe);
             }
 
             token.ThrowIfCancellationRequested();
@@ -944,11 +956,14 @@ public partial class MainWindowViewModel : ViewModelBase
     }
 
     // A photo without a recipe is a failure, not a different card.
-    private static void RenderRecipeCardFile(string sourcePath, string destPath, PaletteExportSettings s)
+    private static void RenderRecipeCardFile(string sourcePath, string destPath, PaletteExportSettings s,
+        PhotoAdjust? adjust)
     {
         var recipe = RecipeReader.Read(sourcePath)
             ?? throw new InvalidOperationException(Loc.T("No film recipe found in this photo"));
-        using var img = Services.FastDecode.LoadUpright(sourcePath);
+        using var loaded = Services.FastDecode.LoadUpright(sourcePath);
+        using var adjusted = adjust is { IsNoOp: false } ? adjust.Render(loaded) : null;
+        var img = adjusted ?? loaded;
         var metadata = PaletteImageRenderer.ReadMetadata(sourcePath);
         var qr = s.BuildQrRenderOptions(metadata, recipe);
         RecipeCardRenderer.Render(img, recipe, destPath,
@@ -991,6 +1006,8 @@ public partial class MainWindowViewModel : ViewModelBase
         var degree = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
         using var gate = new SemaphoreSlim(degree);
         var tasks = new List<Task>();
+        // Two sources with one name (a.jpg and a.heic) must not write the same card.
+        var taken = new HashSet<string>();
 
         foreach (var sourcePath in snapshot)
         {
@@ -1000,16 +1017,17 @@ public partial class MainWindowViewModel : ViewModelBase
             catch (OperationCanceledException) { break; }
 
             var fileName = Path.GetFileName(sourcePath);
+            var destPath = PhSpectre.Services.SafeFiles.Unused(destFolder,
+                Path.GetFileNameWithoutExtension(sourcePath) + SuggestedFileName.ModeSuffix(exportSettings.Mode)
+                + exportSettings.FileExtension, taken, avoidExisting: false);
             tasks.Add(Task.Run(async () =>
             {
                 try
                 {
-                    var destName = Path.GetFileNameWithoutExtension(sourcePath) + SuggestedFileName.ModeSuffix(exportSettings.Mode) + exportSettings.FileExtension;
-                    var destPath = Path.Combine(destFolder, destName);
                     bool existed = File.Exists(destPath);
 
                     if (exportSettings.Mode == ExportMode.Recipe)
-                        await Task.Run(() => RenderRecipeCardFile(sourcePath, destPath, exportSettings));
+                        await Task.Run(() => RenderRecipeCardFile(sourcePath, destPath, exportSettings, batchAdjust));
                     else
                         await PaletteExportService.ExportAsync(sourcePath, destPath, exportSettings, CancellationToken.None, look: batchLook, adjust: batchAdjust);
 

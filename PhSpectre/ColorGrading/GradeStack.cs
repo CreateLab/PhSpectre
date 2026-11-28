@@ -32,10 +32,10 @@ public sealed class GradeStack
     }
 
     // Returns a graded copy.
-    public Image<Rgb24> Render(Image<Rgb24> source)
+    public Image<Rgb24> Render(Image<Rgb24> source, SkinMask? skin = null)
     {
         var copy = source.Clone();
-        Apply(copy);
+        Apply(copy, skin: skin);
         return copy;
     }
 }

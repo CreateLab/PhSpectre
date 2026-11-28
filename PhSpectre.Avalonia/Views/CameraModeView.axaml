@@ -496,7 +496,7 @@
                                                                         <TextBlock Text="{Binding Subtitle}" Classes="mono-data-small" Opacity="0.65"
                                                                                    TextTrimming="CharacterEllipsis"/>
                                                                     </StackPanel>
-                                                                    <Button Grid.Column="1" Classes="link" Content="{l:T 'Restore'}"
+                                                                    <Button Grid.Column="1" Classes="link" Content="{Binding ButtonText}"
                                                                             Command="{Binding RestoreCommand}" CommandParameter="{Binding}"/>
                                                                 </Grid>
                                                             </DataTemplate>

@@ -165,9 +165,12 @@ public partial class ProcessViewModel
             // Segmented on the whole photo: a piece alone would be judged differently.
             if (smoothsSkin) source.Skin ??= SkinRetouch.Segmenter?.Segment(photo);
             var skin = smoothsSkin ? source.Skin?.Piece(rect, photo.Width, photo.Height) : null;
-            using var result = adjust.RenderDetail(piece, Math.Max(photo.Width, photo.Height), noise, skin);
+            // The export sizes sharpening by the cropped picture.
+            var output = adjust.OutputSize(photo.Width, photo.Height);
+            int longSide = Math.Max(output.Width, output.Height);
+            using var result = adjust.RenderDetail(piece, longSide, noise, skin);
             if (!look.IsEmpty)
-                look.Apply(result, wholeFrameEffects: false, photoLongSide: Math.Max(photo.Width, photo.Height), noise: noise, skin: skin);
+                look.Apply(result, wholeFrameEffects: false, photoLongSide: longSide, noise: noise, skin: skin);
             result.Mutate(c =>
             {
                 c.Crop(new Rectangle(left - x0, top - y0, w, h));

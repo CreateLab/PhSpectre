@@ -532,7 +532,7 @@
   "PRESET": "PRESET",
   "This photo can't be opened for grading.": "No se puede abrir esta foto para editarla.",
   "Nothing matches.": "No hay coincidencias.",
-  "No presets yet. Import Lightroom .xmp files.": "Aún no hay presets. Importa archivos .xmp de Lightroom.",
+  "No presets yet. Import .xmp files.": "Aún no hay presets. Importa archivos .xmp.",
   "No LUTs yet. Import .cube files.": "Aún no hay LUT. Importa archivos .cube.",
   "No looks yet. Import presets (.xmp) or LUTs (.cube).": "Aún no hay estilos. Importa presets (.xmp) o LUT (.cube).",
   "Presets": "Presets",
@@ -652,5 +652,15 @@
   "Histogram": "Histograma",
   "Set the sliders below from the histogram": "Ajustar los controles de abajo según el histograma",
   "Show the histogram over the photo": "Mostrar el histograma sobre la foto",
-  "Auto light": "Ajuste automático de la luz"
+  "Auto light": "Ajuste automático de la luz",
+  "File not found.": "No se encontró el archivo.",
+  "The file is too large.": "El archivo es demasiado grande.",
+  "Couldn't read the file: {0}": "No se pudo leer el archivo: {0}",
+  "The archive holds too many files.": "El archivo comprimido tiene demasiados archivos.",
+  "The archive has no .cube or .xmp files.": "El archivo comprimido no contiene archivos .cube ni .xmp.",
+  "The archive is damaged.": "El archivo comprimido está dañado.",
+  "Couldn't read the archive: {0}": "No se pudo leer el archivo comprimido: {0}",
+  "The file is not UTF-8 text.": "El archivo no es texto UTF-8.",
+  "Only .cube and .xmp files are supported.": "Solo se admiten archivos .cube y .xmp.",
+  "Replace slot?": "¿Reemplazar la ranura?"
 }

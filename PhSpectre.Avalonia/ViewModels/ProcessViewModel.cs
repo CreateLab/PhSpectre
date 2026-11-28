@@ -282,7 +282,7 @@ public partial class ProcessViewModel : ViewModelBase
         ? Loc.T("Nothing matches.")
         : LibraryTab switch
         {
-            2 => Loc.T("No presets yet. Import Lightroom .xmp files."),
+            2 => Loc.T("No presets yet. Import .xmp files."),
             3 => Loc.T("No LUTs yet. Import .cube files."),
             _ => Loc.T("No looks yet. Import presets (.xmp) or LUTs (.cube)."),
         };
@@ -440,7 +440,7 @@ public partial class ProcessViewModel : ViewModelBase
             return;
         }
         if (!TryLoad(item.Entry, out var obj, out var err)) { ImportStatus = err; return; }
-        // Each newly picked look starts at 100%, like Lightroom.
+        // Each newly picked look starts at 100%.
         if (item.Entry.Kind == GradeKind.Preset)
         {
             _preset = (LrPreset)obj!; _presetEntry = item.Entry; PresetEnabled = true; PresetStrength = 100;
@@ -463,7 +463,6 @@ public partial class ProcessViewModel : ViewModelBase
         if (_cache.TryGetValue(e.Id, out obj)) return true;
         try
         {
-            
             obj = e.Kind == GradeKind.Preset ? Grades.LoadPreset(e) : Grades.LoadLut(e);
             _cache[e.Id] = obj;
             return true;
@@ -646,12 +645,12 @@ public partial class ProcessViewModel : ViewModelBase
 
     // Adjust, Look, then frame. Returns a new image. `beforeFrame` sees the picture without the frame.
     private static Image<Rgb24> RenderAll(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film = null, PhotoAdjust? adjust = null,
-        Action<Image<Rgb24>>? beforeFrame = null)
+        Action<Image<Rgb24>>? beforeFrame = null, SkinMask? lookSkin = null)
     {
         // Adjustments come first, so Look and frame see the final picture.
         using var adjusted = adjust is { IsNoOp: false } ? adjust.Render(src) : null;
         var basis = adjusted ?? src;
-        using var graded = stack.IsEmpty ? null : stack.Render(basis);
+        using var graded = stack.IsEmpty ? null : stack.Render(basis, lookSkin);
         beforeFrame?.Invoke(graded ?? basis);
         if (film != null) return FilmFrameRenderer.Render(graded ?? basis, film.Style, film.Meta, film.Number, film.LookName, film.Label);
         return frame is { IsNoOp: false } ? frame.Render(graded ?? basis) : (graded ?? basis).Clone();
@@ -718,8 +717,8 @@ public partial class ProcessViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(EditSection));
         OnPropertyChanged(nameof(LookIsLooks)); OnPropertyChanged(nameof(LookIsCrop));
-            OnPropertyChanged(nameof(LookIsLight)); OnPropertyChanged(nameof(LookIsColor));
-            OnPropertyChanged(nameof(LookIsEffects));
+        OnPropertyChanged(nameof(LookIsLight)); OnPropertyChanged(nameof(LookIsColor));
+        OnPropertyChanged(nameof(LookIsEffects));
         OnPropertyChanged(nameof(ShowCropView)); RaiseHistogram();
         if (!IsDetailActive) DropDetailPixels();
         RaiseDetailVisibility();
@@ -897,7 +896,10 @@ public partial class ProcessViewModel : ViewModelBase
         finally { _restoring = false; }
         RaiseAdjustTexts();
         _commitTimer?.Stop();
+        // History belongs to one photo: undo must not bring the previous photo's crop or sliders onto this one.
+        _undo.Clear(); _redo.Clear();
         _committed = Capture();
+        NotifyHistory();
     }
 
     // Live preview
@@ -986,6 +988,24 @@ public partial class ProcessViewModel : ViewModelBase
         return _skinMask;
     }
 
+    private SkinMask? _framedSkinMask;
+    private Image<Rgb24>? _framedSkinSrc;
+    private string? _framedSkinKey;
+
+    // The mask a Look uses: one per photo and crop, so moving a slider does not run the model again. Call under
+    // _geomLock.
+    private SkinMask? LookSkin(Image<Rgb24> src, PhotoAdjust geometry, Image<Rgb24> framed)
+    {
+        if (geometry.IsNoOp) return PreviewSkin(src);
+        var key = geometry.ToString();
+        if (!ReferenceEquals(_framedSkinSrc, src) || key != _framedSkinKey)
+        {
+            _framedSkinMask = SkinRetouch.Segmenter?.Segment(framed);
+            _framedSkinSrc = src; _framedSkinKey = key;
+        }
+        return _framedSkinMask;
+    }
+
     private Image<Rgb24> RenderPreview(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust,
         Action<Image<Rgb24>>? measure)
     {
@@ -1018,8 +1038,9 @@ public partial class ProcessViewModel : ViewModelBase
                 }
                 basis = _geomImg!;
             }
+            var lookSkin = stack.SmoothsSkin ? LookSkin(src, geometry, basis) : null;
             using var exposed = tone is { HasTone: true } ? tone.Render(basis) : null;
-            return RenderAll(exposed ?? basis, stack, frame, film, beforeFrame: measure);
+            return RenderAll(exposed ?? basis, stack, frame, film, beforeFrame: measure, lookSkin: lookSkin);
         }
     }
 
@@ -1219,10 +1240,15 @@ public partial class ProcessViewModel : ViewModelBase
         {
             if (gallery != null) folder = Path.Combine(Path.GetTempPath(), "phspectre-export");
             Directory.CreateDirectory(folder);
+            var taken = new HashSet<string>();
             foreach (var f in files)
             {
                 ExportStatus = Loc.F("Saving {0} of {1}…", done + failed + 1, files.Count);
-                var dest = Path.Combine(folder, Path.GetFileNameWithoutExtension(f.FileName) + "_graded" + (png ? ".png" : ".jpg"));
+                // Nothing in the folder is overwritten: an earlier export may be one of the source photos. The
+                // gallery's folder is a temporary one.
+                var dest = PhSpectre.Services.SafeFiles.Unused(folder,
+                    Path.GetFileNameWithoutExtension(f.FileName) + "_graded" + (png ? ".png" : ".jpg"), taken,
+                    avoidExisting: gallery == null);
                 try
                 {
                     await Task.Run(() =>

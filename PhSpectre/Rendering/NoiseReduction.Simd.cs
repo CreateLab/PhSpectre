@@ -22,7 +22,6 @@ public static partial class NoiseReduction
         private static readonly Vector128<float> F = Vector128.Create(0.5f * MathF.Cos(5 * MathF.PI / 16));
         private static readonly Vector128<float> G = Vector128.Create(0.5f * MathF.Cos(7 * MathF.PI / 16));
 
-        // Without a way to transpose with the processor's own shuffles the plain code is the faster one.
         public static bool IsSupported => Vector128.IsHardwareAccelerated;
 
         public static void Forward(ref Vector128<float> v)

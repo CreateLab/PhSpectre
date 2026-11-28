@@ -3,7 +3,7 @@ PhSpectre обрабатывает фото локом, оформляет ег�
 ЛОК
 • 88 встроенных луков по категориям: Two Tone, Neon, Games, Cinema, Film, Trends, Portrait, B&W, Historic, Alt process, Toy camera
 • Каждая плитка показана на вашем фото; один ползунок Amount смешивает лок с оригиналом
-• Импорт своих пресетов Lightroom (.xmp), LUT (.cube) или .zip с ними; избранное под рукой
+• Импорт своих пресетов (.xmp), LUT (.cube) или .zip с ними; избранное под рукой
 
 РАМКА
 • Простая рамка, Card с цветовой палитрой и данными камеры, Recipe card или Film edge с перфорацией (135, half-frame, 120)

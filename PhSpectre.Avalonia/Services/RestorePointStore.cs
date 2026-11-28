@@ -26,7 +26,8 @@ internal static class RestorePointStore
     {
         Directory.CreateDirectory(Folder);
         var name = $"{backup.Model}-C{backup.Slot}-{backup.Created:yyyyMMdd-HHmmss}.json";
-        var path = Path.Combine(Folder, name);
+        // Two saves within a second must both survive.
+        var path = PhSpectre.Services.SafeFiles.Unused(Folder, name);
         File.WriteAllText(path, backup.ToJson());
         Trim(keepLast);
         return path;

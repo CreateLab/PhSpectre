@@ -6,7 +6,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.ColorGrading;
 
-// Approximates a Lightroom preset (not a pixel match). Colour and tone are baked into a 33^3 LUT; noise reduction
+// Approximates an .xmp preset (not a pixel match). Colour and tone are baked into a 33^3 LUT; noise reduction
 // and skin run before it, sharpening, vignette and grain after.
 public static class LrPresetApplier
 {
@@ -29,7 +29,7 @@ public static class LrPresetApplier
         // PhSpectre's own setting; other programs ignore it.
         if (detail) SkinRetouch.Apply(image, preset.Get("SkinSmoothing") / 100f * strength, skin);
         LutApplier.Apply(image, Bake(preset), strength);
-        // Lightroom's sharpening amount goes to 150.
+        // The sharpening amount in presets goes to 150.
         float sharpen = Math.Clamp(preset.Get("Sharpness") / 150f, 0f, 1f) * strength;
         if (detail && sharpen > 0f) PhotoAdjust.Sharpen(image, sharpen, photoLongSide);
         if (vignetteAndGrain) ApplyVignetteAndGrain(image, preset, strength, photoLongSide);
@@ -148,13 +148,23 @@ public static class LrPresetApplier
             string[] regions = ["Shadow", "Midtone", "Highlight", "Global"];
             for (int i = 0; i < 4; i++)
             {
-                _grade[i] = (p.Get($"ColorGrade{regions[i]}Hue"), p.Get($"ColorGrade{regions[i]}Sat") / 100f,
-                             p.Get($"ColorGrade{regions[i]}Lum") / 100f);
+                string key = "ColorGrade" + regions[i];
+                float hue = p.Get(key + "Hue"), sat = p.Get(key + "Sat");
+                // Preset files keep shadow and highlight tinting under the older split toning names.
+                if (regions[i] is "Shadow" or "Highlight")
+                {
+                    hue = First(p, key + "Hue", $"SplitToning{regions[i]}Hue");
+                    sat = First(p, key + "Sat", $"SplitToning{regions[i]}Saturation");
+                }
+                _grade[i] = (hue, sat / 100f, p.Get(key + "Lum") / 100f);
                 _hasGrading |= _grade[i].sat != 0 || _grade[i].lum != 0;
             }
             _blending = p.Values.TryGetValue("ColorGradeBlending", out var bl) ? bl / 100f : 0.5f;
-            _balance = p.Get("ColorGradeBalance") / 100f;
+            _balance = First(p, "ColorGradeBalance", "SplitToningBalance") / 100f;
         }
+
+        private static float First(LrPreset p, string key, string other) =>
+            p.Values.TryGetValue(key, out var value) ? value : p.Get(other);
 
         public Vector3 Grade(Vector3 c)
         {
