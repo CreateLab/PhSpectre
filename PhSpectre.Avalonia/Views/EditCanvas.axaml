@@ -10,6 +10,16 @@
     <Grid Background="{DynamicResource StageBrush}">
         <Image x:Name="Photo" Source="{Binding Shown}" Stretch="Uniform" Margin="{Binding StageMargin}" IsVisible="{Binding ShowPhotoView}"/>
 
+        <!-- 100% view: a piece of the full-size photo, one photo pixel per screen pixel (two on dense screens) -->
+        <Grid x:Name="DetailHost" Background="Transparent" ClipToBounds="True" Cursor="SizeAll" IsVisible="{Binding IsDetailActive}">
+            <Image x:Name="DetailImage" Source="{Binding Detail}" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   RenderOptions.BitmapInterpolationMode="None" IsVisible="{Binding ShowDetail}"/>
+            <Border HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,10,0,0" IsHitTestVisible="False"
+                    Background="{DynamicResource ScrimBrush}" CornerRadius="6" Padding="8,3">
+                <TextBlock Text="{Binding DetailHint}" FontSize="12" Foreground="White"/>
+            </Border>
+        </Grid>
+
         <!-- Crop: the whole photo, moved / rotated / scaled by transforms under a clipped window (no re-render per drag) -->
         <Grid x:Name="CropHost" Margin="{Binding StageMargin}" Background="Transparent" IsVisible="{Binding ShowCropView}">
             <Border x:Name="CropWindow" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">

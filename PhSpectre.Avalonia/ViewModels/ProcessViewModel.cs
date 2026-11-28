@@ -109,7 +109,11 @@ public partial class ProcessViewModel : ViewModelBase
 
     partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView)); OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowPhotoName)); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
     partial void OnGradedChanged(Bitmap? value) => OnPropertyChanged(nameof(Shown));
-    partial void OnShowOriginalChanged(bool value) { OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex)); }
+    partial void OnShowOriginalChanged(bool value)
+    {
+        OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex));
+        if (IsDetailActive) ScheduleRender();
+    }
 
     // Result | Original segment (same control as the pill on the Main screen).
     public int CompareIndex
@@ -139,6 +143,7 @@ public partial class ProcessViewModel : ViewModelBase
 
     private void ClearPhoto()
     {
+        ReleaseDetail();
         _source?.Dispose(); _source = null;
         Original = null; Graded = null; _loadedPath = null; PhotoName = ""; _fullSize = (0, 0); UpdateExportSize();
         ResetThumbs();
@@ -214,6 +219,7 @@ public partial class ProcessViewModel : ViewModelBase
             });
             // The user may have switched photos while this one decoded.
             if (_settings.CurrentPhotoProvider?.Invoke()?.FullPath != path) { img.Dispose(); return; }
+            ReleaseDetail();
             _source?.Dispose();
             _source = img;
             _fullSize = (fullW, fullH);
@@ -349,6 +355,9 @@ public partial class ProcessViewModel : ViewModelBase
 
     private void ScheduleThumbs() { SyncThumbsToAdjust(); _ = FillThumbsAsync(); }
 
+    // The adjustment Look tiles are drawn with: noise cleaning cannot be seen at their size and is skipped.
+    private PhotoAdjust? ThumbAdjust() => CurrentAdjustSettings().WithoutCleaning() is { IsNoOp: false } a ? a : null;
+
     private void ResetThumbs()
     {
         _thumbGeneration++;
@@ -358,7 +367,7 @@ public partial class ProcessViewModel : ViewModelBase
         _thumbAdjustKey = AdjustKey;
         if (_source != null)
         {
-            using var basis = CurrentAdjust()?.Render(_source);
+            using var basis = ThumbAdjust()?.Render(_source);
             var from = basis ?? _source;
             int side = Math.Max(from.Width, from.Height);
             double k = Math.Min(1.0, (double)ThumbLongSide / side);
@@ -657,6 +666,8 @@ public partial class ProcessViewModel : ViewModelBase
     [ObservableProperty] private double _grain;
     [ObservableProperty] private double _glow;
     [ObservableProperty] private double _halation;
+    [ObservableProperty] private double _noiseLuma;
+    [ObservableProperty] private double _noiseColor;
     private bool _noReclamp;
 
     // Inner sections of the Look tab: Looks · Crop · Light · Color · Effects.
@@ -678,13 +689,19 @@ public partial class ProcessViewModel : ViewModelBase
             OnPropertyChanged();
         }
     }
-    public void RaiseEditSection() => OnPropertyChanged(nameof(EditSection));
+    public void RaiseEditSection()
+    {
+        OnPropertyChanged(nameof(EditSection));
+        DetailStateChanged();
+    }
 
     partial void OnLookSectionChanged(int value)
     {
         OnPropertyChanged(nameof(EditSection));
         OnPropertyChanged(nameof(LookIsLooks)); OnPropertyChanged(nameof(LookIsCrop)); OnPropertyChanged(nameof(LookIsLight)); OnPropertyChanged(nameof(LookIsColor)); OnPropertyChanged(nameof(LookIsEffects));
-        OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView));
+        OnPropertyChanged(nameof(ShowCropView));
+        if (!IsDetailActive) DropDetailPixels();
+        RaiseDetailVisibility();
         // Crop shows the whole photo moved by transforms (no re-render per drag); the cropped result is built once on leaving it.
         ScheduleRender();
         LookChanged?.Invoke();
@@ -694,7 +711,7 @@ public partial class ProcessViewModel : ViewModelBase
     /// <summary>The photo before cropping (exposure and Look applied), shown in the Crop section and moved by transforms.</summary>
     [ObservableProperty] private Bitmap? _cropBase;
     public bool ShowCropView => LookIsCrop && HasPhoto && CropBase != null;
-    public bool ShowPhotoView => HasPhoto && !ShowCropView;
+    public bool ShowPhotoView => HasPhoto && !ShowCropView && !ShowDetail;
     partial void OnCropBaseChanged(Bitmap? value) { OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView)); }
 
     /// <summary>Size of the crop in photo pixels (the shape the crop window has on screen).</summary>
@@ -702,7 +719,7 @@ public partial class ProcessViewModel : ViewModelBase
 
     // Look tiles are drawn from the adjusted photo, so they are rebuilt when the crop or exposure changed since.
     private string _thumbAdjustKey = "";
-    private string AdjustKey => CurrentAdjust()?.ToString() ?? "";
+    private string AdjustKey => ThumbAdjust()?.ToString() ?? "";
     private void SyncThumbsToAdjust()
     {
         if (_source == null || AdjustKey == _thumbAdjustKey) return;
@@ -723,7 +740,7 @@ public partial class ProcessViewModel : ViewModelBase
     private PhotoAdjust CurrentAdjustSettings() => new PhotoAdjust
     {
         Quarter = Quarter, Straighten = (float)Straighten, Zoom = (float)Zoom, Exposure = (float)Exposure, PanX = (float)PanX, PanY = (float)PanY,
-        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites, Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance, Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness, Vignette = (float)Vignette, Grain = (float)Grain, Glow = (float)Glow, Halation = (float)Halation,
+        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites, Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance, Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness, Vignette = (float)Vignette, Grain = (float)Grain, Glow = (float)Glow, Halation = (float)Halation, NoiseLuma = (float)NoiseLuma, NoiseColor = (float)NoiseColor,
         Aspect = PhotoAdjust.CropChoices[Math.Clamp(CropIndex, 0, PhotoAdjust.CropChoices.Length - 1)].Ratio
     }.Normalized();
 
@@ -733,7 +750,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ApplyAdjustSettings(PhotoAdjust a)
     {
         Quarter = a.Quarter; Straighten = a.Straighten; Zoom = a.Zoom; Exposure = a.Exposure; PanX = a.PanX; PanY = a.PanY;
-        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks; Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint; Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain; Glow = a.Glow; Halation = a.Halation;
+        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks; Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint; Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain; Glow = a.Glow; Halation = a.Halation; NoiseLuma = a.NoiseLuma; NoiseColor = a.NoiseColor;
         CropIndex = Math.Max(0, Array.FindIndex(PhotoAdjust.CropChoices, c => c.Ratio == a.Aspect));
     }
 
@@ -813,13 +830,15 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnGrainChanged(double value) => AdjustChanged(false, geometry: false);
     partial void OnGlowChanged(double value) => AdjustChanged(false, geometry: false);
     partial void OnHalationChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnNoiseLumaChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnNoiseColorChanged(double value) => AdjustChanged(false, geometry: false);
 
     [RelayCommand] private void RotateLeft() => Quarter = (Quarter + 3) % 4;
     [RelayCommand] private void RotateRight() => Quarter = (Quarter + 1) % 4;
     [RelayCommand] private void ResetExposure() => Exposure = 0;
     [RelayCommand] private void ResetLight() => ResetGroup(() => { Exposure = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; });
     [RelayCommand] private void ResetColor() => ResetGroup(() => { Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; });
-    [RelayCommand] private void ResetEffects() => ResetGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; });
+    [RelayCommand] private void ResetEffects() => ResetGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; NoiseLuma = 0; NoiseColor = 0; });
     private void ResetGroup(Action reset)
     {
         _restoring = true;
@@ -840,7 +859,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ResetPhotoAdjust()
     {
         _restoring = true;
-        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; }
+        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; NoiseLuma = 0; NoiseColor = 0; }
         finally { _restoring = false; }
         RaiseAdjustTexts();
         _commitTimer?.Stop();
@@ -876,6 +895,7 @@ public partial class ProcessViewModel : ViewModelBase
     {
         var src = _source;
         if (src == null) { _renderEpoch++; _pendingRender = null; return; }
+        if (IsDetailActive) { ScheduleDetail(); return; }
         var stack = BuildStack();
         var frame = CurrentFrame();
         var film = CurrentFilm(_loadedPath, useSettingsMetadata: true);
@@ -915,27 +935,42 @@ public partial class ProcessViewModel : ViewModelBase
         finally { if (_pendingRender == null) IsRendering = false; }
     }
 
-    // Preview render. The geometry step (rotate, crop) is the slow one and does not change while the exposure or a
-    // Look slider moves, so its result is kept and reused until the geometry or the photo changes.
+    // Preview render. Cleaning (noise) and geometry (rotate, crop) are the slow steps and do not change while the
+    // exposure or a Look slider moves, so each result is kept and reused until its own settings or the photo change.
     private readonly object _geomLock = new();
     private string? _geomKey;
     private Image<Rgb24>? _geomImg, _geomSrc;
+    private string? _cleanKey;
+    private Image<Rgb24>? _cleanImg, _cleanSrc;
 
     private Image<Rgb24> RenderPreview(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust)
     {
-        var geometry = adjust == null ? new PhotoAdjust() : adjust.WithoutTone();
+        var geometry = adjust == null ? new PhotoAdjust() : adjust.WithoutTone().WithoutCleaning();
+        var cleaning = adjust?.CleaningOnly();
         var tone = adjust?.ToneOnly();
         lock (_geomLock)
         {
             var basis = src;
+            if (cleaning is { IsNoOp: false })
+            {
+                var key = cleaning.ToString();
+                if (!ReferenceEquals(_cleanSrc, src) || key != _cleanKey)
+                {
+                    _cleanImg?.Dispose();
+                    _cleanImg = cleaning.Render(src);
+                    _cleanKey = key; _cleanSrc = src;
+                    _geomSrc = null; // the cached geometry was cut from the previous cleaned picture
+                }
+                basis = _cleanImg!;
+            }
             if (!geometry.IsNoOp)
             {
                 var key = geometry.ToString();
-                if (!ReferenceEquals(_geomSrc, src) || key != _geomKey)
+                if (!ReferenceEquals(_geomSrc, basis) || key != _geomKey)
                 {
                     _geomImg?.Dispose();
-                    _geomImg = geometry.Render(src);
-                    _geomKey = key; _geomSrc = src;
+                    _geomImg = geometry.Render(basis);
+                    _geomKey = key; _geomSrc = basis;
                 }
                 basis = _geomImg!;
             }

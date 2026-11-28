@@ -104,6 +104,9 @@
                             <TextBlock Text="Light" Classes="section-title first"/>
                             <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasLightAdjust}" Command="{Binding ResetLightCommand}"/>
                         </Grid>
+                        <CheckBox Content="100% view" IsChecked="{Binding DetailView}"
+                                  ToolTip.Tip="Show a piece of the full-size photo at its real pixels"
+                                  AutomationProperties.Name="Show the photo at 100 percent"/>
                         <Grid ColumnDefinitions="84,*,56">
                             <TextBlock Text="Exposure" Classes="hint" VerticalAlignment="Center"/>
                             <Slider Grid.Column="1" Classes="v2" Minimum="-3" Maximum="3" Value="{Binding Exposure}" AutomationProperties.Name="Exposure"/>
@@ -142,6 +145,9 @@
                             <TextBlock Text="Color" Classes="section-title first"/>
                             <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasColorAdjust}" Command="{Binding ResetColorCommand}"/>
                         </Grid>
+                        <CheckBox Content="100% view" IsChecked="{Binding DetailView}"
+                                  ToolTip.Tip="Show a piece of the full-size photo at its real pixels"
+                                  AutomationProperties.Name="Show the photo at 100 percent"/>
                         <Grid ColumnDefinitions="84,*,56">
                             <TextBlock Text="Temperature" Classes="hint" VerticalAlignment="Center"/>
                             <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Temperature}" AutomationProperties.Name="Temperature"/>
@@ -169,6 +175,20 @@
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Text="Effects" Classes="section-title first"/>
                             <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasEffectsAdjust}" Command="{Binding ResetEffectsCommand}"/>
+                        </Grid>
+                        <CheckBox Content="100% view" IsChecked="{Binding DetailView}"
+                                  ToolTip.Tip="Show a piece of the full-size photo at its real pixels"
+                                  AutomationProperties.Name="Show the photo at 100 percent"/>
+                        <!-- Noise reduction without a model: works at once, luminance and colour separately. -->
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Luma noise" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding NoiseLuma}" AutomationProperties.Name="Luminance noise reduction"/>
+                            <TextBlock Grid.Column="2" Text="{Binding NoiseLuma, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Color noise" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding NoiseColor}" AutomationProperties.Name="Color noise reduction"/>
+                            <TextBlock Grid.Column="2" Text="{Binding NoiseColor, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                         <Grid ColumnDefinitions="84,*,56">
                             <TextBlock Text="Sharpness" Classes="hint" VerticalAlignment="Center"/>

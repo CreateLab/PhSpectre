@@ -45,6 +45,10 @@ public sealed record PhotoAdjust
     public float Grain { get; init; }
     public float Glow { get; init; }
     public float Halation { get; init; }
+    // Classic noise reduction 0..100 (NoiseReduction), separate for luminance and colour. Runs on
+    // the photo before any geometry, so it is part of neither the geometry nor the tone half.
+    public float NoiseLuma { get; init; }
+    public float NoiseColor { get; init; }
 
     public static readonly (string Label, double? Ratio)[] CropChoices =
     [
@@ -65,6 +69,7 @@ public sealed record PhotoAdjust
         Saturation = Slider(Saturation), Vibrance = Slider(Vibrance), Temperature = Slider(Temperature), Tint = Slider(Tint),
         Vignette = Slider(Vignette), Sharpness = Slider(Sharpness, 0f), Grain = Slider(Grain, 0f),
         Glow = Slider(Glow, 0f), Halation = Slider(Halation, 0f),
+        NoiseLuma = Slider(NoiseLuma, 0f), NoiseColor = Slider(NoiseColor, 0f),
     };
 
     private static float Slider(float v, float min = -100f) => Math.Clamp(float.IsFinite(v) ? v : 0f, min, 100f);
@@ -78,8 +83,14 @@ public sealed record PhotoAdjust
         or { Glow: not 0f } or { Halation: not 0f };
     public bool HasLight => Normalized() is { Exposure: not 0f } or { Contrast: not 0f } or { Highlights: not 0f } or { Shadows: not 0f } or { Whites: not 0f } or { Blacks: not 0f };
     public bool HasColor => Normalized() is { Saturation: not 0f } or { Vibrance: not 0f } or { Temperature: not 0f } or { Tint: not 0f };
-    public bool HasEffects => Normalized() is { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f } or { Glow: not 0f } or { Halation: not 0f };
-    public bool IsNoOp => !HasGeometry && !HasTone;
+    public bool HasEffects => Normalized() is { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f } or { Glow: not 0f } or { Halation: not 0f } or { NoiseLuma: not 0f } or { NoiseColor: not 0f };
+    public bool HasNoiseReduction => Normalized() is { NoiseLuma: > 0f } or { NoiseColor: > 0f };
+    public bool IsNoOp => !HasGeometry && !HasTone && !HasNoiseReduction;
+
+    // Noise cleaning is slow and independent of everything else, so a preview can
+    // run it once and keep the result.
+    public PhotoAdjust CleaningOnly() => new() { NoiseLuma = NoiseLuma, NoiseColor = NoiseColor };
+    public PhotoAdjust WithoutCleaning() => this with { NoiseLuma = 0, NoiseColor = 0 };
 
     // The geometry half and the tone half, so a preview can cache the slow geometry and redo only the tone.
     public PhotoAdjust WithoutTone() => this with
@@ -154,6 +165,7 @@ public sealed record PhotoAdjust
         var img = photo.Clone();
         try
         {
+            a.Clean(ref img, null);
             if (a.HasGeometry)
             {
                 if (a.Quarter != 0)
@@ -195,9 +207,35 @@ public sealed record PhotoAdjust
         catch { img.Dispose(); throw; }
     }
 
+    // A piece of the full-size photo shown at 100%: cleaning, tone and sharpening as the export will do them.
+    // Geometry, glow, halation, vignette and grain are left out: they depend on the whole frame. `profile` and `photoLongSide`
+    // describe the whole photo.
+    public Image<Rgb24> RenderDetail(Image<Rgb24> piece, int photoLongSide, NoiseReduction.NoiseProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(piece);
+        var a = Normalized();
+        var img = piece.Clone();
+        try
+        {
+            a.Clean(ref img, profile);
+            ApplyTone(img, a with { Glow = 0, Halation = 0, Vignette = 0, Grain = 0 }, photoLongSide);
+            return img;
+        }
+        catch { img.Dispose(); throw; }
+    }
+
+    // Replaces `img` with its cleaned version when noise reduction is on.
+    private void Clean(ref Image<Rgb24> img, NoiseReduction.NoiseProfile? profile)
+    {
+        if (!HasNoiseReduction) return;
+        var cleaned = NoiseReduction.Apply(img, NoiseLuma, NoiseColor, profile: profile);
+        img.Dispose();
+        img = cleaned;
+    }
+
     // Order: exposure + white balance (linear light) → light → colour → sharpen → glow + halation → vignette + grain.
     // Exposure alone keeps the one-table fast path; anything else runs one per-pixel pass.
-    private static void ApplyTone(Image<Rgb24> img, PhotoAdjust a)
+    private static void ApplyTone(Image<Rgb24> img, PhotoAdjust a, int photoLongSide = 0)
     {
         bool light = a.Contrast != 0f || a.Highlights != 0f || a.Shadows != 0f || a.Whites != 0f || a.Blacks != 0f;
         bool colour = a.Saturation != 0f || a.Vibrance != 0f;
@@ -229,15 +267,15 @@ public sealed record PhotoAdjust
                 }
             });
         }
-        if (a.Sharpness > 0f) Sharpen(img, a.Sharpness / 100f);
+        if (a.Sharpness > 0f) Sharpen(img, a.Sharpness / 100f, photoLongSide > 0 ? photoLongSide : Math.Max(img.Width, img.Height));
         LightEffects.Apply(img, a.Glow / 100f, a.Halation / 100f);
         if (a.Vignette != 0f || a.Grain > 0f) ApplyVignetteGrain(img, a.Vignette / 100f, a.Grain / 100f);
     }
 
     // Unsharp mask; the blur radius follows the picture size so the same slider looks the same on preview and full size.
-    private static void Sharpen(Image<Rgb24> img, float amount)
+    private static void Sharpen(Image<Rgb24> img, float amount, int photoLongSide)
     {
-        float sigma = Math.Max(0.6f, Math.Max(img.Width, img.Height) / 2200f);
+        float sigma = Math.Max(0.6f, photoLongSide / 2200f);
         using var blur = img.Clone(x => x.GaussianBlur(sigma));
         float k = amount * 1.5f;
         Parallel.For(0, img.Height, y =>

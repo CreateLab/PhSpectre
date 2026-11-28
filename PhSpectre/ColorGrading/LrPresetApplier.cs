@@ -14,7 +14,7 @@ public static class LrPresetApplier
     private static readonly string[] BandNames = ["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"];
     private static readonly float[] BandHue = [0f, 30f, 60f, 120f, 180f, 240f, 270f, 300f];
 
-    public static void Apply(Image<Rgb24> image, LrPreset preset, float strength = 1f)
+    public static void Apply(Image<Rgb24> image, LrPreset preset, float strength = 1f, bool vignetteAndGrain = true)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentNullException.ThrowIfNull(preset);
@@ -22,7 +22,7 @@ public static class LrPresetApplier
         if (strength == 0f) return;
 
         LutApplier.Apply(image, Bake(preset), strength);
-        ApplyVignetteAndGrain(image, preset, strength);
+        if (vignetteAndGrain) ApplyVignetteAndGrain(image, preset, strength);
     }
 
     // The colour/tone part of the preset as a reusable LUT (also exportable as .cube).

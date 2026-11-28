@@ -18,6 +18,9 @@ public partial class EditCanvas : UserControl
     private Point? _last;
     private double? _pinchStart;
     private double _dispW, _dispH;
+    private readonly Grid? _detailHost;
+    private readonly Image? _detailImage;
+    private Point? _detailLast;
 
     public EditCanvas()
     {
@@ -26,6 +29,9 @@ public partial class EditCanvas : UserControl
         _window = this.FindControl<Border>("CropWindow");
         _canvas = this.FindControl<Canvas>("CropCanvas");
         _image = this.FindControl<Image>("CropImage");
+        _detailHost = this.FindControl<Grid>("DetailHost");
+        _detailImage = this.FindControl<Image>("DetailImage");
+        HookDetail();
         if (_host == null) return;
         _host.SizeChanged += (_, _) => Relayout();
         _host.PointerPressed += OnPressed;
@@ -54,11 +60,57 @@ public partial class EditCanvas : UserControl
             _vm = DataContext as ProcessViewModel;
             if (_vm != null) _vm.PropertyChanged += OnVmChanged;
             Relayout();
+            ReportViewport();
         };
+    }
+
+    // ── 100% view ──────────────────────────────────────────────────────────────────────
+    private double Scaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
+    // Screen pixels per photo pixel: on dense screens a single one is too small to judge noise.
+    private double PixelZoom => Scaling >= 2 ? 2 : 1;
+
+    private void HookDetail()
+    {
+        if (_detailHost == null) return;
+        _detailHost.SizeChanged += (_, _) => ReportViewport();
+        _detailHost.PointerPressed += (_, e) =>
+        {
+            if (!e.GetCurrentPoint(_detailHost).Properties.IsLeftButtonPressed) return;
+            _detailLast = e.GetPosition(_detailHost);
+            e.Pointer.Capture(_detailHost);
+            e.Handled = true;
+        };
+        _detailHost.PointerMoved += (_, e) =>
+        {
+            if (_detailLast is not { } last || _vm == null) return;
+            var p = e.GetPosition(_detailHost);
+            double k = Scaling / PixelZoom;
+            _vm.PanDetail((p.X - last.X) * k, (p.Y - last.Y) * k);
+            _detailLast = p;
+            e.Handled = true;
+        };
+        _detailHost.PointerReleased += (_, e) => { _detailLast = null; e.Pointer.Capture(null); };
+        _detailHost.PointerCaptureLost += (_, _) => _detailLast = null;
+    }
+
+    private void ReportViewport()
+    {
+        if (_vm == null || _detailHost == null || _detailHost.Bounds.Width <= 0) return;
+        double k = Scaling / PixelZoom;
+        _vm.SetDetailViewport((int)Math.Ceiling(_detailHost.Bounds.Width * k), (int)Math.Ceiling(_detailHost.Bounds.Height * k));
+    }
+
+    private void SizeDetail()
+    {
+        if (_detailImage == null || _vm?.Detail is not { } bmp) return;
+        double k = PixelZoom / Scaling;
+        _detailImage.Width = bmp.PixelSize.Width * k;
+        _detailImage.Height = bmp.PixelSize.Height * k;
     }
 
     private void OnVmChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (e.PropertyName == nameof(ProcessViewModel.Detail)) SizeDetail();
         if (e.PropertyName is nameof(ProcessViewModel.Quarter) or nameof(ProcessViewModel.Straighten) or nameof(ProcessViewModel.Zoom)
             or nameof(ProcessViewModel.CropIndex) or nameof(ProcessViewModel.PanX) or nameof(ProcessViewModel.PanY)
             or nameof(ProcessViewModel.CropBase) or nameof(ProcessViewModel.ShowCropView))

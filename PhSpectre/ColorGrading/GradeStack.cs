@@ -19,10 +19,12 @@ public sealed class GradeStack
     public bool IsEmpty =>
         !((Preset != null && PresetEnabled && PresetStrength > 0f) || (Lut != null && LutEnabled && LutStrength > 0f));
 
-    public void Apply(Image<Rgb24> image)
+    // Without whole-frame effects (a preset's vignette and grain) the result of a piece cut from a photo matches
+    // the colours of that photo graded in full.
+    public void Apply(Image<Rgb24> image, bool wholeFrameEffects = true)
     {
         ArgumentNullException.ThrowIfNull(image);
-        if (Preset != null && PresetEnabled) LrPresetApplier.Apply(image, Preset, PresetStrength);
+        if (Preset != null && PresetEnabled) LrPresetApplier.Apply(image, Preset, PresetStrength, wholeFrameEffects);
         if (Lut != null && LutEnabled) LutApplier.Apply(image, Lut, LutStrength);
     }
 
