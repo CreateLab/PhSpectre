@@ -30,7 +30,7 @@ public sealed record PhotoAdjust
     public float PanX { get; init; }
     public float PanY { get; init; }
 
-    // Tone, colour and effects, all 0 = untouched. Range -100..100, except Sharpness and Grain (0..100).
+    // Tone, colour and effects, all 0 = untouched. Range -100..100, except Sharpness, Grain, Glow and Halation (0..100).
     public float Contrast { get; init; }
     public float Highlights { get; init; }
     public float Shadows { get; init; }
@@ -43,6 +43,8 @@ public sealed record PhotoAdjust
     public float Sharpness { get; init; }
     public float Vignette { get; init; }
     public float Grain { get; init; }
+    public float Glow { get; init; }
+    public float Halation { get; init; }
 
     public static readonly (string Label, double? Ratio)[] CropChoices =
     [
@@ -62,31 +64,33 @@ public sealed record PhotoAdjust
         Contrast = Slider(Contrast), Highlights = Slider(Highlights), Shadows = Slider(Shadows), Whites = Slider(Whites), Blacks = Slider(Blacks),
         Saturation = Slider(Saturation), Vibrance = Slider(Vibrance), Temperature = Slider(Temperature), Tint = Slider(Tint),
         Vignette = Slider(Vignette), Sharpness = Slider(Sharpness, 0f), Grain = Slider(Grain, 0f),
+        Glow = Slider(Glow, 0f), Halation = Slider(Halation, 0f),
     };
 
     private static float Slider(float v, float min = -100f) => Math.Clamp(float.IsFinite(v) ? v : 0f, min, 100f);
 
     public bool HasGeometry => Normalized() is { Quarter: not 0 } or { Straighten: not 0f } or { Aspect: not null } or { Zoom: > 1f } or { PanX: not 0f } or { PanY: not 0f };
     public bool HasExposure => Normalized().Exposure != 0f;
-    // Anything the tone pass does: exposure, light, colour, sharpness, vignette, grain.
+    // Anything the tone pass does: exposure, light, colour, sharpness, glow, halation, vignette, grain.
     public bool HasTone => Normalized() is { Exposure: not 0f } or { Contrast: not 0f } or { Highlights: not 0f } or { Shadows: not 0f }
         or { Whites: not 0f } or { Blacks: not 0f } or { Saturation: not 0f } or { Vibrance: not 0f } or { Temperature: not 0f }
-        or { Tint: not 0f } or { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f };
+        or { Tint: not 0f } or { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f }
+        or { Glow: not 0f } or { Halation: not 0f };
     public bool HasLight => Normalized() is { Exposure: not 0f } or { Contrast: not 0f } or { Highlights: not 0f } or { Shadows: not 0f } or { Whites: not 0f } or { Blacks: not 0f };
     public bool HasColor => Normalized() is { Saturation: not 0f } or { Vibrance: not 0f } or { Temperature: not 0f } or { Tint: not 0f };
-    public bool HasEffects => Normalized() is { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f };
+    public bool HasEffects => Normalized() is { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f } or { Glow: not 0f } or { Halation: not 0f };
     public bool IsNoOp => !HasGeometry && !HasTone;
 
     // The geometry half and the tone half, so a preview can cache the slow geometry and redo only the tone.
     public PhotoAdjust WithoutTone() => this with
     {
         Exposure = 0, Contrast = 0, Highlights = 0, Shadows = 0, Whites = 0, Blacks = 0, Saturation = 0, Vibrance = 0,
-        Temperature = 0, Tint = 0, Sharpness = 0, Vignette = 0, Grain = 0
+        Temperature = 0, Tint = 0, Sharpness = 0, Vignette = 0, Grain = 0, Glow = 0, Halation = 0
     };
     public PhotoAdjust ToneOnly() => new()
     {
         Exposure = Exposure, Contrast = Contrast, Highlights = Highlights, Shadows = Shadows, Whites = Whites, Blacks = Blacks,
-        Saturation = Saturation, Vibrance = Vibrance, Temperature = Temperature, Tint = Tint, Sharpness = Sharpness, Vignette = Vignette, Grain = Grain
+        Saturation = Saturation, Vibrance = Vibrance, Temperature = Temperature, Tint = Tint, Sharpness = Sharpness, Vignette = Vignette, Grain = Grain, Glow = Glow, Halation = Halation
     };
 
     // Size of the cropped result for a photo of the given size (before any resizing).
@@ -191,7 +195,7 @@ public sealed record PhotoAdjust
         catch { img.Dispose(); throw; }
     }
 
-    // Order: exposure + white balance (linear light) → light → colour → sharpen → vignette + grain.
+    // Order: exposure + white balance (linear light) → light → colour → sharpen → glow + halation → vignette + grain.
     // Exposure alone keeps the one-table fast path; anything else runs one per-pixel pass.
     private static void ApplyTone(Image<Rgb24> img, PhotoAdjust a)
     {
@@ -226,6 +230,7 @@ public sealed record PhotoAdjust
             });
         }
         if (a.Sharpness > 0f) Sharpen(img, a.Sharpness / 100f);
+        LightEffects.Apply(img, a.Glow / 100f, a.Halation / 100f);
         if (a.Vignette != 0f || a.Grain > 0f) ApplyVignetteGrain(img, a.Vignette / 100f, a.Grain / 100f);
     }
 

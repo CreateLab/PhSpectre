@@ -1,7 +1,7 @@
 PhSpectre grades a photo with a look, wraps it in a frame and exports it. Everything happens on your device — no account, no ads, no network.
 
 LOOK
-• 46 built-in looks in categories: Historic, Alt process, Film, Cinema, B&W, Toy camera, Creative
+• 68 built-in looks in categories: Neon, Games, Cinema, Film, Portrait, B&W, Historic, Alt process, Toy camera
 • Every tile is previewed on your own photo; one Amount slider blends the look in
 • Import your own Lightroom presets (.xmp), .cube LUTs or a .zip of them; favourites are one tap away
 

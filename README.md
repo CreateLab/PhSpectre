@@ -21,7 +21,7 @@ The app has three modes: **Edit** (one photo, three tabs: Look · Frame · Expor
 
 **Everything above is available on Android too** — the same Edit, Collage and Camera modes, looks and recipe writing over USB (OTG), with the layout adapted for tablets and phones.
 
-- **Look** — 46 bundled looks sorted into categories (Historic, Alt process, Film, Cinema, B&W, Toy camera, Creative): 25 Lightroom-style presets and 21 `.cube` LUTs, every tile rendered on *your* photo. A single Amount slider blends the look in. Import your own `.xmp` presets, `.cube` LUTs or a `.zip` of them; imports are kept between sessions, and favourites are one click away.
+- **Look** — 68 bundled looks sorted into categories (Neon, Games, Cinema, Film, Portrait, B&W, Historic, Alt process, Toy camera): 23 Lightroom-style presets and 45 `.cube` LUTs, every tile rendered on *your* photo. A single Amount slider blends the look in; Glow and Halation under Effects add bloom around lights and neon and a film-like warm fringe. Import your own `.xmp` presets, `.cube` LUTs or a `.zip` of them; imports are kept between sessions, and favourites are one click away.
 - **Frame** — None, a plain **Border**, a **Card** (palette swatches, camera info plate, QR), a **Recipe** card or a **Film** edge (sprocket holes with the shot data printed on them). Border, Card and Film are built on the graded photo, so a Look carries through to the export.
 - **Export** — JPEG or PNG, original size, half size or a social preset (square, IG post, story, TG landscape). One Export button for everything, and "Export all" for a whole folder.
 - **Palette** — dominant colors from any JPEG or HEIF/HEIC photo, k-means++ in HSL space, auto or fixed color count.

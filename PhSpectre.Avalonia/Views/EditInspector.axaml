@@ -176,6 +176,16 @@
                             <TextBlock Grid.Column="2" Text="{Binding Sharpness, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                         <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Glow" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Glow}" AutomationProperties.Name="Glow"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Glow, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
+                            <TextBlock Text="Halation" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Halation}" AutomationProperties.Name="Halation"/>
+                            <TextBlock Grid.Column="2" Text="{Binding Halation, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid ColumnDefinitions="84,*,56">
                             <TextBlock Text="Vignette" Classes="hint" VerticalAlignment="Center"/>
                             <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vignette}" AutomationProperties.Name="Vignette"/>
                             <TextBlock Grid.Column="2" Text="{Binding Vignette, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>

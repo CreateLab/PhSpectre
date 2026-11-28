@@ -16,7 +16,7 @@ PhSpectre uses the following open-source components. Each is used under its own 
 
 ## Bundled content
 
-- **Looks** (`PhSpectre.Avalonia/Assets/Looks`): the 25 presets and 21 LUTs shipped with the app.
+- **Looks** (`PhSpectre.Avalonia/Assets/Looks`): the 23 presets and 45 LUTs shipped with the app.
 - **Community film recipes** (`PhSpectre.Avalonia/Assets/Recipes/library.json`): camera settings only (no images), each credited to its author with a link to the source inside the app.
 
 Fujifilm and film simulation names are trademarks of their respective owners; PhSpectre is not affiliated with them.

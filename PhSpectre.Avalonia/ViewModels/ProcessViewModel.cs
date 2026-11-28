@@ -655,6 +655,8 @@ public partial class ProcessViewModel : ViewModelBase
     [ObservableProperty] private double _sharpness;
     [ObservableProperty] private double _vignette;
     [ObservableProperty] private double _grain;
+    [ObservableProperty] private double _glow;
+    [ObservableProperty] private double _halation;
     private bool _noReclamp;
 
     // Inner sections of the Look tab: Looks · Crop · Light · Color · Effects.
@@ -721,7 +723,7 @@ public partial class ProcessViewModel : ViewModelBase
     private PhotoAdjust CurrentAdjustSettings() => new PhotoAdjust
     {
         Quarter = Quarter, Straighten = (float)Straighten, Zoom = (float)Zoom, Exposure = (float)Exposure, PanX = (float)PanX, PanY = (float)PanY,
-        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites, Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance, Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness, Vignette = (float)Vignette, Grain = (float)Grain,
+        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites, Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance, Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness, Vignette = (float)Vignette, Grain = (float)Grain, Glow = (float)Glow, Halation = (float)Halation,
         Aspect = PhotoAdjust.CropChoices[Math.Clamp(CropIndex, 0, PhotoAdjust.CropChoices.Length - 1)].Ratio
     }.Normalized();
 
@@ -731,7 +733,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ApplyAdjustSettings(PhotoAdjust a)
     {
         Quarter = a.Quarter; Straighten = a.Straighten; Zoom = a.Zoom; Exposure = a.Exposure; PanX = a.PanX; PanY = a.PanY;
-        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks; Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint; Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain;
+        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks; Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint; Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain; Glow = a.Glow; Halation = a.Halation;
         CropIndex = Math.Max(0, Array.FindIndex(PhotoAdjust.CropChoices, c => c.Ratio == a.Aspect));
     }
 
@@ -809,13 +811,15 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnSharpnessChanged(double value) => AdjustChanged(false, geometry: false);
     partial void OnVignetteChanged(double value) => AdjustChanged(false, geometry: false);
     partial void OnGrainChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnGlowChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnHalationChanged(double value) => AdjustChanged(false, geometry: false);
 
     [RelayCommand] private void RotateLeft() => Quarter = (Quarter + 3) % 4;
     [RelayCommand] private void RotateRight() => Quarter = (Quarter + 1) % 4;
     [RelayCommand] private void ResetExposure() => Exposure = 0;
     [RelayCommand] private void ResetLight() => ResetGroup(() => { Exposure = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; });
     [RelayCommand] private void ResetColor() => ResetGroup(() => { Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; });
-    [RelayCommand] private void ResetEffects() => ResetGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; });
+    [RelayCommand] private void ResetEffects() => ResetGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; });
     private void ResetGroup(Action reset)
     {
         _restoring = true;
@@ -836,7 +840,7 @@ public partial class ProcessViewModel : ViewModelBase
     private void ResetPhotoAdjust()
     {
         _restoring = true;
-        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; }
+        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; }
         finally { _restoring = false; }
         RaiseAdjustTexts();
         _commitTimer?.Stop();
@@ -879,7 +883,7 @@ public partial class ProcessViewModel : ViewModelBase
         if (LookIsCrop)
         {
             // Crop view: exposure and Look, but no geometry, frame or film.
-            var tone = CurrentAdjustSettings().ToneOnly() with { Sharpness = 0, Vignette = 0, Grain = 0 };
+            var tone = CurrentAdjustSettings().ToneOnly() with { Sharpness = 0, Vignette = 0, Grain = 0, Glow = 0, Halation = 0 };
             if (stack.IsEmpty && !tone.HasTone) { _renderEpoch++; _pendingRender = null; CropBase = Original; IsRendering = false; return; }
             IsRendering = true;
             int ep = _renderEpoch;

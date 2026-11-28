@@ -241,4 +241,57 @@ public class PhotoAdjustTests
         using var o = new PhotoAdjust { Straighten = 5, Zoom = 2, Temperature = 50 }.Render(src);
         Assert.True(o[10, 10].R > o[10, 10].B);
     }
+
+    // A bright neon square in the middle of a dark frame.
+    private static Image<Rgb24> Lamp(int size, Rgb24 colour)
+    {
+        var img = Photo(size, size, new Rgb24(10, 10, 10));
+        for (int y = size * 2 / 5; y < size * 3 / 5; y++)
+            for (int x = size * 2 / 5; x < size * 3 / 5; x++) img[x, y] = colour;
+        return img;
+    }
+
+    [Fact]
+    public void Glow_SpreadsTheColourOfALight_AndLeavesFarCornersAlone()
+    {
+        using var src = Lamp(200, new Rgb24(255, 20, 200));
+        using var o = new PhotoAdjust { Glow = 100 }.Render(src);
+        var beside = o[74, 100];
+        Assert.True(beside.R > 30, $"no glow beside the light: {beside}");
+        Assert.True(beside.R > beside.G && beside.B > beside.G);
+        Assert.InRange(o[0, 0].R, 10, 14);
+        Assert.True(new PhotoAdjust { Glow = 1 }.HasEffects);
+        Assert.True(new PhotoAdjust { Glow = 1 }.WithoutTone().IsNoOp);
+        Assert.Equal(1f, new PhotoAdjust { Glow = 1 }.ToneOnly().Glow);
+    }
+
+    [Fact]
+    public void Halation_PutsAWarmFringeAroundWhiteLight()
+    {
+        using var src = Lamp(200, new Rgb24(255, 255, 255));
+        using var o = new PhotoAdjust { Halation = 100 }.Render(src);
+        var beside = o[78, 100];
+        Assert.True(beside.R > beside.G + 15 && beside.G >= beside.B, $"fringe is not warm: {beside}");
+        Assert.Equal(new Rgb24(255, 255, 255), o[100, 100]);
+    }
+
+    [Fact]
+    public void GlowAndHalation_LeaveADarkPictureUntouched()
+    {
+        using var src = Photo(120, 80, new Rgb24(90, 60, 40));
+        using var o = new PhotoAdjust { Glow = 100, Halation = 100 }.Render(src);
+        Assert.Equal(new Rgb24(90, 60, 40), o[60, 40]);
+    }
+
+    [Fact]
+    public void Glow_LooksTheSameOnPreviewAndFullSize()
+    {
+        using var small = Lamp(600, new Rgb24(40, 255, 120));
+        using var large = Lamp(2400, new Rgb24(40, 255, 120));
+        var adjust = new PhotoAdjust { Glow = 80, Halation = 40 };
+        using var a = adjust.Render(small);
+        using var b = adjust.Render(large);
+        foreach (var x in new[] { 150, 200, 225 })
+            Assert.InRange(b[x * 4, 1200].G, a[x, 300].G - 6, a[x, 300].G + 6);
+    }
 }
