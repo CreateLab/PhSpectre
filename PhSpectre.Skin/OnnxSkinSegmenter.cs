@@ -44,6 +44,8 @@ public sealed class OnnxSkinSegmenter : ISkinSegmenter
     private static InferenceSession Create(byte[] model)
     {
         int threads = Math.Clamp(Environment.ProcessorCount / 2, 1, 4);
+        // The Windows build can report usage events to the system's tracing; nothing here may report anything.
+        OrtEnv.Instance().DisableTelemetryEvents();
         try
         {
             using var options = new SessionOptions { IntraOpNumThreads = 1 };

@@ -1,6 +1,6 @@
 # Play Console cheat sheet
 
-Facts below were verified on the Play build 3.0.0 (code 18): no `INTERNET`, no storage/other permissions,
+Facts below were verified on the Play build 3.1.0 (code 21): no `INTERNET`, no storage/other permissions,
 no ads/analytics SDKs, only network code (GitHub update check) is compiled out under `PLAY_STORE`.
 
 ## Store settings

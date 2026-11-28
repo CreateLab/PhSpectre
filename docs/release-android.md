@@ -37,7 +37,8 @@ Verified for 3.0.0 / code 18 (Play build):
 - Merged manifest: no `INTERNET`, no storage permissions; `android.hardware.usb.host` has `required="false"`;
   `targetSdkVersion=36`, `minSdkVersion=29`.
 - All 216 native `.so` in the AAB have LOAD segment alignment `0x4000` (16 KB page size ready).
-- Only `UpdateChecker` uses the network and it is disabled under `PLAY_STORE`.
+- Only `UpdateChecker` uses the network and it is disabled under `PLAY_STORE`. Libraries can bring permissions and
+  telemetry of their own (ONNX Runtime 1.31.1 did), so the script fails if the merged manifest asks for the network.
 
 Re-check after dependency updates: unzip the AAB, parse ELF program headers of `base/lib/*/*.so` (Align must be
 `>= 0x4000`) and read `obj/Release/net10.0-android36.0/android/AndroidManifest.xml`.

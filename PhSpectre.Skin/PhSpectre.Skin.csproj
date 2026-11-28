@@ -7,7 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
+        <!-- Stay on a version without telemetry: later ones (seen in 1.31.1) send it to Microsoft and add the INTERNET
+             permission on Android. Check a new version for both before moving. -->
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.23.2" />
     </ItemGroup>
 
     <ItemGroup>

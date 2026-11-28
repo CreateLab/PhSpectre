@@ -35,4 +35,10 @@ $dotnetArgs += "-p:ApplicationDisplayVersion=$DisplayVersion"
 $dotnetArgs += "-p:InformationalVersion=$DisplayVersion"
 dotnet @dotnetArgs
 if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
+# A library can add permissions of its own to the merged manifest; the Play build must not reach the network.
+$merged = Get-ChildItem "$root\PhSpectre.Android\obj\Release" -Recurse -Filter AndroidManifest.xml |
+    Where-Object { $_.Directory.Name -eq 'android' } | Select-Object -First 1
+if (-not $merged) { throw "Merged AndroidManifest.xml not found; cannot check the permissions" }
+$network = Select-String -Path $merged.FullName -Pattern 'android\.permission\.(INTERNET|ACCESS_NETWORK_STATE)|TelemetryInitializer'
+if ($network) { throw "The Play build must not use the network:`n$($network.Line -join "`n")" }
 Get-ChildItem "$root\PhSpectre.Android\bin\Release" -Recurse -Filter *-Signed.aab | Select-Object -ExpandProperty FullName
