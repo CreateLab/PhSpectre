@@ -1,1 +1,7 @@
-First release on Google Play: film looks, frames (border, card, recipe, film edge), collage, palette and QR cards, and optional camera recipe writing over USB.
+• Skin smoothing and 5 portrait presets
+• Noise reduction and a 100% view
+• 88 looks: two-tone, neon, games, cinema and more
+• Glow and halation sliders
+• Histogram and one-tap Auto light
+• Interface in English, Russian and Spanish
+• Fixes: Export all keeps existing files, correct slow shutter speeds on cards, safer camera restore
