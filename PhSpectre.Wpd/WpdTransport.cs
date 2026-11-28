@@ -6,8 +6,7 @@ namespace PhSpectre.Wpd;
 public sealed record WpdDeviceInfo(string PnpId, string FriendlyName);
 
 /// <summary>
-/// <see cref="IPtpTransport"/> that tunnels PTP operations through the Windows MTP driver using WPD's
-/// MTP vendor-extension commands. Windows opens the MTP session itself, so OpenSession is normally
+/// PTP over the Windows MTP driver (WPD vendor extension). Windows owns the session, so OpenSession is usually
 /// answered with SessionAlreadyOpen, which <see cref="PtpSession"/> accepts.
 /// </summary>
 public sealed class WpdTransport : IPtpTransport
@@ -37,7 +36,7 @@ public sealed class WpdTransport : IPtpTransport
             manager.GetDevices(IntPtr.Zero, ref count);
             if (count == 0) return [];
 
-            // Raw LPWSTR[] buffer: the default COM marshaller would turn an IntPtr[] into a SAFEARRAY.
+            // Raw LPWSTR[]: the default marshaller would pass a SAFEARRAY.
             var ids = Marshal.AllocCoTaskMem((int)count * IntPtr.Size);
             try
             {
@@ -130,8 +129,7 @@ public sealed class WpdTransport : IPtpTransport
 
     private PtpResponse Execute(ushort operation, uint[] parameters, byte[]? dataOut, bool expectDataIn)
     {
-        // The MTP driver owns the session lifecycle and rejects a hand-sent Open/CloseSession
-        // (observed on X-T5: ParameterNotSupported 0x2006), so report success without sending.
+        // The driver owns the session and rejects Open/CloseSession (X-T5: 0x2006).
         if (operation is PtpSession.OperationOpenSession or PtpSession.OperationCloseSession)
             return new PtpResponse(PtpSession.ResponseOk, [], null);
 
@@ -314,7 +312,7 @@ public sealed class WpdTransport : IPtpTransport
         }
         catch (COMException)
         {
-            // Result carries no HRESULT; treat as success.
+            // No HRESULT here: success.
         }
     }
 

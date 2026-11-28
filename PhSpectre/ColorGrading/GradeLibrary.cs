@@ -12,24 +12,23 @@ public sealed class GradeEntry
     public GradeKind Kind { get; set; }
     public string Category { get; set; } = "";
     public bool Favorite { get; set; }
-    // File name inside the library folder (never a full path, so the library can be moved).
+    // File name inside the library folder, so the library can be moved.
     public string FileName { get; set; } = "";
     public DateTime AddedUtc { get; set; }
     public DateTime? LastUsedUtc { get; set; }
-    // Preset parameters we parsed but cannot reproduce (shown to the user at import and later).
+    // Settings that cannot be reproduced.
     public List<string> Skipped { get; set; } = [];
-    // Ships with the app: cannot be renamed or deleted, only favorited.
+    // Bundled: only favourite and last-used can change.
     [System.Text.Json.Serialization.JsonIgnore] public bool Bundled { get; set; }
 }
 
-// Looks that ship inside the app: read-only, stable ids; only Favorite/LastUsed are stored for them.
+// Bundled looks are read-only with stable ids.
 public sealed record BundledGrade(GradeEntry Entry, Func<byte[]> ReadBytes);
 
 public sealed record GradeImportResult(string Source, GradeEntry? Entry, string? Error);
 
-// User library of .cube LUTs and Lightroom .xmp presets. Lives in its own folder (kept apart from
-// anything bundled with the app, so updates never touch it): <root>/luts, <root>/presets, index.json.
-// Files are validated with the real parsers before being accepted.
+// The user's .cube and .xmp library in its own folder: luts, presets, index.json. Files are parsed before being
+// accepted.
 public sealed class GradeLibrary
 {
     public const long MaxFileBytes = 64L * 1024 * 1024;
@@ -103,8 +102,7 @@ public sealed class GradeLibrary
         DropUserCopiesOfBundled();
     }
 
-    // Copies imported before the app shipped these Looks would show up twice. Byte-identical copies
-    // with the same name are folded into the bundled entry (favorite / last-used carry over).
+    // Earlier imports of what is now bundled would show twice: identical copies are folded into the bundled entry.
     private void DropUserCopiesOfBundled()
     {
         if (_bundled.Count == 0 || _entries.Count == 0) return;
@@ -180,7 +178,7 @@ public sealed class GradeLibrary
                 using var s = e.Open();
                 using var ms = new MemoryStream();
                 s.CopyTo(ms);
-                // Only the leaf name is used: entry paths are never written to disk (zip-slip safe).
+                // Leaf name only, so zip entries cannot escape.
                 results.Add(ImportBytes(e.Name, ms.ToArray(), category));
             }
             if (n == 0) results.Add(new(zipPath, null, "В архиве нет файлов .cube или .xmp."));
@@ -230,7 +228,7 @@ public sealed class GradeLibrary
 
         lock (_gate)
         {
-            // Importing something the app already ships just returns the bundled Look.
+            // Importing a bundled file returns the bundled look.
             var twin = _bundled.FirstOrDefault(b => b.Entry.Kind == kind && b.ReadBytes().AsSpan().SequenceEqual(data));
             if (twin != null) return new(fileName, twin.Entry, null);
 

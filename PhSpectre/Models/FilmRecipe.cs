@@ -21,8 +21,8 @@ public sealed record FilmRecipe(
     string? ColorChromeEffect,
     string? ColorChromeFxBlue,
     int? BwAdjustment,
-    // Slot-only settings (never in MakerNote, so the JPEG extractor leaves them null). Optional and last
-    // so existing positional construction and stored JSON keep working.
+    // Slot-only settings, null from JPEGs. Optional and last, so stored JSON and positional construction keep
+    // working.
     string? GrainSize = null,
     string? SmoothSkinEffect = null,
     int? ColorTemperature = null

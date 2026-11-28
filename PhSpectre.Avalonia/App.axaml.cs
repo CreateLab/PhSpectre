@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,16 +17,14 @@ namespace PhSpectre.Avalonia;
 
 public partial class App : Application
 {
-    // Set by the Android host (PhSpectre.Android/Application.cs), read directly from
-    // Android's Configuration.UiMode, before framework init runs. Avalonia's own
-    // PlatformSettings-based system-theme detection isn't reliable at this point on
-    // Android (seen returning Light regardless of the phone's actual setting), so the
-    // Android head reads the OS config itself instead of us querying PlatformSettings
-    // here. Other platforms ignore this.
+    // Set by the Android head before framework init: Avalonia's system theme detection is unreliable there at this
+    // point.
     public static bool PreferLightPalette;
 
     public override void Initialize()
     {
+        // Before any XAML or view model reads a string.
+        Loc.Use(SettingsStorage.Load().Language);
         AvaloniaXamlLoader.Load(this);
         Views.SliderTapToSeek.Register();
     }
@@ -68,17 +67,12 @@ public partial class App : Application
 
         base.OnFrameworkInitializationCompleted();
 
-        // Fire-and-forget: never blocks startup, and CheckAsync() itself no-ops
-        // silently on dev builds, network failures, or when the daily cooldown hasn't
-        // elapsed yet.
+        // Never blocks startup; CheckAsync stays silent on dev builds, network errors and during the cooldown.
         _ = AppUpdateService.Instance.CheckAsync();
     }
 
-    // App theme (System / Light / Dark). Tokens live in Colors.axaml's ThemeDictionaries and are
-    // consumed through DynamicResource, so flipping RequestedThemeVariant restyles the open
-    // window in place. System on Android uses the phone's UI mode read by the Android head
-    // (PreferLightPalette) because Avalonia's own system-theme detection is unreliable there.
-    // This is the app chrome only — the exported card has its own theme (Style → Card).
+    // App chrome only (the exported card has its own theme). Colours come through DynamicResource, so the open
+    // window restyles in place. On Android "System" follows PreferLightPalette.
     public static void ApplyAppearance(AppAppearance appearance)
     {
         if (Current is not { } app) return;

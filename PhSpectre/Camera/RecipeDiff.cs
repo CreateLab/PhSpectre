@@ -4,7 +4,6 @@ namespace PhSpectre.Camera;
 
 public sealed record RecipeChange(string Field, string Was, string Will);
 
-/// <summary>What a write would change in a slot, as the slot itself would read back afterwards.</summary>
 public sealed record RecipeDiffResult(IReadOnlyList<RecipeChange> Changes, int Unchanged);
 
 public static class RecipeDiff
@@ -33,10 +32,7 @@ public static class RecipeDiff
         ("B&W Adjustment", r => r.BwAdjustment is { } v ? Signed(v) : null),
     ];
 
-    /// <summary>
-    /// Applies the encoded writes to a copy of the slot and compares the two decoded results, so skipped
-    /// fields and fields the recipe leaves null correctly show as unchanged.
-    /// </summary>
+    /// <summary>Compares the decoded slot before and after the writes, so skipped and null fields show as unchanged.</summary>
     public static RecipeDiffResult Compute(IReadOnlyDictionary<ushort, byte[]> slot, SlotEncoding encoding, string model)
     {
         var after = slot.ToDictionary(kv => kv.Key, kv => kv.Value);

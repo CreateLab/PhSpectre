@@ -5,9 +5,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// A border around a photo. The photo itself is never resampled or cropped: the canvas grows around it.
-// Thickness is relative to the photo's short side, so the same frame looks the same at preview size
-// and at export size.
+// A border around a photo; the photo is never resampled. Sizes are relative to its short side.
 public sealed record PhotoFrame
 {
     public const float MaxThicknessPercent = 30f;
@@ -22,8 +20,7 @@ public sealed record PhotoFrame
     // Extra space under the photo (instant-film look), percent of the short side (0..40).
     public float BottomExtraPercent { get; init; }
     public string ColorHex { get; init; } = "#FFFFFF";
-    // Canvas width / height. null keeps the shape of the photo plus the border; otherwise the canvas is
-    // widened or heightened (never shrunk) to this ratio, with the photo centred.
+    // Canvas width / height; the canvas only grows to reach it. Null keeps the shape.
     public double? Aspect { get; init; }
 
     public static readonly (string Label, double? Ratio)[] AspectChoices =
@@ -44,7 +41,7 @@ public sealed record PhotoFrame
         new() { Id = "print-10x15", Name = "Print 3:2", IsBuiltIn = true, ThicknessPercent = 3f, ColorHex = "#FFFFFF", Aspect = 3.0 / 2 },
     ];
 
-    // Out-of-range values are clamped rather than rejected, so a hand-edited or old saved frame still renders.
+    // Clamped, so old or hand-edited frames still render.
     public PhotoFrame Normalized() => this with
     {
         ThicknessPercent = Math.Clamp(float.IsFinite(ThicknessPercent) ? ThicknessPercent : 0f, 0f, MaxThicknessPercent),
@@ -85,7 +82,7 @@ public sealed record PhotoFrame
     }
 }
 
-// Saved custom frames: one JSON file, kept apart from the built-ins (which live in code).
+// Saved custom frames, one JSON file.
 public sealed class PhotoFrameStore
 {
     private readonly string _path;

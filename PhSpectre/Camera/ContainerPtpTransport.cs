@@ -15,7 +15,7 @@ public sealed class ContainerPtpTransport : IPtpTransport
 
     public async Task<PtpResponse> ExecuteAsync(ushort operation, uint[] parameters, byte[]? dataOut, bool expectDataIn = false, CancellationToken ct = default)
     {
-        // OpenSession is the only operation sent with transaction id 0 (PTP 1.1, 9.3.1); the counter restarts after it.
+        // Only OpenSession uses transaction id 0 (PTP 1.1, 9.3.1).
         uint transactionId;
         if (operation == PtpSession.OperationOpenSession)
             transactionId = _transactionId = 0;

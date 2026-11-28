@@ -17,9 +17,7 @@ internal sealed class ImageSamplerService
         return ExtractPixels(image);
     }
 
-    // Samples an already-decoded image directly — avoids re-decoding from disk when the
-    // caller (e.g. the mobile pipeline) already has the working copy in memory. Clones
-    // before resizing so the caller's image, still needed for rendering, is untouched.
+    // Clones before resizing, so the caller's image is untouched.
     public Task<(byte R, byte G, byte B)[]> SampleAsync(
         Image<Rgb24> image,
         CancellationToken cancellationToken = default)

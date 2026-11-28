@@ -6,6 +6,7 @@ using Avalonia.Android;
 using PhSpectre.Avalonia;
 using PhSpectre.Avalonia.Services;
 using PhSpectre.Services;
+using PhSpectre.Skin;
 
 namespace PhSpectre.Android
 {
@@ -24,10 +25,10 @@ namespace PhSpectre.Android
             FileDialogService.GallerySaver = GallerySaver.SaveAsync;
             PhSpectre.Avalonia.Services.CameraService.TransportFactory = AndroidUsbCameraTransport.OpenFirstFujifilmAsync;
             ImageLoader.FastWorkingCopyDecoder = NativeImageDecoder.TryDecodeWorkingCopy;
+            OnnxSkinSegmenter.Register(ex => AppLogger.LogError("Skin model failed", ex));
 
-            // Read the OS's own dark/light setting directly instead of through
-            // Avalonia's PlatformSettings, which isn't reliable for this on Android.
-            // Must be set before base.CustomizeAppBuilder() runs framework init.
+            // Avalonia's PlatformSettings is unreliable for this on Android. Must run before
+            // base.CustomizeAppBuilder.
             var nightMode = Resources?.Configuration?.UiMode & UiMode.NightMask;
             App.PreferLightPalette = nightMode != UiMode.NightYes;
 

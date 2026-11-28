@@ -3,10 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace PhSpectre.Models;
 
-// Same gap as WhiteBalanceShiftJsonConverter (see its comment) — ColorSwatch.Rgb is also a
-// ValueTuple and would otherwise serialize as {} (or {"Item1":..,"Item2":..,"Item3":..} with
-// IncludeFields). Nothing serialized ColorSwatch to JSON before the API's json=true response
-// mode, so this never surfaced until then.
+// ValueTuple again, as in WhiteBalanceShiftJsonConverter.
 public sealed class RgbJsonConverter : JsonConverter<(byte R, byte G, byte B)>
 {
     public override (byte R, byte G, byte B) Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

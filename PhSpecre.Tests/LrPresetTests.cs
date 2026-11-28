@@ -134,6 +134,85 @@ public class LrPresetTests
         Assert.True(o.G < o.R && o.G < o.B, o.ToString());
     }
 
+    // Flat grey halves with an edge between them, plus a little fixed noise.
+    private static Image<Rgb24> Picture(int w = 320, int h = 240, int noise = 0)
+    {
+        var img = new Image<Rgb24>(w, h);
+        var random = new Random(7);
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                byte v = (byte)Math.Clamp((x < w / 2 ? 90 : 170) + random.Next(-noise, noise + 1), 0, 255);
+                img[x, y] = new Rgb24(v, v, v);
+            }
+        return img;
+    }
+
+    private static int Changed(Image<Rgb24> a, Image<Rgb24> b, int tolerance = 0)
+    {
+        int n = 0;
+        for (int y = 0; y < a.Height; y++)
+            for (int x = 0; x < a.Width; x++)
+                if (Math.Abs(a[x, y].G - b[x, y].G) > tolerance) n++;
+        return n;
+    }
+
+    [Fact]
+    public void Parse_DetailSettingsWeApply_AreNotSkipped() =>
+        Assert.Empty(LrPreset.Parse(Xmp("crs:Sharpness=\"40\" crs:LuminanceSmoothing=\"20\" crs:ColorNoiseReduction=\"25\" crs:GrainAmount=\"30\"")).Skipped);
+
+    [Fact]
+    public void Apply_Sharpness_StrengthensEdges_UnlessDetailIsOff()
+    {
+        var preset = LrPreset.Parse(Xmp("crs:Sharpness=\"150\""));
+        using var plain = Picture();
+        using var sharp = Picture();
+        using var thumb = Picture();
+        LrPresetApplier.Apply(sharp, preset);
+        LrPresetApplier.Apply(thumb, preset, detail: false);
+        Assert.True(sharp[159, 100].G < plain[159, 100].G && sharp[160, 100].G > plain[160, 100].G);
+        Assert.Equal(0, Changed(plain, thumb, 1));
+    }
+
+    [Fact]
+    public void Apply_LuminanceSmoothing_CleansNoise()
+    {
+        using var clean = Picture();
+        using var noisy = Picture(noise: 8);
+        using var treated = Picture(noise: 8);
+        LrPresetApplier.Apply(treated, LrPreset.Parse(Xmp("crs:LuminanceSmoothing=\"80\"")));
+        Assert.True(Changed(clean, treated, 3) < Changed(clean, noisy, 3) / 2);
+    }
+
+    [Fact]
+    public void Apply_ZeroStrength_SkipsDetailEffectsToo()
+    {
+        using var before = Picture(noise: 8);
+        using var after = Picture(noise: 8);
+        LrPresetApplier.Apply(after, LrPreset.Parse(Xmp("crs:Sharpness=\"100\" crs:LuminanceSmoothing=\"80\" crs:GrainAmount=\"80\"")), 0f);
+        Assert.Equal(0, Changed(before, after));
+    }
+
+    // Neighbouring pixels differ less when each grain covers several of them.
+    private static double NeighbourStep(int longSide, string attrs)
+    {
+        using var img = Picture();
+        LrPresetApplier.Apply(img, LrPreset.Parse(Xmp(attrs)), photoLongSide: longSide);
+        double sum = 0;
+        for (int y = 0; y < img.Height; y++)
+            for (int x = 1; x < img.Width / 2; x++)
+                sum += Math.Abs(img[x, y].G - img[x - 1, y].G);
+        return sum / (img.Height * (img.Width / 2 - 1));
+    }
+
+    [Fact]
+    public void Grain_GrowsWithThePhotoAndWithGrainSize()
+    {
+        const string grain = "crs:GrainAmount=\"60\"";
+        Assert.True(NeighbourStep(6000, grain) < NeighbourStep(1600, grain) * 0.7);
+        Assert.True(NeighbourStep(3200, grain + " crs:GrainSize=\"80\"") < NeighbourStep(3200, grain + " crs:GrainSize=\"10\"") * 0.8);
+    }
+
     [Fact]
     public void Bake_ProducesUsable3DLut()
     {

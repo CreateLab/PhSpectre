@@ -3,10 +3,8 @@ using System.Reflection;
 
 namespace PhSpectre.Avalonia.Services;
 
-// CI stamps InformationalVersion as "1.2.0+<sha>" via -p:InformationalVersion at publish
-// time (see .github/workflows/release.yml). Local/dev builds never set that property, so
-// Directory.Build.props defaults it to "0.0.0-dev" — anything that isn't a clean X.Y.Z is
-// treated as a dev build: shown as "dev", update checks silently skipped.
+// CI stamps "1.2.0+<sha>" (release.yml). Anything that is not X.Y.Z, such as the local default "0.0.0-dev", counts
+// as a dev build.
 public static class AppVersionInfo
 {
     public static string DisplayVersion { get; }

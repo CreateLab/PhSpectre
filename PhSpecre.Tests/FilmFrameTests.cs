@@ -122,7 +122,7 @@ public class FilmFrameTests
     {
         Assert.Equal(FilmStyle.BuiltIns.Count, FilmStyle.BuiltIns.Select(s => s.Id).Distinct().Count());
         Assert.True(FilmStyle.BuiltIns.Count >= 8);
-        // The name on the edge comes from the applied Look or the photo's film simulation, never from the preset.
+        // The name on the edge comes from the Look or the film simulation, never from the frame preset.
         Assert.All(FilmStyle.BuiltIns, s => Assert.True(string.IsNullOrEmpty(s.CustomText), s.Id));
         Assert.All(FilmStyle.BuiltIns, s => Assert.DoesNotContain(FilmToken.Custom, s.Zones.Values.SelectMany(z => z)));
     }
@@ -189,7 +189,6 @@ public class FilmFrameTests
     {
         var style = FilmStyle.BuiltIns.Single(s => s.Id == "film-grey");
         Assert.Equal("f/2.8", FilmFrameRenderer.ZoneText(style, FilmZone.HoleGaps, Meta(), 1));
-        // The gap text really lands on the sheet: the strip carries ink that a style without gaps doesn't.
         var noGaps = style with { Zones = style.Zones.Where(z => z.Key != FilmZone.HoleGaps).ToDictionary(z => z.Key, z => z.Value), Realism = 0, Dust = 0 };
         var withGaps = style with { Realism = 0, Dust = 0 };
         using var photo = new Image<Rgb24>(800, 500, new Rgb24(128, 128, 128));
@@ -276,7 +275,7 @@ public class FilmFrameTests
         int starts = 0;
         for (int y = 1; y < framed.Height; y++)
             if (framed[x, y] == holeColor && framed[x, y - 1] != holeColor) starts++;
-        // 720 + 2 mm of strip = 38 mm at 4.75 mm = 8 holes, give or take the ends.
+        // 38 mm of strip at 4.75 mm pitch is 8 holes.
         Assert.InRange(starts, 7, 9);
     }
 

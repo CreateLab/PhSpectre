@@ -2,12 +2,10 @@ using PhSpectre.Models;
 
 namespace PhSpectre.Recipes;
 
-// One displayable recipe parameter: a stable Key (what visibility is stored against), a short
-// Label for tight tiles, the FullLabel for the card and tooltips, and the shortened Value.
+// A displayable parameter: Key (stored for visibility), short and full label, value.
 public sealed record RecipeField(string Key, string Label, string FullLabel, string Value);
 
-// The recipe parameters in display order, plus the hide/show helpers shared by the card renderer
-// and the settings panel so the preview and the export always use the same visible list.
+// Parameters in display order, shared by the card and the settings panel.
 public static class RecipeFields
 {
     public const string WhiteBalance = "wb";
@@ -24,8 +22,7 @@ public static class RecipeFields
     public const string ColorChromeBlue = "ccblue";
     public const string BwAdjustment = "bw";
 
-    // "Color" preset hides nothing; "B&W" drops everything about colour; "Minimal" keeps the
-    // film simulation (the card title) and four main parameters.
+    // "B&W" drops the colour fields; "Minimal" keeps the simulation and four parameters.
     public static readonly IReadOnlySet<string> BlackAndWhiteHidden = new HashSet<string>
     {
         Color, WhiteBalance, WhiteBalanceShift, ColorChrome, ColorChromeBlue,
@@ -44,7 +41,7 @@ public static class RecipeFields
          || filmSimulation.Contains("sepia", StringComparison.OrdinalIgnoreCase)
          || filmSimulation.Contains("b&w", StringComparison.OrdinalIgnoreCase));
 
-    // Hidden keys are persisted/compared as one comma-separated string (record-friendly equality).
+    // Stored as one comma-separated string.
     public static IReadOnlySet<string> ParseKeys(string? csv) =>
         string.IsNullOrWhiteSpace(csv)
             ? new HashSet<string>()
@@ -68,7 +65,7 @@ public static class RecipeFields
         Add(DynamicRange, "Dynamic Range", "Dynamic Range", r.DynamicRange);
         if (r.HighlightTone is { } hi) Add(Highlight, "Highlight", "Highlight", hi.ToString("+0.#;-0.#;0"));
         if (r.ShadowTone is { } sh) Add(Shadow, "Shadow", "Shadow", sh.ToString("+0.#;-0.#;0"));
-        // Fujifilm Color is -4..+4; anything else is a mis-decoded tag, shown as a dash, not noise.
+        // Color is -4..+4; anything else shows as a dash.
         if (r.Color is { } col) Add(Color, "Color", "Color", col is >= -4 and <= 4 ? col.ToString("+0;-0;0") : "—");
         if (r.Sharpness is { } sharp) Add(Sharpness, "Sharpness", "Sharpness", sharp.ToString("+0;-0;0"));
         if (r.NoiseReduction is { } nr) Add(NoiseReduction, "Noise Red.", "Noise Reduction", nr.ToString("+0;-0;0"));

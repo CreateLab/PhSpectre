@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -9,29 +10,24 @@ namespace PhSpectre.Avalonia.Services;
 
 public static class FileDialogService
 {
-    // Set by the Android head at startup: writes straight into the Photos/Pictures
-    // gallery via MediaStore instead of showing a "where do you want to save this"
-    // dialog, which is what users expect from a mobile photo app. Falls back to the
-    // SAF save-file picker on platforms that don't register one (desktop, and any
-    // future mobile head that hasn't wired one up yet).
+    // Set by the Android head: saves straight into the gallery. Elsewhere the save-file picker is used.
     public static Func<string, string, Task<bool>>? GallerySaver { get; set; }
 
 
     public static async Task<string?> PickFolderAsync(TopLevel topLevel)
     {
         var result = await topLevel.StorageProvider.OpenFolderPickerAsync(
-            new FolderPickerOpenOptions { Title = "Select photo folder", AllowMultiple = false });
+            new FolderPickerOpenOptions { Title = Loc.T("Select photo folder"), AllowMultiple = false });
         return result.Count > 0 ? result[0].TryGetLocalPath() : null;
     }
 
-    // Batch-export destination picker — separate from PickFolderAsync (source folder) so
-    // it can default to a suggested start location (e.g. "<source>/palettes").
+    // Batch export destination, with a suggested start location.
     public static async Task<string?> PickExportFolderAsync(TopLevel topLevel, string suggestedStartDir)
     {
         var startFolder = await topLevel.StorageProvider.TryGetFolderFromPathAsync(suggestedStartDir);
         var result = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select destination folder",
+            Title = Loc.T("Select destination folder"),
             AllowMultiple = false,
             SuggestedStartLocation = startFolder
         });
@@ -51,8 +47,7 @@ public static class FileDialogService
         return result?.TryGetLocalPath();
     }
 
-    // The output can be PNG or JPEG depending on Settings.OutputFormat — pick the file-type
-    // filter to match, from the extension already baked into the suggested filename.
+    // The file type filter follows the extension of the suggested name.
     private static FilePickerFileType[] FileTypeChoicesFor(string suggestedName) =>
         Path.GetExtension(suggestedName).ToLowerInvariant() switch
         {
@@ -60,16 +55,10 @@ public static class FileDialogService
             _                  => [new FilePickerFileType("PNG")  { Patterns = ["*.png"] }]
         };
 
-    // Mobile pickers (e.g. Android SAF) hand back content-URI files with no local
-    // filesystem path, so picking/saving there has to go through streams instead.
+    // Mobile pickers return content URIs without a local path, so streams are used.
 
-    // HEIC/HEIF is offered on Desktop (PhSpectre.Heif gives it a real, verified-correct pixel
-    // decoder there) but deliberately withheld on Android: real-device testing found
-    // BitmapFactory does not actually decode these files there (contrary to the API-28+
-    // assumption HeifPixelDecoder.cs/NativeImageDecoder.cs were built on), so surfacing them in
-    // Android's picker would let a photo be selected that silently fails to load. Re-enable the
-    // commented-out patterns/mime types once Android-side HEIF decoding is actually fixed.
-    private static FilePickerFileType PhotoPickerFileType() => new("Photos")
+    // HEIC/HEIF is offered on desktop only: on real Android devices BitmapFactory failed to decode these files.
+    private static FilePickerFileType PhotoPickerFileType() => new(Loc.T("Photos"))
     {
         Patterns = OperatingSystem.IsAndroid()
             ? ["*.jpg", "*.jpeg"]
@@ -83,7 +72,7 @@ public static class FileDialogService
     {
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select a photo",
+            Title = Loc.T("Select a photo"),
             AllowMultiple = false,
             FileTypeFilter = [PhotoPickerFileType()]
         });
@@ -94,13 +83,11 @@ public static class FileDialogService
         return (stream, file.Name);
     }
 
-    // Collage mode's multi-pick — same content-URI-via-stream approach as PickImageAsync,
-    // just with AllowMultiple so a single picker trip fills the whole tray.
     public static async Task<IReadOnlyList<(Stream Stream, string FileName)>> PickImagesAsync(TopLevel topLevel)
     {
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Select photos for the collage",
+            Title = Loc.T("Select photos for the collage"),
             AllowMultiple = true,
             FileTypeFilter = [PhotoPickerFileType()]
         });

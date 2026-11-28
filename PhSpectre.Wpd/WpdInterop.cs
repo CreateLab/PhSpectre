@@ -2,9 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace PhSpectre.Wpd;
 
-// Hand-written COM declarations for the few WPD interfaces we use. Method order is the vtable order from
-// the Windows SDK headers (PortableDeviceApi.h / PortableDeviceTypes.h); unused methods are placeholders
-// that must stay so later slots line up.
+// Hand-written COM declarations. Method order is the vtable order of the SDK headers; placeholders must stay.
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct PropertyKey

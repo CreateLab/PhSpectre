@@ -5,18 +5,13 @@ public enum FujiBankAccess
 {
     /// <summary>Slots are read and written property by property (bank selector 0xD18C), as on the X-T5.</summary>
     Direct,
-    /// <summary>
-    /// Older bodies: no working per-slot path was found in public reports; slots live only inside the full
-    /// settings backup file. Not supported here, the UI shows manual steps instead.
-    /// </summary>
+    /// <summary>Older bodies: slots exist only inside the settings backup file. Not supported; the UI shows manual steps.</summary>
     BackupOnly,
 }
 
 /// <summary>
-/// What is known about one camera body. Slot counts differ per body. <see cref="WriteVerified"/> stays false
-/// until a body's encodings have been checked against JPEGs shot from its own slots; unverified bodies are
-/// read-only. <see cref="AbsentProperties"/> are slot properties the body does not have (reads fail), so a
-/// backup may skip them and the encoder must not write them.
+/// What is known about a camera body. <see cref="WriteVerified"/> stays false until its encodings were checked
+/// against JPEGs from its own slots. <see cref="AbsentProperties"/> are slot properties the body does not have.
 /// </summary>
 public sealed record FujiCameraProfile(
     string Model,
@@ -32,12 +27,11 @@ public static class FujiCameraProfiles
 {
     private static readonly IReadOnlySet<ushort> NoSmoothSkin = new HashSet<ushort> { FujiSlotCodec.PropSmoothSkin };
 
-    // Slot counts: X-T5 and X-M5 from live probes here; X-T50 measured by fujifilm-ptp-reference; the rest from
-    // that project's body list (docs/07-cameras.md) and the cameras' manuals (C1-C7 unless noted). Everything but
-    // the X-T5 is read-only until someone checks it against a real body.
+    // Slot counts: X-T5 and X-M5 probed here, X-T50 and the rest from fujifilm-ptp-reference and manuals. Only the
+    // X-T5 is writable.
     private static readonly IReadOnlyList<FujiCameraProfile> Known =
     [
-        // X-Processor 5 (same generation as the verified X-T5)
+        // X-Processor 5
         new("X-T5", SlotCount: 7, WriteVerified: true),
         new("X-M5", SlotCount: 4, WriteVerified: true),
         new("X-H2", SlotCount: 7, WriteVerified: false),
@@ -48,14 +42,14 @@ public static class FujiCameraProfiles
         new("X100VI", SlotCount: 7, WriteVerified: false),
         new("X-S20", SlotCount: 4, WriteVerified: false, AbsentProperties: NoSmoothSkin),
 
-        // X-Processor 4: per-slot access reported working on X-T30 II and X100V
+        // X-Processor 4: per-slot access reported on X-T30 II and X100V
         new("X-T4", SlotCount: 7, WriteVerified: false),
         new("X-T30 II", SlotCount: 7, WriteVerified: false),
         new("X-E4", SlotCount: 7, WriteVerified: false),
         new("X100V", SlotCount: 7, WriteVerified: false),
         new("X-S10", SlotCount: 4, WriteVerified: false, AbsentProperties: NoSmoothSkin),
 
-        // Older: only reachable through the full settings backup
+        // Older: settings backup only
         new("X-T3", SlotCount: 7, WriteVerified: false, FujiBankAccess.BackupOnly),
         new("X-T30", SlotCount: 7, WriteVerified: false, FujiBankAccess.BackupOnly),
         new("X100F", SlotCount: 7, WriteVerified: false, FujiBankAccess.BackupOnly),
@@ -63,7 +57,7 @@ public static class FujiCameraProfiles
 
     public static IReadOnlyList<FujiCameraProfile> All => Known;
 
-    /// <summary>Looks a body up by the model string it reports, ignoring case, spaces and hyphens ("X-T30 II" = "XT30II").</summary>
+    /// <summary>Finds a body by model name, ignoring case, spaces and hyphens.</summary>
     public static FujiCameraProfile? Find(string model)
     {
         var key = Normalize(model);

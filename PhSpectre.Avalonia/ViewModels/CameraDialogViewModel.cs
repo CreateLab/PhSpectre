@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -16,7 +17,7 @@ using PhSpectre.Recipes;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
-/// <summary>The write dialog: warning, progress, result. Everything before it lives in the Camera tab.</summary>
+/// <summary>The write dialog: warning, progress, result.</summary>
 public enum CameraStep { Closed, Warning, Writing, Done, Error }
 
 /// <summary>What the Camera tab shows.</summary>
@@ -37,7 +38,7 @@ public sealed partial class CameraSlotItem : ObservableObject
     public FujiSlotInfo Info { get; }
     public int Number => Info.Slot;
     public string Label => $"C{Info.Slot}";
-    public string Title => Info.Name ?? "Empty";
+    public string Title => Info.Name ?? Loc.T("Empty");
     public bool IsEmpty => Info.IsEmpty;
     public bool IsOccupied => !Info.IsEmpty;
 
@@ -46,7 +47,7 @@ public sealed partial class CameraSlotItem : ObservableObject
     {
         get
         {
-            if (IsEmpty) return "Not set";
+            if (IsEmpty) return Loc.T("Not set");
             var r = Info.Recipe;
             var parts = new[] { r.FilmSimulation, r.DynamicRange, r.WhiteBalance }.Where(p => !string.IsNullOrEmpty(p));
             return string.Join(" · ", parts);
@@ -70,7 +71,7 @@ public sealed class RestorePointItem
     public ICommand RestoreCommand { get; }
 
     public string Title => $"C{Entry.Backup.Slot} · {FormatWhen(Entry.Backup.Created)}";
-    public string Subtitle => Entry.Backup.SlotName is { Length: > 0 } n ? $"Was: {n}" : "Was empty";
+    public string Subtitle => Entry.Backup.SlotName is { Length: > 0 } n ? Loc.F("Was: {0}", n) : Loc.T("Was empty");
 
     private static string FormatWhen(DateTimeOffset when)
     {
@@ -79,9 +80,9 @@ public sealed class RestorePointItem
         var time = local.ToString("HH:mm");
         return days switch
         {
-            0 => $"today {time}",
-            1 => $"yesterday {time}",
-            _ => $"{local:MMM d} {time}",
+            0 => Loc.F("today {0}", time),
+            1 => Loc.F("yesterday {0}", time),
+            _ => $"{local.ToString(Loc.T("MMM d"), Loc.Culture)} {time}",
         };
     }
 }
@@ -115,9 +116,8 @@ public sealed partial class ManualStepItem : ObservableObject
 }
 
 /// <summary>
-/// Everything about the camera. The Camera tab shows <see cref="TabState"/>: off, searching, ready (slots + the
-/// recipe to write) or read-only (manual steps). While enabled it watches the USB port in the background, which
-/// also drives the indicator in the top bar. Writing happens in a modal dialog: warning, progress, result.
+/// The Camera tab and the write dialog. While enabled it watches the USB port in the background, which also drives
+/// the indicator in the top bar.
 /// </summary>
 public sealed partial class CameraDialogViewModel : ObservableObject
 {
@@ -146,10 +146,9 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         RefreshRestorePoints();
     }
 
-    // ── tab state ────────────────────────────────────────────────────────────────────────
     [ObservableProperty] private CameraTabState _tabState = CameraTabState.Off;
-    [ObservableProperty] private string _connectStatus = "Looking for a camera…";
-    // Full text (message + stack) of the last failed camera check, for "Copy error"; empty when the check is fine.
+    [ObservableProperty] private string _connectStatus = Loc.T("Looking for a camera…");
+    // Details of the last failed camera check, for "Copy error".
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasConnectError))] private string _connectErrorDetails = "";
     public bool HasConnectError => ConnectErrorDetails.Length > 0;
     [ObservableProperty] private string _cameraName = "";
@@ -170,7 +169,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     public bool IsSingleSlot => Slots.Count == 1;
     public bool HasReadOnlyText => ReadOnlyText.Length > 0;
     public bool HasManualMore => _manualAll.Count > ManualPreviewCount && !_manualExpanded;
-    public string ManualMoreText => $"+ {_manualAll.Count - ManualPreviewCount} more";
+    public string ManualMoreText => Loc.F("+ {0} more", _manualAll.Count - ManualPreviewCount);
     public FujiCameraProfile? Profile => _snapshot?.Profile;
     public int RestoreKeepIndex
     {
@@ -182,7 +181,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         }
     }
 
-    // The "Camera setup" dialog: what the feature does and the Turn on button (shown while the feature is off).
+    // The setup dialog shown while the feature is off.
     [ObservableProperty] private bool _setupOpen;
     public void OpenSetup() => SetupOpen = true;
     public void CloseSetup() => SetupOpen = false;
@@ -190,26 +189,26 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     private void CloseSetupDialog() => SetupOpen = false;
 
     /// <summary>Under the slot list: what the chosen slot holds and that it is saved first.</summary>
-    public string SlotNote => SelectedSlot is { IsOccupied: true } s ? $"{s.Label} “{s.Title}” will be replaced. It is saved first." : "";
+    public string SlotNote => SelectedSlot is { IsOccupied: true } s ? Loc.F("{0} “{1}” will be replaced. It is saved first.", s.Label, s.Title) : "";
     public bool HasSlotNote => SlotNote.Length > 0;
     public bool HasRestorePoints => RestorePoints.Count > 0;
-    public string RestorePointsText => $"Restore points · {RestorePoints.Count}";
+    public string RestorePointsText => Loc.F("Restore points · {0}", RestorePoints.Count);
     public string RestoreFolder => RestorePointStore.DisplayFolder;
     public bool CanOpenRestoreFolder => !OperatingSystem.IsAndroid();
 
     /// <summary>Badge on the camera card: green when ready, amber when it can only be read.</summary>
     public string CameraBadge => TabState switch
     {
-        CameraTabState.Ready => "Ready",
-        CameraTabState.ReadOnly => "Can't write",
-        CameraTabState.WrongMode => "Wrong USB mode",
-        _ => "Searching",
+        CameraTabState.Ready => Loc.T("Ready"),
+        CameraTabState.ReadOnly => Loc.T("Can't write"),
+        CameraTabState.WrongMode => Loc.T("Wrong USB mode"),
+        _ => Loc.T("Searching"),
     };
     public bool BadgeIsOk => TabState == CameraTabState.Ready;
     public bool BadgeIsWarn => TabState is CameraTabState.ReadOnly or CameraTabState.WrongMode;
     public bool BadgeIsIdle => TabState is CameraTabState.Searching or CameraTabState.Off;
-    public string CardTitle => TabState is CameraTabState.Searching or CameraTabState.Off ? "No camera" : CameraName;
-    public string CardDetail => TabState is CameraTabState.Searching or CameraTabState.Off ? "Not connected" : CameraDetail;
+    public string CardTitle => TabState is CameraTabState.Searching or CameraTabState.Off ? Loc.T("No camera") : CameraName;
+    public string CardDetail => TabState is CameraTabState.Searching or CameraTabState.Off ? Loc.T("Not connected") : CameraDetail;
 
     partial void OnTabStateChanged(CameraTabState value)
     {
@@ -218,20 +217,18 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     }
     partial void OnReadOnlyTextChanged(string value) => OnPropertyChanged(nameof(HasReadOnlyText));
 
-    // ── indicator in the top bar ─────────────────────────────────────────────────────────
     public bool IndicatorVisible => _enabled && CameraService.IsSupported;
     public bool IndicatorOk => IndicatorVisible && Step == CameraStep.Closed && !_hasError && IsTabConnected;
     public bool IndicatorIdle => IndicatorVisible && Step == CameraStep.Closed && !_hasError && !IsTabConnected;
     public bool IndicatorBusy => IndicatorVisible && Step == CameraStep.Writing;
     public bool IndicatorWarn => IndicatorVisible && _hasError && Step != CameraStep.Writing;
     public string IndicatorText =>
-        Step == CameraStep.Writing ? $"Writing to {SelectedSlot?.Label}…"
-        : _hasError ? "Check camera"
+        Step == CameraStep.Writing ? Loc.F("Writing to {0}…", SelectedSlot?.Label)
+        : _hasError ? Loc.T("Check camera")
         : IsTabConnected ? ShortModel
-        : "No camera";
+        : Loc.T("No camera");
     private string ShortModel => _snapshot?.Model ?? CameraName.Replace("FUJIFILM ", "");
 
-    // ── recipe to write ──────────────────────────────────────────────────────────────────
     private FilmRecipe? CurrentRecipe => _settings.Library.Selected is { Recipe: { } r } row
         ? r with { RecipeName = _settings.SlotNameFor(r with { RecipeName = row.DisplayTitle }) }
         : null;
@@ -246,14 +243,14 @@ public sealed partial class CameraDialogViewModel : ObservableObject
             if (CurrentRecipe is not { } recipe) return "";
             var count = RecipeFields.BuildAll(recipe).Count;
             var from = _settings.RecipeSourceBadgeText;
-            return $"{from} · {count} settings";
+            return $"{from} · {Loc.N(count, "{0} setting", "{0} settings")}";
         }
     }
     public int SkippedCount => CurrentRecipe is { } r ? FujiSlotEncoder.Encode(r, _snapshot?.Profile).Skipped.Count : 0;
     public bool HasSkipped => SkippedCount > 0;
-    public string SkippedBadge => $"{SkippedCount} SKIPPED";
+    public string SkippedBadge => Loc.F("{0} SKIPPED", SkippedCount);
 
-    // No slot is chosen on its own while there is no recipe; with one, the first empty slot is only suggested, so nothing named gets replaced by accident.
+    // With a recipe the first empty slot is suggested, so nothing named is replaced by accident.
     private void SuggestSlot()
     {
         if (SelectedSlot == null && HasRecipe && IsTabReady && Slots.FirstOrDefault(s => s.IsEmpty) is { } empty) SelectSlot(empty);
@@ -276,15 +273,14 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     }
 
 
-    // ── footer ───────────────────────────────────────────────────────────────────────────
     public bool CanWrite => IsTabReady && SelectedSlot != null && HasRecipe;
     public bool CanRead => IsTabConnected && SelectedSlot is { IsOccupied: true };
     public string WriteButtonText =>
-        !HasRecipe ? "Choose a recipe to write"
-        : SelectedSlot == null ? "Pick a slot"
-        : IsSingleSlot ? $"Replace {SelectedSlot.Label}"
-        : $"Write “{RecipeName}” to {SelectedSlot.Label}";
-    public string ReadButtonText => SelectedSlot is { IsOccupied: true } s ? $"Read {s.Label} into the app" : "Read a slot into the app";
+        !HasRecipe ? Loc.T("Choose a recipe to write")
+        : SelectedSlot == null ? Loc.T("Pick a slot")
+        : IsSingleSlot ? Loc.F("Replace {0}", SelectedSlot.Label)
+        : Loc.F("Write “{0}” to {1}", RecipeName, SelectedSlot.Label);
+    public string ReadButtonText => SelectedSlot is { IsOccupied: true } s ? Loc.F("Read {0} into the app", s.Label) : Loc.T("Read a slot into the app");
     public bool ShowFooter => IsTabReady;
     public bool ShowReadOnlyFooter => IsTabReadOnly && Slots.Count > 0;
 
@@ -299,7 +295,6 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         BuildDiff();
     }
 
-    // ── on / off ─────────────────────────────────────────────────────────────────────────
     public void SetEnabled(bool enabled)
     {
         _enabled = enabled;
@@ -311,7 +306,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
             _hasError = false;
             ConnectErrorDetails = "";
             TabState = CameraTabState.Searching;
-            ConnectStatus = "Looking for a camera…";
+            ConnectStatus = Loc.T("Looking for a camera…");
             _monitor = new CancellationTokenSource();
             _ = MonitorAsync(_monitor.Token);
         }
@@ -341,13 +336,13 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         CameraDetail = "";
     }
 
-    // ── watching the USB port ────────────────────────────────────────────────────────────
+    // Watching the USB port
     private async Task MonitorAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
             var delay = 1500;
-            // While the dialog is open the session belongs to it; the loop just waits.
+            // The open dialog owns the session.
             if (Step == CameraStep.Closed)
             {
                 try
@@ -366,7 +361,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
                         }
                         else
                         {
-                            // Camera already known: only check that it is still there.
+                            // Known camera: only check that it is still there.
                             await using var session = await CameraService.OpenAsync(ct);
                             if (session == null) NoCamera();
                             delay = 4000;
@@ -385,7 +380,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
                 {
                     AppLogger.LogError("Camera check failed", e);
                     NoCamera();
-                    ConnectStatus = $"Could not talk to the camera: {e.Message}";
+                    ConnectStatus = Loc.F("Could not talk to the camera: {0}", e.Message);
                     ConnectErrorDetails = $"{ConnectStatus}\n{e}";
                 }
             }
@@ -407,7 +402,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         if (TabState == CameraTabState.Searching && _snapshot == null && Slots.Count == 0) return;
         ClearCamera();
         TabState = CameraTabState.Searching;
-        ConnectStatus = "Looking for a camera…";
+        ConnectStatus = Loc.T("Looking for a camera…");
     }
 
     private void Apply(FujiCameraSnapshot snapshot)
@@ -421,8 +416,8 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         {
             ClearCamera();
             CameraName = $"FUJIFILM {snapshot.Model}";
-            CameraDetail = "USB · wrong mode";
-            ConnectStatus = $"{snapshot.Model} found, but its USB mode is not RAW CONV./BACKUP RESTORE. Change it in the camera menu.";
+            CameraDetail = Loc.T("USB · wrong mode");
+            ConnectStatus = Loc.F("{0} found, but its USB mode is not RAW CONV./BACKUP RESTORE. Change it in the camera menu.", snapshot.Model);
             TabState = CameraTabState.WrongMode;
             return;
         }
@@ -434,19 +429,19 @@ public sealed partial class CameraDialogViewModel : ObservableObject
 
         string? reason = null;
         if (snapshot.Profile == null)
-            reason = $"{snapshot.Model} can't be written over USB yet. Set the recipe by hand.";
+            reason = Loc.F("{0} can't be written over USB yet. Set the recipe by hand.", snapshot.Model);
         else if (!snapshot.DirectAccess)
-            reason = $"{snapshot.Model} keeps its custom settings inside the full camera backup, which this app doesn't edit. Set the recipe by hand.";
+            reason = Loc.F("{0} keeps its custom settings inside the full camera backup, which this app doesn't edit. Set the recipe by hand.", snapshot.Model);
         else if (snapshot.ReadError != null)
-            reason = $"This model may store slots differently from the ones checked so far ({snapshot.ReadError}). Set the recipe by hand and copy the camera report so support can be added.";
+            reason = Loc.F("This model may store slots differently from the ones checked so far ({0}). Set the recipe by hand and copy the camera report so support can be added.", snapshot.ReadError);
         else if (!snapshot.CanWrite)
-            reason = $"Writing to {snapshot.Model} isn't enabled yet: models are checked on real cameras one at a time. You can still read its slots. Set the recipe by hand.";
+            reason = Loc.F("Writing to {0} isn't enabled yet: models are checked on real cameras one at a time. You can still read its slots. Set the recipe by hand.", snapshot.Model);
 
         ReadOnlyText = reason ?? "";
         RebuildManual();
         TabState = reason == null ? CameraTabState.Ready : CameraTabState.ReadOnly;
 
-        // Keep the chosen slot across refreshes; otherwise suggest the first empty one (nothing gets replaced).
+        // Keep the chosen slot across refreshes.
         var next = Slots.FirstOrDefault(s => s.Number == keep);
         if (next != null) SelectSlot(next);
         SuggestSlot();
@@ -454,7 +449,6 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         _settings.Library.CameraChanged();
     }
 
-    // ── slots ────────────────────────────────────────────────────────────────────────────
     [RelayCommand]
     private void SelectSlot(CameraSlotItem? slot)
     {
@@ -471,11 +465,10 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         var result = RecipeLibraryService.User.Add(slot.Info.Recipe, slot.Info.Name, RecipeOrigin.FromCamera);
         _settings.Library.SelectSaved(result.Entry);
         _toast(result.Outcome == AddOutcome.Added
-            ? $"Read {slot.Label} into the app: “{result.Entry.Name}” is in My recipes"
-            : $"Read {slot.Label}: “{result.Entry.Name}” was already in My recipes");
+            ? Loc.F("Read {0} into the app: “{1}” is in My recipes", slot.Label, result.Entry.Name)
+            : Loc.F("Read {0}: “{1}” was already in My recipes", slot.Label, result.Entry.Name));
     }
 
-    // ── diff and manual steps ────────────────────────────────────────────────────────────
     public ObservableCollection<RecipeChange> Changes { get; } = [];
     [ObservableProperty] private string _unchangedText = "";
     [ObservableProperty] private string _skippedText = "";
@@ -495,12 +488,12 @@ public sealed partial class CameraDialogViewModel : ObservableObject
 
         var encoding = FujiSlotEncoder.Encode(recipe, _snapshot.Profile);
         var diff = RecipeDiff.Compute(SelectedSlot.Info.Raw, encoding, _snapshot.Model);
-        foreach (var change in diff.Changes) Changes.Add(change);
-        UnchangedText = diff.Unchanged > 0 ? $"{diff.Unchanged} unchanged" : "";
+        foreach (var change in diff.Changes) Changes.Add(change with { Field = Loc.T(change.Field) });
+        UnchangedText = diff.Unchanged > 0 ? Loc.F("{0} unchanged", diff.Unchanged) : "";
         if (encoding.Skipped.Count > 0)
             SkippedText = string.Join("\n", encoding.Skipped);
         if (SelectedSlot.IsOccupied)
-            ReplaceText = $"{SelectedSlot.Label} holds “{SelectedSlot.Title}”. It will be replaced; the old settings are saved to a restore point first.";
+            ReplaceText = Loc.F("{0} holds “{1}”. It will be replaced; the old settings are saved to a restore point first.", SelectedSlot.Label, SelectedSlot.Title);
     }
 
     private void RebuildManual()
@@ -508,7 +501,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         _manualAll.Clear();
         if (CurrentRecipe is { } recipe)
             foreach (var field in RecipeFields.BuildAll(recipe))
-                _manualAll.Add(new ManualStepItem(field.FullLabel, field.Value));
+                _manualAll.Add(new ManualStepItem(Loc.T(field.FullLabel), field.Value));
         RefreshManualView();
     }
 
@@ -554,7 +547,6 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         }
     }
 
-    // ── restore points ───────────────────────────────────────────────────────────────────
     private void RefreshRestorePoints()
     {
         RestorePoints.Clear();
@@ -584,19 +576,18 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         if (item == null) return;
         if (_snapshot == null || !IsTabReady)
         {
-            _toast("Connect the camera first");
+            _toast(Loc.T("Connect the camera first"));
             return;
         }
         if (!string.Equals(item.Entry.Backup.Model, _snapshot.Model, StringComparison.OrdinalIgnoreCase))
         {
-            _toast($"That restore point is from {item.Entry.Backup.Model}, not {_snapshot.Model}");
+            _toast(Loc.F("That restore point is from {0}, not {1}", item.Entry.Backup.Model, _snapshot.Model));
             return;
         }
         _restorePoint = item.Entry.Backup;
         await RestorePreviousAsync(fromDone: false, toTab: true);
     }
 
-    // ── write ────────────────────────────────────────────────────────────────────────────
     [ObservableProperty] [NotifyCanExecuteChangedFor(nameof(ConfirmWriteCommand))]
     private bool _acknowledged;
     [ObservableProperty] private CameraStep _step = CameraStep.Closed;
@@ -625,9 +616,9 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         _settings.IsMobile ? global::Avalonia.Layout.VerticalAlignment.Bottom : global::Avalonia.Layout.VerticalAlignment.Center;
     public string HeaderTitle => Step switch
     {
-        CameraStep.Warning => $"Write to {SelectedSlot?.Label}",
-        CameraStep.Writing => "Writing to camera",
-        CameraStep.Done => "Done",
+        CameraStep.Warning => Loc.F("Write to {0}", SelectedSlot?.Label),
+        CameraStep.Writing => Loc.T("Writing to camera"),
+        CameraStep.Done => Loc.T("Done"),
         CameraStep.Error => ErrorTitle,
         _ => "",
     };
@@ -662,7 +653,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         foreach (var write in encoding.Writes) ProgressItems.Add(new WriteProgressItem(write.Description));
         ProgressMax = Math.Max(1, encoding.Writes.Count * 2);
         ProgressValue = 0;
-        ProgressTitle = $"Writing “{RecipeName}” to {label}";
+        ProgressTitle = Loc.F("Writing “{0}” to {1}", RecipeName, label);
         _restorePath = null;
         _restorePoint = null;
         CanUndo = false;
@@ -677,9 +668,9 @@ public sealed partial class CameraDialogViewModel : ObservableObject
             try
             {
                 await using var session = await CameraService.OpenAsync(CancellationToken.None)
-                    ?? throw new FujiWriteException("The camera is no longer connected.");
+                    ?? throw new FujiWriteException(Loc.T("The camera is no longer connected."));
 
-                // A dry run reads the slot, so the restore point exists on disk before the first property is sent.
+                // The dry run saves the restore point before the first property is sent.
                 var plan = await FujiRecipeWriter.WriteAsync(session, slot, recipe, new FujiWriteOptions { DryRun = true }, ct);
                 _restorePoint = FujiSlotBackup.From(plan);
                 _restorePath = RestorePointStore.Save(_restorePoint, _settings.RestoreKeepLast);
@@ -696,17 +687,17 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         }
         catch (FujiWriteException e)
         {
-            ShowError("Cannot write", e.Message, e.Message, canRestore: false);
+            ShowError(Loc.T("Cannot write"), e.Message, e.Message, canRestore: false);
         }
         catch (OperationCanceledException)
         {
-            ShowError($"Stopped, nothing was changed in {label}", "The write was cancelled before it started.", "", canRestore: false);
+            ShowError(Loc.F("Stopped, nothing was changed in {0}", label), Loc.T("The write was cancelled before it started."), "", canRestore: false);
         }
         catch (Exception e)
         {
             AppLogger.LogError("Camera write failed", e);
-            var rollbackHint = _restorePath != null ? " The slot may be half-written; use “Restore previous” once the camera is back." : "";
-            ShowError("Connection lost", $"{e.Message}{rollbackHint}", e.ToString(), canRestore: _restorePath != null);
+            var rollbackHint = _restorePath != null ? " " + Loc.T("The slot may be half-written; use “Restore previous” once the camera is back.") : "";
+            ShowError(Loc.T("Connection lost"), $"{e.Message}{rollbackHint}", e.ToString(), canRestore: _restorePath != null);
         }
         finally
         {
@@ -715,7 +706,7 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         }
     }
 
-    // IProgress<T> posts to the captured context, which is not what we want: reports must arrive in order.
+    // Not IProgress<T>: reports must arrive in order.
     private sealed class UiProgress(Action<FujiWriteProgress> report) : IProgress<FujiWriteProgress>
     {
         public void Report(FujiWriteProgress value) => report(value);
@@ -745,10 +736,10 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         if (report.Success)
         {
             _hasError = false;
-            DoneTitle = $"Recipe written to {label}";
+            DoneTitle = Loc.F("Recipe written to {0}", label);
             DoneSlot = $"{label} · {RecipeName}";
-            DoneVerified = $"{encoding.Writes.Count} of {encoding.Writes.Count}";
-            DoneSkipped = encoding.Skipped.Count == 0 ? "None" : $"{encoding.Skipped.Count} setting(s)";
+            DoneVerified = Loc.F("{0} of {1}", encoding.Writes.Count, encoding.Writes.Count);
+            DoneSkipped = encoding.Skipped.Count == 0 ? Loc.T("None") : Loc.N(encoding.Skipped.Count, "{0} setting", "{0} settings");
             DoneRestorePoint = _restorePath == null ? "" : Path.GetFileName(_restorePath);
             CanUndo = _restorePoint != null;
             Step = CameraStep.Done;
@@ -757,10 +748,10 @@ public sealed partial class CameraDialogViewModel : ObservableObject
 
         var details = string.Join("\n", report.Problems);
         if (report.Cancelled)
-            ShowError(report.RolledBack ? $"Stopped, {label} is back as it was" : $"Stopped, but {label} could not be fully restored",
-                report.RolledBack ? "The slot was restored from the restore point." : details, details, canRestore: !report.RolledBack);
+            ShowError(report.RolledBack ? Loc.F("Stopped, {0} is back as it was", label) : Loc.F("Stopped, but {0} could not be fully restored", label),
+                report.RolledBack ? Loc.T("The slot was restored from the restore point.") : details, details, canRestore: !report.RolledBack);
         else
-            ShowError(report.RolledBack ? $"Write failed, {label} is back as it was" : "Write failed and the slot could not be restored",
+            ShowError(report.RolledBack ? Loc.F("Write failed, {0} is back as it was", label) : Loc.T("Write failed and the slot could not be restored"),
                 details, details, canRestore: !report.RolledBack);
     }
 
@@ -777,7 +768,6 @@ public sealed partial class CameraDialogViewModel : ObservableObject
     [RelayCommand]
     private void StopAndRestore() => _cts?.Cancel();
 
-    // ── undo / restore ───────────────────────────────────────────────────────────────────
     [RelayCommand]
     private async Task Undo() => await RestorePreviousAsync(fromDone: true, toTab: false);
 
@@ -793,21 +783,21 @@ public sealed partial class CameraDialogViewModel : ObservableObject
             try
             {
                 await using var session = await CameraService.OpenAsync(CancellationToken.None)
-                    ?? throw new FujiWriteException("The camera is not connected. Connect it and try again.");
+                    ?? throw new FujiWriteException(Loc.T("The camera is not connected. Connect it and try again."));
                 var report = await FujiRecipeWriter.RestoreAsync(session, _restorePoint.Slot, _restorePoint.Properties);
                 if (report.Success)
                 {
                     _hasError = false;
                     _needsRefresh = true;
-                    _toast($"C{_restorePoint.Slot} restored");
+                    _toast(Loc.F("C{0} restored", _restorePoint.Slot));
                     CanUndo = false;
                     CanRestore = false;
                     Close();
                 }
                 else if (toTab)
-                    _toast("Restore incomplete: " + string.Join("; ", report.Problems));
+                    _toast(Loc.T("Restore incomplete") + ": " + string.Join("; ", report.Problems));
                 else
-                    ShowError("Restore incomplete", string.Join("\n", report.Problems), string.Join("\n", report.Problems), canRestore: true);
+                    ShowError(Loc.T("Restore incomplete"), string.Join("\n", report.Problems), string.Join("\n", report.Problems), canRestore: true);
             }
             finally
             {
@@ -817,8 +807,8 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         catch (Exception e)
         {
             AppLogger.LogError("Camera restore failed", e);
-            if (toTab) _toast($"Restore failed: {e.Message}");
-            else ShowError("Restore failed", e.Message, e.ToString(), canRestore: true);
+            if (toTab) _toast(Loc.F("Restore failed: {0}", e.Message));
+            else ShowError(Loc.T("Restore failed"), e.Message, e.ToString(), canRestore: true);
         }
     }
 
@@ -829,11 +819,10 @@ public sealed partial class CameraDialogViewModel : ObservableObject
         ConfirmWriteCommand.Execute(null);
     }
 
-    // ── close ────────────────────────────────────────────────────────────────────────────
     [RelayCommand]
     private void Close()
     {
-        // While writing the dialog must stay open: only "Stop and restore" ends it (cable pulls are handled as errors).
+        // While writing, only "Stop and restore" closes the dialog.
         if (Step == CameraStep.Writing) return;
         _hasError = false;
         _needsRefresh = true;

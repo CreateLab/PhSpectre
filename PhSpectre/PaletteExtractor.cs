@@ -39,8 +39,6 @@ public sealed class PaletteExtractor
         return _kMeans.Cluster(pixels, colorCount, samplingMode, cancellationToken);
     }
 
-    // Extracts directly from an already-decoded image, skipping a redundant re-decode
-    // when the caller already holds the working copy in memory.
     public async Task<ColorPalette> ExtractAsync(
         Image<Rgb24> image,
         int? colorCount = null,
@@ -56,10 +54,7 @@ public sealed class PaletteExtractor
         return _kMeans.Cluster(pixels, colorCount, samplingMode, cancellationToken);
     }
 
-    // Extracts a single palette pooled across several photos (e.g. a collage), each
-    // contributing pixels in proportion to its Weight (typically its displayed area share)
-    // rather than all photos counting equally regardless of size — a small inset photo
-    // shouldn't sway the palette as much as one that fills half the collage.
+    // One palette across several photos, each weighted by its share of the picture.
     public async Task<ColorPalette> ExtractWeightedAsync(
         IReadOnlyList<(Image<Rgb24> Image, double Weight)> photos,
         int? colorCount = null,
@@ -79,9 +74,7 @@ public sealed class PaletteExtractor
             cancellationToken.ThrowIfCancellationRequested();
         }
 
-        // All samples come back the same fixed size (ImageSamplerService always resizes to
-        // its sample grid before sampling), so that size doubles as the total pixel budget
-        // to redistribute across photos by weight.
+        // All samples have the same size, which is the pixel budget to redistribute.
         int totalBudget = perPhotoPixels[0].Length;
         double totalWeight = photos.Sum(p => p.Weight);
         bool equalWeights = totalWeight <= 0;
@@ -93,8 +86,7 @@ public sealed class PaletteExtractor
             double normalizedWeight = equalWeights ? 1.0 / photos.Count : photos[i].Weight / totalWeight;
             int budget = Math.Max(1, (int)Math.Round(normalizedWeight * totalBudget));
 
-            // Evenly spaced picks (not just the first N) keep the subsample spatially
-            // representative of the whole photo instead of biased toward one corner.
+            // Evenly spaced picks keep the subsample spread over the photo.
             double step = (double)pixels.Length / budget;
             for (int j = 0; j < budget; j++)
                 pool.Add(pixels[Math.Min(pixels.Length - 1, (int)(j * step))]);

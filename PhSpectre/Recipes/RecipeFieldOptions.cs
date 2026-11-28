@@ -1,9 +1,6 @@
 namespace PhSpectre.Recipes;
 
-// Display-string option lists for manual recipe entry (UI dropdowns). Kept separate from
-// FujiRecipeExtractor's internal raw-byte-code maps — those are keyed by Fuji's hardware
-// values and not meant as a public surface; these are just the same value domain expressed
-// as plain strings for a picker.
+// Option lists for manual recipe entry.
 public static class RecipeFieldOptions
 {
     public static readonly IReadOnlyList<string> WhiteBalance =
@@ -15,10 +12,7 @@ public static class RecipeFieldOptions
         "Custom", "Custom 2", "Custom 3", "Custom 4", "Kelvin",
     ];
 
-    // "Manual" alone (a raw MakerNote flag meaning "not Auto", see FujiRecipeExtractor.
-    // DecodeDynamicRange) isn't a value anyone actually picks on the camera dial, so it isn't
-    // offered here — a manually-entered recipe should use one of the real percentages instead.
-    // "Off" covers bodies/shots where DR bracketing wasn't used at all.
+    // "Manual" is not a dial value, so it is not offered; "Off" means no DR bracketing.
     public static readonly IReadOnlyList<string> DynamicRange =
     [
         "Off", "Auto", "DR100", "DR200", "DR400", "Film Simulation",

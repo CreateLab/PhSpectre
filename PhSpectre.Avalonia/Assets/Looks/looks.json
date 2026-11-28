@@ -16,14 +16,6 @@
         "skipped": []
     },
     {
-        "id": "bundled-lut-teal-and-orange",
-        "name": "Teal and Orange",
-        "kind": "lut",
-        "category": "Cinema",
-        "file": "luts/lut-teal-and-orange.cube",
-        "skipped": []
-    },
-    {
         "id": "bundled-lut-bleach-bypass",
         "name": "Bleach Bypass",
         "kind": "lut",
@@ -109,9 +101,7 @@
         "kind": "preset",
         "category": "Historic",
         "file": "presets/preset-albumen-print.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-autochrome",
@@ -119,9 +109,7 @@
         "kind": "preset",
         "category": "Historic",
         "file": "presets/preset-autochrome.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-bromoil",
@@ -132,8 +120,7 @@
         "skipped": [
             "Texture",
             "Clarity2012",
-            "Dehaze",
-            "Sharpness"
+            "Dehaze"
         ]
     },
     {
@@ -142,9 +129,7 @@
         "kind": "preset",
         "category": "Film",
         "file": "presets/preset-bw-infrared.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-calotype",
@@ -152,9 +137,7 @@
         "kind": "preset",
         "category": "Historic",
         "file": "presets/preset-calotype.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-cross-process-c41-e6",
@@ -162,9 +145,7 @@
         "kind": "preset",
         "category": "Film",
         "file": "presets/preset-cross-process-c41-e6.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-cross-process-e6-c41",
@@ -172,9 +153,7 @@
         "kind": "preset",
         "category": "Film",
         "file": "presets/preset-cross-process-e6-c41.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-cyanotype-classic",
@@ -182,9 +161,7 @@
         "kind": "preset",
         "category": "Alt process",
         "file": "presets/preset-cyanotype-classic.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-cyanotype-tea-toned",
@@ -192,9 +169,7 @@
         "kind": "preset",
         "category": "Alt process",
         "file": "presets/preset-cyanotype-tea-toned.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-daguerreotype",
@@ -204,8 +179,7 @@
         "file": "presets/preset-daguerreotype.xmp",
         "skipped": [
             "Texture",
-            "Clarity2012",
-            "Sharpness"
+            "Clarity2012"
         ]
     },
     {
@@ -217,8 +191,7 @@
         "skipped": [
             "Texture",
             "Clarity2012",
-            "Dehaze",
-            "Sharpness"
+            "Dehaze"
         ]
     },
     {
@@ -227,9 +200,7 @@
         "kind": "preset",
         "category": "Film",
         "file": "presets/preset-film-soup.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-gum-bichromate",
@@ -240,8 +211,7 @@
         "skipped": [
             "Texture",
             "Clarity2012",
-            "Dehaze",
-            "Sharpness"
+            "Dehaze"
         ]
     },
     {
@@ -253,8 +223,7 @@
         "skipped": [
             "Texture",
             "Clarity2012",
-            "Dehaze",
-            "Sharpness"
+            "Dehaze"
         ]
     },
     {
@@ -263,9 +232,7 @@
         "kind": "preset",
         "category": "Alt process",
         "file": "presets/preset-lith-print.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-lomo-lc-a",
@@ -273,9 +240,7 @@
         "kind": "preset",
         "category": "Toy camera",
         "file": "presets/preset-lomo-lc-a.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-pinhole",
@@ -286,8 +251,7 @@
         "skipped": [
             "Texture",
             "Clarity2012",
-            "Dehaze",
-            "Sharpness"
+            "Dehaze"
         ]
     },
     {
@@ -296,9 +260,7 @@
         "kind": "preset",
         "category": "Alt process",
         "file": "presets/preset-platinum-print.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-redscale",
@@ -306,9 +268,7 @@
         "kind": "preset",
         "category": "Film",
         "file": "presets/preset-redscale.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-solarization",
@@ -316,9 +276,7 @@
         "kind": "preset",
         "category": "Alt process",
         "file": "presets/preset-solarization.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-van-dyke-brown",
@@ -326,9 +284,7 @@
         "kind": "preset",
         "category": "Alt process",
         "file": "presets/preset-van-dyke-brown.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-wet-plate-ambrotype",
@@ -336,9 +292,7 @@
         "kind": "preset",
         "category": "Historic",
         "file": "presets/preset-wet-plate-ambrotype.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
     },
     {
         "id": "bundled-preset-wet-plate-tintype",
@@ -346,9 +300,47 @@
         "kind": "preset",
         "category": "Historic",
         "file": "presets/preset-wet-plate-tintype.xmp",
-        "skipped": [
-            "Sharpness"
-        ]
+        "skipped": []
+    },
+    {
+        "id": "bundled-preset-clean-skin",
+        "name": "Clean Skin",
+        "kind": "preset",
+        "category": "Portrait",
+        "file": "presets/preset-clean-skin.xmp",
+        "skipped": []
+    },
+    {
+        "id": "bundled-preset-peach",
+        "name": "Peach",
+        "kind": "preset",
+        "category": "Portrait",
+        "file": "presets/preset-peach.xmp",
+        "skipped": []
+    },
+    {
+        "id": "bundled-preset-porcelain",
+        "name": "Porcelain",
+        "kind": "preset",
+        "category": "Portrait",
+        "file": "presets/preset-porcelain.xmp",
+        "skipped": []
+    },
+    {
+        "id": "bundled-preset-honey-tan",
+        "name": "Honey Tan",
+        "kind": "preset",
+        "category": "Portrait",
+        "file": "presets/preset-honey-tan.xmp",
+        "skipped": []
+    },
+    {
+        "id": "bundled-preset-soft-film-portrait",
+        "name": "Soft Film Portrait",
+        "kind": "preset",
+        "category": "Portrait",
+        "file": "presets/preset-soft-film-portrait.xmp",
+        "skipped": []
     },
     {
         "id": "bundled-lut-vice-sunset",
@@ -543,46 +535,6 @@
         "skipped": []
     },
     {
-        "id": "bundled-lut-clean-skin",
-        "name": "Clean Skin",
-        "kind": "lut",
-        "category": "Portrait",
-        "file": "luts/lut-clean-skin.cube",
-        "skipped": []
-    },
-    {
-        "id": "bundled-lut-peach",
-        "name": "Peach",
-        "kind": "lut",
-        "category": "Portrait",
-        "file": "luts/lut-peach.cube",
-        "skipped": []
-    },
-    {
-        "id": "bundled-lut-porcelain",
-        "name": "Porcelain",
-        "kind": "lut",
-        "category": "Portrait",
-        "file": "luts/lut-porcelain.cube",
-        "skipped": []
-    },
-    {
-        "id": "bundled-lut-honey-tan",
-        "name": "Honey Tan",
-        "kind": "lut",
-        "category": "Portrait",
-        "file": "luts/lut-honey-tan.cube",
-        "skipped": []
-    },
-    {
-        "id": "bundled-lut-soft-film-portrait",
-        "name": "Soft Film Portrait",
-        "kind": "lut",
-        "category": "Portrait",
-        "file": "luts/lut-soft-film-portrait.cube",
-        "skipped": []
-    },
-    {
         "id": "bundled-lut-tungsten-night",
         "name": "Tungsten Night",
         "kind": "lut",
@@ -604,6 +556,174 @@
         "kind": "lut",
         "category": "Film",
         "file": "luts/lut-summer-disposable.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-blockbuster",
+        "name": "Blockbuster",
+        "kind": "lut",
+        "category": "Two Tone",
+        "file": "luts/lut-blockbuster.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-heat-wave",
+        "name": "Heat Wave",
+        "kind": "lut",
+        "category": "Two Tone",
+        "file": "luts/lut-heat-wave.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-violet-hour",
+        "name": "Violet Hour",
+        "kind": "lut",
+        "category": "Two Tone",
+        "file": "luts/lut-violet-hour.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-coast-sunset",
+        "name": "Coast Sunset",
+        "kind": "lut",
+        "category": "Two Tone",
+        "file": "luts/lut-coast-sunset.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-midnight-gold",
+        "name": "Midnight Gold",
+        "kind": "lut",
+        "category": "Two Tone",
+        "file": "luts/lut-midnight-gold.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-red-wire",
+        "name": "Red Wire",
+        "kind": "lut",
+        "category": "Two Tone",
+        "file": "luts/lut-red-wire.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-coast-day",
+        "name": "Coast Day",
+        "kind": "lut",
+        "category": "Games",
+        "file": "luts/lut-coast-day.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-chrome-district",
+        "name": "Chrome District",
+        "kind": "lut",
+        "category": "Games",
+        "file": "luts/lut-chrome-district.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-clean-runner",
+        "name": "Clean Runner",
+        "kind": "lut",
+        "category": "Games",
+        "file": "luts/lut-clean-runner.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-autumn-blade",
+        "name": "Autumn Blade",
+        "kind": "lut",
+        "category": "Games",
+        "file": "luts/lut-autumn-blade.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-overgrown",
+        "name": "Overgrown",
+        "kind": "lut",
+        "category": "Games",
+        "file": "luts/lut-overgrown.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-late-noodles",
+        "name": "Late Noodles",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-late-noodles.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-blue-tide",
+        "name": "Blue Tide",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-blue-tide.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-soft-coral",
+        "name": "Soft Coral",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-soft-coral.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-cobalt-evening",
+        "name": "Cobalt Evening",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-cobalt-evening.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-cold-case",
+        "name": "Cold Case",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-cold-case.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-three-strip",
+        "name": "Three Strip",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-three-strip.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-two-strip",
+        "name": "Two Strip",
+        "kind": "lut",
+        "category": "Cinema",
+        "file": "luts/lut-two-strip.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-burgundy-fall",
+        "name": "Burgundy Fall",
+        "kind": "lut",
+        "category": "Trends",
+        "file": "luts/lut-burgundy-fall.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-moss",
+        "name": "Moss",
+        "kind": "lut",
+        "category": "Trends",
+        "file": "luts/lut-moss.cube",
+        "skipped": []
+    },
+    {
+        "id": "bundled-lut-warm-mono",
+        "name": "Warm Mono",
+        "kind": "lut",
+        "category": "Trends",
+        "file": "luts/lut-warm-mono.cube",
         "skipped": []
     }
 ]

@@ -3,11 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace PhSpectre.Models;
 
-// System.Text.Json ignores ValueTuple's public fields by default (it only serializes
-// properties unless IncludeFields is set globally), and even with IncludeFields on, a tuple
-// serializes as {"Item1":..,"Item2":..} — its "Red"/"Blue" element names are compile-time
-// only (TupleElementNamesAttribute), invisible to reflection-based serialization. This
-// converter gives FilmRecipe.WhiteBalanceShift a proper {"Red":..,"Blue":..} JSON shape.
+// System.Text.Json would write the tuple as {} or Item1/Item2; this writes Red and Blue.
 public sealed class WhiteBalanceShiftJsonConverter : JsonConverter<(int Red, int Blue)?>
 {
     public override (int Red, int Blue)? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)

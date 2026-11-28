@@ -7,7 +7,6 @@ using PhSpectre.Rendering;
 HeifDesktopSupport.Register();
 
 // phspectre lut <in.jpg> <look.cube> [out.jpg] [--strength 0..1]
-// Grades a photo with a .cube LUT (applied as-is; picking a suitable LUT is up to the caller).
 if (args.Length > 0 && args[0] == "lut")
 {
     if (args.Length < 3)

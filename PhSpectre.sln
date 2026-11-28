@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.CameraProbe", "Ph
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.Wpd", "PhSpectre.Wpd\PhSpectre.Wpd.csproj", "{E67C485C-AB9A-487E-85A2-D1A6771AE76B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PhSpectre.Skin", "PhSpectre.Skin\PhSpectre.Skin.csproj", "{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -164,6 +166,18 @@ Global
 		{E67C485C-AB9A-487E-85A2-D1A6771AE76B}.Release|x64.Build.0 = Release|Any CPU
 		{E67C485C-AB9A-487E-85A2-D1A6771AE76B}.Release|x86.ActiveCfg = Release|Any CPU
 		{E67C485C-AB9A-487E-85A2-D1A6771AE76B}.Release|x86.Build.0 = Release|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Debug|x64.Build.0 = Debug|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Debug|x86.Build.0 = Debug|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Release|x64.ActiveCfg = Release|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Release|x64.Build.0 = Release|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Release|x86.ActiveCfg = Release|Any CPU
+		{4CCCEBF7-6A5C-4E76-9F65-48BFBBE873FE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

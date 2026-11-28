@@ -5,8 +5,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// Covers the preset → field-selection mapping and the placeholder payload encoder — the part
-// of the QR feature that isn't exercised by QrCodeRendererTests' raw-URL smoke tests.
+// Preset to field selection and the payload encoder.
 public class QrLinkBuilderTests
 {
     private static readonly PaletteImageRenderer.PhotoMetadata Metadata = new(

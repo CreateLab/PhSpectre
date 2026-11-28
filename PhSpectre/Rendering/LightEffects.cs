@@ -5,9 +5,8 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.Rendering;
 
-// Glow (soft bloom around lights and neon) and halation (the red-orange fringe film puts around highlights).
-// The light is collected and blurred on a small map of fixed relative size, then screened back in linear light:
-// the cost barely depends on the photo size and the preview looks like the full-size export.
+// Glow (bloom around bright areas) and halation (the red-orange fringe of film). Computed on a small map, so cost
+// and look do not depend on photo size.
 internal static class LightEffects
 {
     private const int MapLongSide = 480;
@@ -43,8 +42,7 @@ internal static class LightEffects
         Screen(img, add, mw, mh);
     }
 
-    // Area average of the bright parts: `light` keeps their colour (saturated neon counts even when its luma is low),
-    // `hot` is the amount of near-white light that causes halation.
+    // `light` keeps the colour of bright and saturated areas, `hot` measures near-white light.
     private static (Vector3[] Light, Vector3[] Hot) Collect(Image<Rgb24> img, int mw, int mh)
     {
         int w = img.Width, h = img.Height;
@@ -69,7 +67,7 @@ internal static class LightEffects
                         float r = p.R / 255f, g = p.G / 255f, b = p.B / 255f;
                         float max = MathF.Max(r, MathF.Max(g, b)), min = MathF.Min(r, MathF.Min(g, b));
                         float luma = 0.2126f * r + 0.7152f * g + 0.0722f * b;
-                        // Saturated colours start to glow earlier than neutral ones, so an overcast sky stays calm.
+                        // Saturated colours glow earlier, so overcast skies stay calm.
                         float weight = MathF.Max(ToneMath.Smooth(0.68f, 1f, luma), ToneMath.Smooth(0.45f, 0.85f, max * (max - min)));
                         if (weight <= 0f) continue;
                         sum += new Vector3(dec[p.R], dec[p.G], dec[p.B]) * weight;
@@ -90,7 +88,7 @@ internal static class LightEffects
         return (light, hot);
     }
 
-    // Three box blurs in each direction, a close and cheap stand-in for a Gaussian of the given sigma.
+    // Three box blurs approximate a Gaussian.
     private static Vector3[] Blur(Vector3[] source, int w, int h, float sigma)
     {
         int radius = Math.Max(1, (int)MathF.Round((MathF.Sqrt(4f * sigma * sigma + 1f) - 1f) / 2f));
@@ -135,7 +133,7 @@ internal static class LightEffects
                 float tx = fx - x0;
                 var a = Vector3.Lerp(Vector3.Lerp(add[y0 * mw + x0], add[y0 * mw + x1], tx),
                                      Vector3.Lerp(add[y1 * mw + x0], add[y1 * mw + x1], tx), ty);
-                // Too faint to change a byte: leave the pixel exactly as it was.
+                // Too faint to change a byte.
                 if (a.X < 2e-4f && a.Y < 2e-4f && a.Z < 2e-4f) continue;
                 ref var p = ref row[x];
                 var c = new Vector3(dec[p.R], dec[p.G], dec[p.B]);

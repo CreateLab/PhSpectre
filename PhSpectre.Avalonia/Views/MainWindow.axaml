@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="using:PhSpectre.Avalonia.Localization"
              xmlns:local="using:PhSpectre.Avalonia.Views"
         xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
         xmlns:models="using:PhSpectre.Avalonia.Models"
@@ -22,14 +23,10 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <!--
-        V2 desktop layout (png/V2-Main): top bar with the three modes · stage with the card in the
-        middle and the Live / Result | Original / Fit pill under it · filmstrip along the bottom ·
-        inspector (Style / Content / Export) on the right.
-    -->
+    <!-- Desktop layout: top bar, stage with the pill, filmstrip, inspector. -->
     <Grid RowDefinitions="Auto,*">
 
-        <!-- ═══════════ Top bar ═══════════ -->
+        <!-- Top bar -->
         <Border x:Name="TopBar" Grid.Row="0" Background="{DynamicResource BackgroundBrush}"
                 BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1" Padding="16,10">
             <Grid ColumnDefinitions="*,Auto,*">
@@ -44,7 +41,7 @@
                     <Button Classes="link" Command="{Binding OpenFolderCommand}" Foreground="{DynamicResource TextSecondaryBrush}">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <materialIcons:MaterialIcon Kind="FolderOutline" Width="16" Height="16" VerticalAlignment="Center"/>
-                            <TextBlock Text="Open" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Open'}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </StackPanel>
@@ -55,19 +52,19 @@
                     <ListBoxItem>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="PaletteOutline" Width="16" Height="16"/>
-                            <TextBlock Text="Edit"/>
+                            <TextBlock Text="{l:T 'mode::Edit'}"/>
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="ViewGridOutline" Width="16" Height="16"/>
-                            <TextBlock Text="Collage"/>
+                            <TextBlock Text="{l:T 'Collage'}"/>
                         </StackPanel>
                     </ListBoxItem>
                     <ListBoxItem IsVisible="{Binding Settings.ShowCameraMode}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="CameraOutline" Width="16" Height="16"/>
-                            <TextBlock Text="Camera"/>
+                            <TextBlock Text="{l:T 'Camera'}"/>
                         </StackPanel>
                     </ListBoxItem>
                 </ListBox>
@@ -75,7 +72,7 @@
                 <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10"
                             HorizontalAlignment="Right" VerticalAlignment="Center">
 
-                    <!-- Update banner: unobtrusive, dismissal persists per version. -->
+                    <!-- Update banner; dismissal persists per version -->
                     <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center"
                                 IsVisible="{Binding IsUpdateAvailable}">
                         <Button Classes="link" Command="{Binding OpenUpdateUrlCommand}">
@@ -85,30 +82,36 @@
                             </StackPanel>
                         </Button>
                         <local:IconButton Width="24" Height="24" Command="{Binding DismissUpdateCommand}"
-                                ToolTip.Tip="Dismiss" Icon="Close" IconSize="12"/>
+                                ToolTip.Tip="{l:T 'Dismiss'}" Icon="Close" IconSize="12"/>
                     </StackPanel>
 
                     <views:CameraIndicator DataContext="{Binding Settings}" VerticalAlignment="Center"/>
 
-                    <!-- Appearance popover (V2-Light) -->
-                    <Button Classes="icon-toolbar" Width="36" Height="36" ToolTip.Tip="Appearance">
+                    <!-- Appearance popover -->
+                    <Button Classes="icon-toolbar" Width="36" Height="36" ToolTip.Tip="{l:T 'Appearance'}">
                         <materialIcons:MaterialIcon Kind="ThemeLightDark" Width="18" Height="18"/>
                         <Button.Flyout>
                             <Flyout Placement="BottomEdgeAlignedRight">
                                 <StackPanel Width="220" Spacing="2" DataContext="{Binding Settings}"
                                             x:DataType="vm:SettingsViewModel">
-                                    <TextBlock Text="APPEARANCE" Classes="section-title first" Margin="4,4,0,6"/>
-                                    <RadioButton Content="System" GroupName="appearance" IsChecked="{Binding IsAppearanceSystem, Mode=OneWay}"
+                                    <TextBlock Text="{l:T 'APPEARANCE'}" Classes="section-title first" Margin="4,4,0,6"/>
+                                    <RadioButton Content="{l:T 'System'}" GroupName="appearance" IsChecked="{Binding IsAppearanceSystem, Mode=OneWay}"
                                                  Command="{Binding SetAppearanceCommand}"
                                                  CommandParameter="{x:Static vm:AppAppearance.System}"/>
-                                    <RadioButton Content="Light" GroupName="appearance" IsChecked="{Binding IsAppearanceLight, Mode=OneWay}"
+                                    <RadioButton Content="{l:T 'theme::Light'}" GroupName="appearance" IsChecked="{Binding IsAppearanceLight, Mode=OneWay}"
                                                  Command="{Binding SetAppearanceCommand}"
                                                  CommandParameter="{x:Static vm:AppAppearance.Light}"/>
-                                    <RadioButton Content="Dark" GroupName="appearance" IsChecked="{Binding IsAppearanceDark, Mode=OneWay}"
+                                    <RadioButton Content="{l:T 'theme::Dark'}" GroupName="appearance" IsChecked="{Binding IsAppearanceDark, Mode=OneWay}"
                                                  Command="{Binding SetAppearanceCommand}"
                                                  CommandParameter="{x:Static vm:AppAppearance.Dark}"/>
                                     <TextBlock Classes="hint" Margin="4,6,4,4"
-                                               Text="Applies to the app. The exported card has its own theme in Style → Card."/>
+                                               Text="{l:T 'Applies to the app. The exported card has its own theme in Style → Card.'}"/>
+                                    <TextBlock Text="{l:T 'LANGUAGE'}" Classes="section-title first" Margin="4,10,4,6"/>
+                                    <ComboBox ItemsSource="{Binding LanguageLabels}" SelectedIndex="{Binding LanguageIndex}"
+                                              HorizontalAlignment="Stretch" MinHeight="32" Margin="4,0"
+                                              AutomationProperties.Name="{l:T 'LANGUAGE'}"/>
+                                    <TextBlock Classes="hint" Margin="4,4" TextWrapping="Wrap"
+                                               Text="{l:T 'Restart the app to change the language.'}"/>
                                 </StackPanel>
                             </Flyout>
                         </Button.Flyout>
@@ -118,15 +121,15 @@
                     <StackPanel Orientation="Horizontal" Spacing="2" IsVisible="{Binding Settings.IsProcessMode}"
                                 VerticalAlignment="Center">
                         <local:IconButton Width="36" Height="36" Command="{Binding Settings.Process.UndoCommand}"
-                                ToolTip.Tip="Undo (Ctrl+Z)" AutomationProperties.Name="Undo" Icon="UndoVariant" IconSize="18"/>
+                                ToolTip.Tip="{l:T 'Undo (Ctrl+Z)'}" AutomationProperties.Name="{l:T 'Undo'}" Icon="UndoVariant" IconSize="18"/>
                         <local:IconButton Width="36" Height="36" Command="{Binding Settings.Process.RedoCommand}"
-                                ToolTip.Tip="Redo (Ctrl+Y)" AutomationProperties.Name="Redo" Icon="RedoVariant" IconSize="18"/>
+                                ToolTip.Tip="{l:T 'Redo (Ctrl+Y)'}" AutomationProperties.Name="{l:T 'Redo'}" Icon="RedoVariant" IconSize="18"/>
                     </StackPanel>
                     <Button x:Name="EditExportButton" Classes="cta" Padding="16,0" Height="36" MinWidth="110"
                             IsVisible="{Binding Settings.IsEditMode}" IsEnabled="{Binding Settings.Process.CanExport}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
-                            <TextBlock Text="Export" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Export'}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
 
@@ -135,7 +138,7 @@
                             IsEnabled="{Binding Settings.IsCollageModeAvailable}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
-                            <TextBlock Text="Export" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Export'}" VerticalAlignment="Center"/>
                             <materialIcons:MaterialIcon Kind="ChevronDown" Width="14" Height="14"/>
                         </StackPanel>
                         <Button.Flyout>
@@ -151,23 +154,23 @@
             </Grid>
         </Border>
 
-        <!-- ═══════════ Body ═══════════ -->
+        <!-- Body -->
         <Grid Grid.Row="1" ColumnDefinitions="Auto,*,344" IsVisible="{Binding !Settings.IsCameraMode}">
 
-            <!-- Edit tools: a rail at the left edge, beside the photo -->
+            <!-- Tool rail -->
             <views:EditToolRail Grid.Column="0" DataContext="{Binding Settings.Process}" IsVisible="{Binding Settings.IsEditMode}"/>
 
             <!-- Stage + filmstrip -->
             <Grid Grid.Column="1" RowDefinitions="Auto,*,Auto">
 
-                <!-- Collage tray: order = packing order; the first photo supplies the EXIF. -->
+                <!-- Collage tray: order is packing order, the first photo supplies the EXIF -->
                 <Border Grid.Row="0" IsVisible="{Binding IsCollageMode}" Padding="16,12,16,8"
                         Background="{DynamicResource FilmstripBrush}"
                         BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
                     <StackPanel Spacing="8">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="{Binding CollageItems.Count, StringFormat='{}{0} in collage'}" Classes="section-title first" Margin="0"/>
-                            <TextBlock Grid.Column="1" Text="Tick photos in the strip below to add them · use ‹ › to reorder"
+                            <TextBlock Text="{Binding CollageItems.Count, StringFormat={l:T 'In collage: {0}'}}" Classes="section-title first" Margin="0"/>
+                            <TextBlock Grid.Column="1" Text="{l:T 'Tick photos in the strip below to add them · use ‹ › to reorder'}"
                                        Classes="hint"/>
                         </Grid>
                         <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
@@ -190,19 +193,19 @@
                                                 </Border>
                                                 <Button Classes="tray-overlay" Width="20" Height="20"
                                                         HorizontalAlignment="Right" VerticalAlignment="Top" Margin="3"
-                                                        ToolTip.Tip="Remove from collage"
+                                                        ToolTip.Tip="{l:T 'Remove from collage'}"
                                                         Command="{Binding #CollageTrayItems.((vm:MainWindowViewModel)DataContext).RemoveFromCollageCommand}"
                                                         CommandParameter="{Binding}">
                                                     <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
                                                 </Button>
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                                                             Margin="3" Spacing="2">
-                                                    <Button Classes="tray-overlay" Width="20" Height="20" ToolTip.Tip="Move earlier"
+                                                    <Button Classes="tray-overlay" Width="20" Height="20" ToolTip.Tip="{l:T 'Move earlier'}"
                                                             Command="{Binding #CollageTrayItems.((vm:MainWindowViewModel)DataContext).MoveCollageItemUpCommand}"
                                                             CommandParameter="{Binding}">
                                                         <materialIcons:MaterialIcon Kind="ChevronLeft" Width="12" Height="12"/>
                                                     </Button>
-                                                    <Button Classes="tray-overlay" Width="20" Height="20" ToolTip.Tip="Move later"
+                                                    <Button Classes="tray-overlay" Width="20" Height="20" ToolTip.Tip="{l:T 'Move later'}"
                                                             Command="{Binding #CollageTrayItems.((vm:MainWindowViewModel)DataContext).MoveCollageItemDownCommand}"
                                                             CommandParameter="{Binding}">
                                                         <materialIcons:MaterialIcon Kind="ChevronRight" Width="12" Height="12"/>
@@ -217,7 +220,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Edit canvas: the graded photo -->
+                <!-- Edit canvas -->
                 <views:EditCanvas Grid.Row="1" DataContext="{Binding Settings.Process}"
                                   IsVisible="{Binding Settings.IsProcessMode}"/>
 
@@ -251,16 +254,16 @@
                         <TextBlock Text="{Binding EmptyStageText}" Classes="hint" TextAlignment="Center"/>
                         <Button Classes="secondary" Padding="18,0" HorizontalAlignment="Center"
                                 IsVisible="{Binding !HasPhotos}" Command="{Binding OpenFolderCommand}"
-                                Content="Open folder"/>
+                                Content="{l:T 'Open folder'}"/>
                     </StackPanel>
 
-                    <!-- First render only (later renders keep the previous result + the pill) -->
+                    <!-- First render only -->
                     <StackPanel IsVisible="{Binding ShowGeneratingTextSingle}" Spacing="10" Width="180"
                                 HorizontalAlignment="Center" VerticalAlignment="Center">
                         <ProgressBar IsIndeterminate="True" Height="3"/>
-                        <TextBlock Text="Generating…" Classes="hint" TextAlignment="Center"/>
+                        <TextBlock Text="{l:T 'Generating…'}" Classes="hint" TextAlignment="Center"/>
                     </StackPanel>
-                    <!-- Banners at the top of the stage: the last result stays visible underneath -->
+                    <!-- Banners; the last result stays visible -->
                     <StackPanel VerticalAlignment="Top" HorizontalAlignment="Center" Spacing="10" Margin="16,16,16,0">
                         <views:ErrorCard IsVisible="{Binding HasError}" Message="{Binding ErrorMessage}"
                                          TryAgainCommand="{Binding RetryRenderCommand}"
@@ -270,21 +273,21 @@
                                 HorizontalAlignment="Center">
                             <StackPanel Orientation="Horizontal" Spacing="14">
                                 <TextBlock Classes="hint" VerticalAlignment="Center" TextWrapping="NoWrap"
-                                           Text="No film recipe found"/>
-                                <Button Classes="link" Content="Set manually" VerticalAlignment="Center"
+                                           Text="{l:T 'No film recipe found'}"/>
+                                <Button Classes="link" Content="{l:T 'Set manually'}" VerticalAlignment="Center"
                                         Command="{Binding Settings.SetRecipeManuallyCommand}"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
-                    <!-- Floating pill: Updating… while rebuilding, Result | Original when comparable -->
+                    <!-- Pill: Updating, or Result | Original -->
                     <Border Classes="pill" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,18"
                             Padding="10,6" IsVisible="{Binding ShowPill}">
                         <StackPanel Orientation="Horizontal" Spacing="12">
                             <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                                         IsVisible="{Binding ShowUpdatingPill}">
                                 <ProgressBar IsIndeterminate="True" Width="40" Height="3"/>
-                                <TextBlock Text="Updating…" FontSize="12" Foreground="{DynamicResource WarningBrush}"/>
+                                <TextBlock Text="{l:T 'Updating…'}" FontSize="12" Foreground="{DynamicResource WarningBrush}"/>
                             </StackPanel>
                             <local:CompareSwitch Width="190" IsVisible="{Binding CanCompare}" SelectedIndex="{Binding CompareIndex}"/>
                             <local:ActionButton Classes="cta" Height="30" Padding="14,0" FontSize="12" IsVisible="{Binding ShowRegenerate}"
@@ -307,7 +310,7 @@
                                 <TextBlock Text="{Binding ToastPathText}" Classes="value" FontWeight="Normal" FontSize="11"
                                            Opacity="0.7" TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
-                            <Button Grid.Column="2" Classes="cta" Content="Show" Height="32" Padding="14,0"
+                            <Button Grid.Column="2" Classes="cta" Content="{l:T 'Show'}" Height="32" Padding="14,0"
                                     Command="{Binding ShowInFolderCommand}"/>
                         </Grid>
                     </Border>
@@ -336,7 +339,7 @@
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
                                 <TextBlock Text="{Binding BatchResultText}" FontWeight="SemiBold" VerticalAlignment="Center"
                                            Foreground="{DynamicResource TextPrimaryBrush}"/>
-                                <Button Grid.Column="1" Classes="link" Content="Details" VerticalAlignment="Center"
+                                <Button Grid.Column="1" Classes="link" Content="{l:T 'Details'}" VerticalAlignment="Center"
                                         IsVisible="{Binding BatchHasErrors}" Command="{Binding ShowBatchErrorsCommand}"/>
                             </Grid>
                             <ScrollViewer MaxHeight="180" IsVisible="{Binding ShowBatchErrorDetails}">
@@ -403,7 +406,7 @@
                 <Grid RowDefinitions="*,Auto" IsVisible="{Binding Settings.ShowLegacyInspector}">
                     <views:SettingsPanel Grid.Row="0" DataContext="{Binding Settings}" Margin="16,14,10,0"/>
 
-                    <!-- Export footer: what will be written, then the two actions -->
+                    <!-- Export footer -->
                     <Border Grid.Row="1" IsVisible="{Binding Settings.IsExportTab}" Padding="16,12,16,16"
                             BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,1,0,0">
                         <StackPanel Spacing="10">
@@ -426,10 +429,10 @@
             </Border>
         </Grid>
 
-        <!-- Camera mode: replaces the whole body (recipes · recipe · camera) -->
+        <!-- Camera mode -->
         <views:CameraModeView Grid.Row="1" DataContext="{Binding Settings}" IsVisible="{Binding IsCameraMode}"/>
 
-        <!-- Camera dialogs (setup, write): modal layer -->
+        <!-- Camera dialogs -->
         <views:CameraOverlay Grid.RowSpan="2" DataContext="{Binding Settings}"/>
     </Grid>
 

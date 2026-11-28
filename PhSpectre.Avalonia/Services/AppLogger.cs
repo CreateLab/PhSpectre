@@ -3,7 +3,7 @@ using System.IO;
 
 namespace PhSpectre.Avalonia.Services;
 
-internal static class AppLogger
+public static class AppLogger
 {
     private const long MaxFileSizeBytes = 5 * 1024 * 1024;
 

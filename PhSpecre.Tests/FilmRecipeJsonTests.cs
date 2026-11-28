@@ -4,9 +4,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// System.Text.Json ignores ValueTuple's public fields by default, and even with
-// IncludeFields it serializes as {"Item1":..,"Item2":..} rather than the tuple's compile-time
-// element names — WhiteBalanceShiftJsonConverter fixes this. Regression coverage for that.
+// System.Text.Json drops ValueTuple names; WhiteBalanceShiftJsonConverter keeps them.
 public class FilmRecipeJsonTests
 {
     private static FilmRecipe Minimal((int, int)? shift) => new(

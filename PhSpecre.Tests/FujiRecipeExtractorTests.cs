@@ -8,12 +8,8 @@ public class FujiRecipeExtractorTests
 {
     private static readonly FujiRecipeExtractor Extractor = new();
 
-    // Hand-builds a byte-for-byte valid Fuji MakerNote block: "FUJIFILM" signature + u32 LE
-    // sub-IFD offset (always 12, immediately after the header) + entry count + 12-byte
-    // entries, with any value over 4 bytes appended after the entry table and addressed by
-    // an offset relative to the MakerNote block's own start (byte 0) — the scheme confirmed
-    // in FujiRecipeExtractor.cs's header comment, both against 3 real Fuji JPEGs and against
-    // ExifTool's own source.
+    // A minimal Fuji MakerNote: "FUJIFILM", u32 LE IFD offset (12), entry count, 12-byte entries; values over 4
+    // bytes follow, addressed from the block start.
     internal static byte[] BuildMakerNote(params (ushort Tag, ushort Type, uint Count, byte[] Value)[] entries)
     {
         const int headerSize = 12;
@@ -145,10 +141,7 @@ public class FujiRecipeExtractorTests
         Assert.Equal(-5, recipe.BwAdjustment);
     }
 
-    // Bugfix "dynamic range показывает Manual без значения": bodies that report 0x1402 as the
-    // bare "Manual" flag (rather than resolving straight to one of its own Standard/Wide1/Wide2
-    // codes) put the actual chosen percentage in a separate tag, 0x1403 — without decoding it,
-    // every manually-set shot showed the recipe's Dynamic Range as just the word "Manual".
+    // Bodies that report 0x1402 as just "Manual" put the percentage in 0x1403.
     [Theory]
     [InlineData(100, "DR100")]
     [InlineData(200, "DR200")]
@@ -196,7 +189,7 @@ public class FujiRecipeExtractorTests
     [Fact]
     public void Extract_WhiteBalanceShift_NotDivisibleByTwenty_ShowsRawValueAsIs()
     {
-        // 15 isn't a multiple of 20 — must come through unchanged, not rounded to 1.
+        // Not a multiple of 20: passes through unchanged.
         var mn = BuildMakerNote((0x100a, 9, 2, [.. S32(15), .. S32(0)]));
         var profile = BuildProfile("FUJIFILM", mn);
 
@@ -209,8 +202,7 @@ public class FujiRecipeExtractorTests
     [Fact]
     public void Extract_WhiteBalanceShift_DividedResultOutOfRange_ShowsRawValueAsIs()
     {
-        // 400/20 = 20, outside the real ±9 dial range — must come through as the raw 400,
-        // not a silently clamped ±9.
+        // Outside the ±9 dial range: passes through unclamped.
         var mn = BuildMakerNote((0x100a, 9, 2, [.. S32(400), .. S32(0)]));
         var profile = BuildProfile("FUJIFILM", mn);
 
@@ -220,13 +212,7 @@ public class FujiRecipeExtractorTests
         Assert.Equal((400, 0), recipe!.WhiteBalanceShift);
     }
 
-    // Regression, byte-for-byte from a real file: an X-T5 (firmware Ver4.31) JPEG shot in Reala
-    // ACE with a custom recipe reported ShadowTone raw 32 (-> dial -2, already correct under the
-    // old code since 32 is a whole multiple of 16) but HighlightTone raw 24 — not a multiple of
-    // 16 at all, only of 8. The old code's DecodeLevel fell back to returning that raw MakerNote
-    // number completely unconverted, so the app displayed "+24" for what ExifTool's own "-raw/16"
-    // formula (applied without rounding, matching its 12.68 "decimal values" support for exactly
-    // these two tags) resolves to the real, in-range dial position -1.5.
+    // From a real X-T5 (fw 4.31) file: HighlightTone raw 24 is dial -1.5 (value / -16, not rounded).
     [Fact]
     public void Extract_RealRealaAceFile_HighlightToneHalfStep_DecodesAsMinusOnePointFive()
     {
@@ -244,13 +230,11 @@ public class FujiRecipeExtractorTests
         Assert.Equal(-2m, recipe.ShadowTone);
     }
 
-    // Beyond the confirmed real half-step case above: any other raw value outside the old
-    // hardcoded -64..32 table (e.g. a wider whole-step tone-dial range on newer bodies) must
-    // still be divided by 16, not returned as the untouched raw MakerNote number.
+    // Any raw value outside the common range is still divided by 16.
     [Theory]
-    [InlineData(-80, 5)]   // beyond the old table's +4 ceiling
+    [InlineData(-80, 5)]
     [InlineData(-96, 6)]
-    [InlineData(48, -3)]   // beyond the old table's -2 floor
+    [InlineData(48, -3)]
     [InlineData(64, -4)]
     public void Extract_ToneRawValueOutsideOldTable_StillDividesBySixteen(int raw, decimal expectedDial)
     {
@@ -267,8 +251,7 @@ public class FujiRecipeExtractorTests
     [Fact]
     public void Extract_ToneRawValueNotDivisibleByEight_ShowsRawValueAsIs()
     {
-        // 10 isn't a multiple of 8 — the finest granularity confirmed in real MakerNote data —
-        // so it must come through unchanged rather than being coerced into a dial value.
+        // Not a multiple of 8: passes through unchanged.
         var mn = BuildMakerNote((0x1041, 9, 1, S32(-10)));
         var profile = BuildProfile("FUJIFILM", mn);
 
@@ -281,8 +264,7 @@ public class FujiRecipeExtractorTests
     [Fact]
     public void Extract_ToneRawValueDividedResultOutOfRange_ShowsRawValueAsIs()
     {
-        // -384/16 = 24, outside the sane ±10 dial range — must come through as the raw -384,
-        // not a wildly implausible +24 dial position.
+        // Outside ±10 on the dial: passes through unchanged.
         var mn = BuildMakerNote((0x1041, 9, 1, S32(-384)));
         var profile = BuildProfile("FUJIFILM", mn);
 
@@ -300,9 +282,7 @@ public class FujiRecipeExtractorTests
     [InlineData(0x503, "Acros + G Filter")]
     public void Extract_MonochromeFamilySaturation_OverridesFilmSimulation(int saturationRaw, string expectedSim)
     {
-        // FilmMode (0x1401) reports a color simulation (Velvia here), but Saturation (0x1003)
-        // carries a monochrome-family code — the monochrome name must win, since that's what
-        // the camera actually shot and what its own UI would show.
+        // A monochrome code in Saturation (0x1003) wins over the colour FilmMode (0x1401).
         var mn = BuildMakerNote(
             (0x1401, 3, 1, U16Bytes(0x200)),
             (0x1003, 3, 1, U16Bytes(saturationRaw)));
@@ -372,13 +352,10 @@ public class FujiRecipeExtractorTests
     [Fact]
     public void ParseFujiIfd_EntryWithOutOfBoundsOffset_SkipsThatEntryOnly()
     {
-        // One well-formed inline entry (WhiteBalance) plus one entry whose value offset
-        // points past the end of the buffer — the corrupt one must be dropped silently, the
-        // good one must still come through.
+        // The entry pointing past the buffer is dropped, the valid one survives.
         var mn = BuildMakerNote(
             (0x1002, 3, 1, U16Bytes(0x0000)),
             (0x1401, 2, 200, new byte[200])); // ASCII, 200 bytes -> forces an out-of-line offset
-        // Truncate the buffer so the second entry's resolved offset falls outside it.
         var truncated = mn[..(mn.Length - 150)];
 
         var entries = FujiRecipeExtractor.ParseFujiIfd(truncated);

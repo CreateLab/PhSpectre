@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Buffers.Binary;
 using System.Threading;
@@ -11,8 +12,8 @@ using PhSpectre.Camera;
 namespace PhSpectre.Android;
 
 /// <summary>
-/// <see cref="ICameraTransport"/> over Android's USB host API: one bulk-in and one bulk-out endpoint of the
-/// camera's Still Image (PTP) interface. Not yet exercised against a real phone and camera.
+/// <see cref="ICameraTransport"/> over the bulk endpoints of the camera's PTP interface.
+/// Not yet tried with a real phone and camera.
 /// </summary>
 public sealed class AndroidUsbCameraTransport : ICameraTransport
 {
@@ -35,7 +36,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
         _out = bulkOut;
     }
 
-    /// <summary>Opens the first plugged-in Fujifilm body, asking the user for USB permission if needed. Null when none is attached.</summary>
+    /// <summary>Opens the first Fujifilm body, asking for USB permission. Null when none is attached.</summary>
     public static async Task<IPtpTransport?> OpenFirstFujifilmAsync(CancellationToken ct)
     {
         var context = global::Android.App.Application.Context;
@@ -53,7 +54,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
         if (device == null) return null;
 
         if (!manager.HasPermission(device) && !await RequestPermissionAsync(context, manager, device, ct))
-            throw new PtpException("USB permission for the camera was denied.");
+            throw new PtpException(Loc.T("USB permission for the camera was denied."));
 
         var iface = FindStillImage(device)!;
         UsbEndpoint? bulkIn = null, bulkOut = null;
@@ -65,14 +66,14 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
             else bulkOut ??= endpoint;
         }
         if (bulkIn == null || bulkOut == null)
-            throw new PtpException("The camera's PTP interface has no bulk endpoints.");
+            throw new PtpException(Loc.T("The camera's PTP interface has no bulk endpoints."));
 
         var connection = manager.OpenDevice(device)
-            ?? throw new PtpException("Android could not open the camera.");
+            ?? throw new PtpException(Loc.T("Android could not open the camera."));
         if (!connection.ClaimInterface(iface, true))
         {
             connection.Close();
-            throw new PtpException("Another app is using the camera.");
+            throw new PtpException(Loc.T("Another app is using the camera."));
         }
         return new ContainerPtpTransport(new AndroidUsbCameraTransport(connection, iface, bulkIn, bulkOut));
     }
@@ -82,7 +83,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
         {
             ct.ThrowIfCancellationRequested();
             Write(container);
-            // A transfer ending exactly on a packet boundary needs a zero-length packet to terminate it.
+            // A transfer ending on a packet boundary needs a zero-length packet.
             if (container.Length % _out.MaxPacketSize == 0)
                 Write([]);
         }, ct);
@@ -96,10 +97,10 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
             {
                 ct.ThrowIfCancellationRequested();
                 read = _connection.BulkTransfer(_in, first, first.Length, TransferTimeoutMs);
-                if (read < 0) throw new PtpException("USB read failed or timed out.");
+                if (read < 0) throw new PtpException(Loc.T("USB read failed or timed out."));
             } while (read == 0); // skip zero-length terminators of the previous transfer
 
-            if (read < PtpContainer.HeaderSize) throw new PtpException($"Short USB read ({read} bytes).");
+            if (read < PtpContainer.HeaderSize) throw new PtpException(Loc.F("Short USB read ({0} bytes).", read));
 
             var total = (int)BinaryPrimitives.ReadUInt32LittleEndian(first);
             var result = new byte[Math.Max(total, read)];
@@ -110,7 +111,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
             {
                 ct.ThrowIfCancellationRequested();
                 var got = _connection.BulkTransfer(_in, chunk, Math.Min(chunk.Length, total - read), TransferTimeoutMs);
-                if (got < 0) throw new PtpException("USB read failed or timed out.");
+                if (got < 0) throw new PtpException(Loc.T("USB read failed or timed out."));
                 if (got == 0) break;
                 Array.Copy(chunk, 0, result, read, got);
                 read += got;
@@ -128,7 +129,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
     private void Write(byte[] data)
     {
         if (_connection.BulkTransfer(_out, data, data.Length, TransferTimeoutMs) < 0)
-            throw new PtpException("USB write failed or timed out.");
+            throw new PtpException(Loc.T("USB write failed or timed out."));
     }
 
     private static UsbInterface? FindStillImage(UsbDevice device)
@@ -152,7 +153,7 @@ public sealed class AndroidUsbCameraTransport : ICameraTransport
             context.RegisterReceiver(receiver, filter);
         try
         {
-            // Mutable on purpose: the system adds the device and the grant result to this intent.
+            // Mutable on purpose: the system adds the device and the result to this intent.
             var flags = Build.VERSION.SdkInt >= BuildVersionCodes.S ? PendingIntentFlags.Mutable : PendingIntentFlags.UpdateCurrent;
             var intent = new Intent(PermissionAction).SetPackage(context.PackageName);
             var pending = PendingIntent.GetBroadcast(context, 0, intent, flags);

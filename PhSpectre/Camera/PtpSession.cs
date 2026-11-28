@@ -1,9 +1,6 @@
 namespace PhSpectre.Camera;
 
-/// <summary>
-/// Minimal PTP initiator: one operation at a time, no event handling. Operations that the camera
-/// answers with anything other than OK throw <see cref="PtpException"/> carrying the response code.
-/// </summary>
+/// <summary>Minimal PTP initiator without events. Non-OK responses throw <see cref="PtpException"/>.</summary>
 public sealed class PtpSession : IAsyncDisposable
 {
     public const ushort OperationGetDeviceInfo = 0x1001;
@@ -30,7 +27,7 @@ public sealed class PtpSession : IAsyncDisposable
     public async Task OpenAsync(uint sessionId = 1, CancellationToken ct = default)
     {
         var response = await _transport.ExecuteAsync(OperationOpenSession, [sessionId], null, ct: ct);
-        // WPD/MTP drivers open the MTP session themselves, so "already open" is a usable session.
+        // WPD opens the session itself, so "already open" is fine.
         if (response.Code is not (ResponseOk or ResponseSessionAlreadyOpen))
             throw Failure(OperationOpenSession, response.Code);
         _open = true;
@@ -62,7 +59,6 @@ public sealed class PtpSession : IAsyncDisposable
             }
             catch (Exception)
             {
-                // Camera may already be gone (unplugged); nothing to recover.
             }
         }
         await _transport.DisposeAsync();

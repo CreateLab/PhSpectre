@@ -7,10 +7,7 @@ using Avalonia.VisualTree;
 
 namespace PhSpectre.Avalonia.Views;
 
-/// <summary>
-/// Tapping the track of a Slider.v2 jumps the thumb there (instead of paging by LargeChange),
-/// and the drag then continues from the new position as usual. A double tap returns the slider to <c>Default</c>.
-/// </summary>
+/// <summary>Tapping the track of a Slider.v2 jumps the thumb there; a double tap returns it to <c>Default</c>.</summary>
 public class SliderTapToSeek
 {
     private const double ThumbWidth = 22;
@@ -29,7 +26,7 @@ public class SliderTapToSeek
     {
         if (!slider.Classes.Contains("v2") || !slider.IsEnabled) return;
         if (!e.GetCurrentPoint(slider).Properties.IsLeftButtonPressed) return;
-        // The touch click counter also joins quick taps on two neighbouring sliders, so check it is the same one.
+        // Quick taps on neighbouring sliders also count as a double click.
         bool again = _lastPressed != null && _lastPressed.TryGetTarget(out var last) && last == slider;
         _lastPressed = new(slider);
         if (again && e.ClickCount >= 2)

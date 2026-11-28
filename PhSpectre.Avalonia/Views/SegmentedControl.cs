@@ -1,14 +1,11 @@
+using PhSpectre.Localization;
 using System;
 using Avalonia;
 using Avalonia.Controls;
 
 namespace PhSpectre.Avalonia.Views;
 
-/// <summary>
-/// The app's segmented switch (a ListBox styled by <c>ListBox.seg</c>). Either give it <see cref="Labels"/>
-/// ("PNG|JPEG") or put ListBoxItems inside when a segment needs an icon, IsVisible or IsEnabled.
-/// Bind <c>SelectedIndex</c> as usual.
-/// </summary>
+/// <summary>A segmented switch: set <see cref="Labels"/> ("PNG|JPEG") or put ListBoxItems inside.</summary>
 public class SegmentedControl : ListBox
 {
     public static readonly StyledProperty<string?> LabelsProperty =
@@ -31,14 +28,14 @@ public class SegmentedControl : ListBox
     }
 }
 
-/// <summary>Result | Original switch shown over a photo; <c>SelectedIndex</c> 0 = result, 1 = original.</summary>
+/// <summary>Result | Original switch: SelectedIndex 0 = result, 1 = original.</summary>
 public class CompareSwitch : SegmentedControl
 {
     protected override Type StyleKeyOverride => typeof(ListBox);
 
     public CompareSwitch()
     {
-        Labels = "Result|Original";
+        Labels = Loc.T("Result|Original");
         Width = 190;
     }
 }

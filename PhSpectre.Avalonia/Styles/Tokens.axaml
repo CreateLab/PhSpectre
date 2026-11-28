@@ -2,12 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:sys="clr-namespace:System;assembly=System.Runtime">
 
-    <!--
-        Non-colour design tokens (colours live in Colors.axaml, which is theme-aware). These are plain
-        values that do not change with the theme, so StaticResource is fine for them. New screens
-        (Process, library) use these instead of literals; existing views are migrated opportunistically.
-        Full reference: docs/design-system.md.
-    -->
+    <!-- Theme-independent tokens (colours are in Colors.axaml). See docs/design-system.md. -->
 
     <!-- Spacing: 4-pt scale -->
     <sys:Double x:Key="Space1">4</sys:Double>
@@ -33,10 +28,10 @@
     <!-- Touch target: 44 pt minimum on phones / tablets -->
     <sys:Double x:Key="TouchTarget">44</sys:Double>
 
-    <!-- Motion: durations; keep transitions under 250 ms, prefer 120 ms for hover/press -->
+    <!-- Motion: keep transitions under 250 ms -->
     <sys:TimeSpan x:Key="MotionFast">0:0:0.12</sys:TimeSpan>
     <sys:TimeSpan x:Key="MotionBase">0:0:0.2</sys:TimeSpan>
 
-    <!-- Single breakpoint (device-independent px): phone < 840 <= wide (inspector as a column) -->
+    <!-- Breakpoint: phone < 840 <= wide -->
     <sys:Double x:Key="BreakpointWide">840</sys:Double>
 </ResourceDictionary>

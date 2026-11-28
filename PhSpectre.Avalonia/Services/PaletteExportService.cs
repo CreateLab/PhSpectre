@@ -10,10 +10,9 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Avalonia.Services;
 
-// Turns a source photo and a settings snapshot into a saved palette file; shared by single save and batch export.
 public static class PaletteExportService
 {
-    // Stand-in when ComputeColors is false: k-means never runs and the swatches aren't drawn, but ColorPalette needs at least one swatch.
+    // Stand-in when ComputeColors is false: ColorPalette needs at least one swatch.
     private static readonly PhSpectre.Models.ColorPalette NoColorsPlaceholder =
         new([new PhSpectre.Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
 
@@ -22,7 +21,7 @@ public static class PaletteExportService
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null,
         PhSpectre.ColorGrading.GradeStack? look = null, PhSpectre.Rendering.PhotoAdjust? adjust = null)
     {
-        // Decoded once and reused for palette extraction and the final render, instead of decoding the full-resolution file twice.
+        // Decoded once for both the palette and the render.
         using var original = await Task.Run(() =>
         {
             using var fs = System.IO.File.OpenRead(sourcePath);
@@ -32,15 +31,15 @@ public static class PaletteExportService
             return img;
         }, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        look?.Apply(original); // the Look is part of the picture the card is built from
+        look?.Apply(original); // The Look is part of the picture the card is built from.
 
-        // Auto-detect the film recipe from the image's EXIF when the caller didn't resolve one (cheap: the profile is in memory).
+        // Read the recipe from EXIF if the caller has none.
         recipe ??= PhSpectre.Recipes.RecipeReader.Read(original);
 
         await ExportAsync(original, destPath, settings, cancellationToken, metadataOverride, recipe);
     }
 
-    // In-memory twin of ExportAsync, for callers that already hold a decoded, oriented working copy.
+    // ExportAsync for an already decoded, oriented image.
     public static async Task ExportAsync(
         Image<Rgb24> original, string destPath, PaletteExportSettings settings, CancellationToken cancellationToken,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
@@ -57,7 +56,7 @@ public static class PaletteExportService
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        // A QR preset can include Recipe/PhotoInfo in any mode; resolve the same PhotoMetadata the renderer uses so the QR agrees with the card.
+        // The QR may include recipe or photo info in any mode, so it uses the renderer's metadata.
         var qr = settings.BuildQrRenderOptions(metadataOverride ?? PaletteImageRenderer.ReadMetadata(original), recipe);
 
         await Task.Run(() => PaletteImageRenderer.Render(
@@ -83,14 +82,13 @@ public static class PaletteExportService
             qr:               qr), cancellationToken);
     }
 
-    // Collage twin of ExportAsync: sources are composed, the palette is pooled by displayed area, then rendered as for a single photo.
-    // None of the steps are real async I/O, so Task.Run keeps them off the calling (UI) thread.
+    // ExportAsync for collages. None of the steps are async, so Task.Run keeps them off the UI thread.
     public static Task ExportCollageAsync(
         IReadOnlyList<string> sourcePaths, string destPath, PaletteExportSettings settings,
         CancellationToken cancellationToken,
         PaletteImageRenderer.PhotoMetadata? metadataOverride = null, FilmRecipe? recipe = null)
     {
-        // The EXIF source is the first tray photo (as in CollageService.RenderCollageAsync); good enough for the QR's Camera/Lens.
+        // The first tray photo supplies the EXIF.
         var qrMetadata = metadataOverride ?? PaletteImageRenderer.ReadMetadata(sourcePaths[0]);
         var qr = settings.BuildQrRenderOptions(qrMetadata, recipe);
 
@@ -123,7 +121,7 @@ public static class PaletteExportService
             cancellationToken);
     }
 
-    // Cheap live-preview twin of ExportCollageAsync: layout only (see CollageService.ComposePreviewAsync).
+    // Layout-only preview of ExportCollageAsync.
     public static Task<Image<Rgb24>> ComposeCollagePreviewAsync(
         IReadOnlyList<string> sourcePaths, PaletteExportSettings settings, CancellationToken cancellationToken) =>
         CollageService.ComposePreviewAsync(sourcePaths, settings.GutterColor, settings.GutterThickness, settings.ExportPreset,

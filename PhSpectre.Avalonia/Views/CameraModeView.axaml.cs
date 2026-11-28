@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.Input.Platform;
@@ -48,7 +49,7 @@ public partial class CameraModeView : UserControl
         }, global::Avalonia.Threading.DispatcherPriority.Background);
     }
 
-    // Wide: three columns. Narrow (phone): one column, the view model shows one step at a time.
+    // Wide: three columns. Narrow: one column, one step at a time.
     private void ApplyLayout(bool narrow)
     {
         var cols = this.FindControl<Grid>("Cols")!;
@@ -83,15 +84,15 @@ public partial class CameraModeView : UserControl
         await CopyAsync(vm.Camera.ReportText);
         var path = vm.Camera.SaveReport();
         vm.SetRecipeStatus(path == null
-            ? "Camera dump copied. Send it to the developer"
-            : $"Camera dump copied and saved to {path}. Send it to the developer");
+            ? Loc.T("Camera dump copied. Send it to the developer")
+            : Loc.F("Camera dump copied and saved to {0}. Send it to the developer", path));
     }
 
     private async void CopyConnectError_Click(object? sender, RoutedEventArgs e)
     {
         if (DataContext is not SettingsViewModel vm) return;
         await CopyAsync(vm.Camera.ConnectErrorDetails);
-        vm.SetRecipeStatus("Error copied to the clipboard");
+        vm.SetRecipeStatus(Loc.T("Error copied to the clipboard"));
     }
 
     private async void CopyManual_Click(object? sender, RoutedEventArgs e)

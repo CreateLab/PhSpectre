@@ -5,18 +5,15 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// GutterColor/GutterThickness: the background strip between and around photos.
-// TargetAspect: desired width/height of the collage (before PaletteImageRenderer adds its swatch panel / metadata strip).
-// MaxLongEdge caps the canvas resolution; the collage is just the "photo" fed into the render pipeline.
+// TargetAspect is the collage alone, before the swatch panel and metadata strip.
 public sealed record CollageOptions(Color GutterColor, int GutterThickness, double TargetAspect, int MaxLongEdge = 2400);
 
-// AreaWeights parallel the input photos and sum to 1: each photo's fraction of the displayed area, used to weight palette extraction.
+// Each photo's share of the displayed area; sums to 1.
 public sealed record CollageResult(Image<Rgb24> Image, IReadOnlyList<double> AreaWeights);
 
 public static class CollageComposer
 {
-    // One layout row: photos [StartIndex, StartIndex+Count) side by side at their own aspect ratios, sharing the row's height.
-    // HeightFraction is the row's share of the canvas height (all rows sum to 1).
+    // A row of photos [StartIndex, StartIndex+Count) sharing its height; HeightFraction values sum to 1.
     internal readonly record struct PlannedRow(int StartIndex, int Count, double HeightFraction);
 
     public static CollageResult Compose(IReadOnlyList<Image<Rgb24>> photos, CollageOptions options)
@@ -47,7 +44,7 @@ public static class CollageComposer
         {
             ctx.Fill(options.GutterColor);
 
-            // Rows are planned in gutter-free normalized space; the gutter is then carved out of each cell's pixel rect so photos never touch the gutter color.
+            // Rows are planned without gutters; the gutter is then cut from each cell.
             double y = 0;
             foreach (var row in rows)
             {
@@ -85,8 +82,7 @@ public static class CollageComposer
         return new CollageResult(canvas, areaWeights);
     }
 
-    // Resizes and crops the photo to fill the cell (cover + center, ResizeMode.Crop) after insetting it by half the gutter per edge.
-    // Returns the rect drawn into, which equals the un-inset cell when the gutter exceeds the cell (better edge-to-edge than a vanished photo).
+    // Cover-crops the photo into the cell minus half a gutter per edge; a gutter larger than the cell is ignored.
     private static Rectangle DrawPhotoIntoCell(IImageProcessingContext ctx, Image<Rgb24> photo, Rectangle cellRect, int gutter)
     {
         int insetX = gutter / 2, insetY = gutter / 2;
@@ -105,9 +101,7 @@ public static class CollageComposer
         return inner;
     }
 
-    // Finds the contiguous row partition whose canvas aspect ratio is closest to `targetAspect` (justified-gallery layout:
-    // each row's height makes its photos exactly fill the width). With ~2-9 photos there are at most 2^(n-1) partitions,
-    // so an exhaustive search beats a greedy approximation.
+    // Exhaustive search for the contiguous row partition closest to targetAspect: cheap for a handful of photos.
     internal static IReadOnlyList<PlannedRow> PlanRows(IReadOnlyList<double> aspectRatios, double targetAspect)
     {
         int n = aspectRatios.Count;
@@ -146,7 +140,7 @@ public static class CollageComposer
             }
 
             double overallAspect = 1.0 / totalHeight;
-            // Log space makes the score symmetric for equally "wrong" over/under-wide results.
+            // Log space scores too wide and too tall alike.
             double score = Math.Abs(Math.Log(overallAspect / targetAspect));
 
             if (score < bestScore)

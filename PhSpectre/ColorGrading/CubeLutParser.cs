@@ -3,10 +3,8 @@ using System.Numerics;
 
 namespace PhSpectre.ColorGrading;
 
-// Parses the text ".cube" format. Tolerant of what real exporters emit (comments, blank lines, any
-// keyword order, TITLE with or without quotes, whitespace-separated floats) and strict about what
-// would silently corrupt an image: wrong row count, missing size, unparsable numbers.
-// Every failure is a FormatException carrying the 1-based line number where one applies.
+// Tolerant of what exporters emit, strict about what would corrupt an image. Failures are FormatException with a
+// line number.
 public static class CubeLutParser
 {
     private const int MaxSize3D = 256;
@@ -77,7 +75,7 @@ public static class CubeLutParser
                     break;
                 }
                 default:
-                    // Unknown keywords (LUT_IN_VIDEO_RANGE, vendor extensions) carry nothing we need.
+                    // Other keywords carry nothing we need.
                     break;
             }
         }
@@ -111,7 +109,6 @@ public static class CubeLutParser
 
     private static float ParseFloat(string s, int lineNo)
     {
-        // Invariant culture always: a ".cube" written on one machine must read the same on another.
         if (!float.TryParse(s, NumberStyles.Float, CultureInfo.InvariantCulture, out float f) || !float.IsFinite(f))
             throw Error(lineNo, $"cannot parse number '{s}'");
         return f;

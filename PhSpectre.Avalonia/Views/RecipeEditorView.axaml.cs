@@ -16,7 +16,7 @@ public partial class RecipeEditorView : UserControl
             int cols = e.NewSize.Width >= TwoColumnMinWidth ? 2 : 1;
             EditGroup1.Columns = EditGroup2.Columns = EditGroup3.Columns = cols;
         };
-        // Esc is the same as Cancel (which asks first when there are unsaved edits).
+        // Esc acts as Cancel.
         RecipeEditor.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape && DataContext is SettingsViewModel vm)

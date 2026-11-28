@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:PhSpectre.Avalonia.Localization"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
              xmlns:local="using:PhSpectre.Avalonia.Views"
@@ -10,7 +11,7 @@
     </UserControl.Styles>
         <StackPanel Margin="0,0,0,28">
 
-            <TextBlock Text="SIZE" Classes="section-title first"/>
+            <TextBlock Text="{l:T 'SIZE'}" Classes="section-title first"/>
             <ListBox Classes="options" ItemsSource="{Binding ExportSizeOptions}"
                      SelectedIndex="{Binding ExportSizeIndex}">
                 <ListBox.ItemTemplate>
@@ -23,18 +24,18 @@
                 </ListBox.ItemTemplate>
             </ListBox>
 
-            <TextBlock Text="SAVE TO" Classes="section-title"/>
+            <TextBlock Text="{l:T 'SAVE TO'}" Classes="section-title"/>
             <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource FieldBorderBrush}"
                     BorderThickness="1" CornerRadius="8" Padding="12,0" MinHeight="40">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="{Binding SaveFolderDisplay}" Classes="value" TextTrimming="CharacterEllipsis"/>
-                    <Button Grid.Column="1" Classes="link" Content="Change" VerticalAlignment="Center"
+                    <Button Grid.Column="1" Classes="link" Content="{l:T 'Change'}" VerticalAlignment="Center"
                             IsVisible="{Binding CanChooseSaveFolder}"
                             Command="{Binding ChangeSaveFolderCommand}"/>
                 </Grid>
             </Border>
             <Grid Classes="row" ColumnDefinitions="*,Auto" Margin="0,6,0,0" IsVisible="{Binding CanChooseSaveFolder}">
-                <TextBlock Text="Show in folder after saving" Classes="row"/>
+                <TextBlock Text="{l:T 'Show in folder after saving'}" Classes="row"/>
                 <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding ShowInFolderAfterSave}"/>
             </Grid>
 

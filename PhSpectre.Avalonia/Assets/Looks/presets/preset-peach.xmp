@@ -1,0 +1,8 @@
+<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:RDF>
+ <!-- Peach, made for PhSpectre (original work). SkinSmoothing is PhSpectre's own setting. -->
+ <rdf:Description rdf:about="" crs:Name="Peach" crs:Treatment="Color" crs:SkinSmoothing="50" crs:Sharpness="25" crs:Shadows2012="12" crs:Vibrance="6" crs:GrainAmount="8" crs:GrainSize="20" crs:HueAdjustmentOrange="-12" crs:SaturationAdjustmentOrange="4" crs:LuminanceAdjustmentOrange="10" crs:HueAdjustmentYellow="-20" crs:SaturationAdjustmentYellow="-15" crs:LuminanceAdjustmentYellow="4" crs:HueAdjustmentGreen="-8" crs:SaturationAdjustmentGreen="-25" crs:LuminanceAdjustmentGreen="0" crs:ColorGradeMidtoneHue="12" crs:ColorGradeMidtoneSat="10" crs:ColorGradeHighlightHue="22" crs:ColorGradeHighlightSat="16">
+  <crs:ToneCurvePV2012><rdf:Seq><rdf:li>0, 8</rdf:li><rdf:li>64, 74</rdf:li><rdf:li>128, 140</rdf:li><rdf:li>192, 202</rdf:li><rdf:li>255, 255</rdf:li></rdf:Seq></crs:ToneCurvePV2012>
+ </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>

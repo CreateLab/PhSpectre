@@ -15,6 +15,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\PhSpectre.Skin\PhSpectre.Skin.csproj" />
         <ProjectReference Include="..\PhSpectre\PhSpectre.csproj" />
     </ItemGroup>
 

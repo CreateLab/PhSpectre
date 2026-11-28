@@ -39,9 +39,8 @@ public class BundledRecipesTests
     [Fact]
     public void Bundled_EveryRecipeFitsInACameraSlot()
     {
-        // A slot holds a name of up to 25 characters and every value must have a verified encoding, otherwise
-        // "Send to camera" would drop settings. The monochrome warm/cool shift is the one known exception: the
-        // encoder reports it as skipped and the dialog shows that before writing.
+        // Every value must have a verified encoding, or "Send to camera" would drop settings. The monochrome
+        // warm/cool shift is the known exception.
         Assert.All(Load(), e =>
         {
             Assert.InRange(e.Name.Length, 1, 25);

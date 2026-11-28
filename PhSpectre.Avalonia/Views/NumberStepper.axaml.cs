@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Globalization;
 using Avalonia;
@@ -88,12 +89,12 @@ public partial class NumberStepper : UserControl
         if (!decimal.TryParse(text, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
                 CultureInfo.InvariantCulture, out var parsed))
         {
-            SetInvalid($"Enter a number from {Format(Minimum)} to {Format(Maximum)}");
+            SetInvalid(Loc.F("Enter a number from {0} to {1}", Format(Minimum), Format(Maximum)));
             return;
         }
         if (parsed < Minimum || parsed > Maximum)
         {
-            SetInvalid($"Allowed range: {Format(Minimum)} to {Format(Maximum)}");
+            SetInvalid(Loc.F("Allowed range: {0} to {1}", Format(Minimum), Format(Maximum)));
             return;
         }
         SetInvalid(null);
@@ -103,7 +104,7 @@ public partial class NumberStepper : UserControl
         UpdateButtons();
     }
 
-    // A rejected entry is reverted on blur so the field never keeps a value that isn't saved.
+    // A rejected entry is reverted on blur.
     private void Input_LostFocus(object? sender, RoutedEventArgs e) => ShowValue();
 
     private void Input_KeyDown(object? sender, KeyEventArgs e)

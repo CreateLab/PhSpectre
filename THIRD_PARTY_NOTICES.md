@@ -12,11 +12,13 @@ PhSpectre uses the following open-source components. Each is used under its own 
 | Material.Icons.Avalonia | MIT | https://github.com/SKProCH/Material.Icons |
 | Net.Codecrete.QrCodeGenerator | MIT | https://github.com/manuelbl/QrCodeGenerator |
 | Xamarin.AndroidX.* (Android bindings) | MIT / Apache-2.0 | https://github.com/xamarin/AndroidX |
+| ONNX Runtime (runs the skin model) | MIT | https://github.com/microsoft/onnxruntime |
+| MediaPipe Selfie Multiclass 256x256 (skin model, converted to ONNX) | Apache-2.0 | https://ai.google.dev/edge/mediapipe/solutions/vision/image_segmenter |
 | SixLabors.ImageSharp, ImageSharp.Drawing | Six Labors Split License (Apache-2.0 for qualifying open-source use) | https://sixlabors.com/products/imagesharp/ |
 
 ## Bundled content
 
-- **Looks** (`PhSpectre.Avalonia/Assets/Looks`): the 23 presets and 45 LUTs shipped with the app.
+- **Looks** (`PhSpectre.Avalonia/Assets/Looks`): the 28 presets and 60 LUTs shipped with the app.
 - **Community film recipes** (`PhSpectre.Avalonia/Assets/Recipes/library.json`): camera settings only (no images), each credited to its author with a link to the source inside the app.
 
 Fujifilm and film simulation names are trademarks of their respective owners; PhSpectre is not affiliated with them.

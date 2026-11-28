@@ -40,8 +40,6 @@ public class CubeLutTests
 
     private static CubeLut Identity3D(int n = 5) => CubeLut.Parse(Cube3D(n, (r, g, b) => (r, g, b)));
 
-    // ── Parsing ──────────────────────────────────────────────────────────────────────────────
-
     [Fact]
     public void Parse_ReadsHeaderAndIgnoresCommentsAndBlankLines()
     {
@@ -86,8 +84,6 @@ public class CubeLutTests
     public void Parse_Throws_WhenDomainInverted() =>
         Assert.Throws<FormatException>(() => CubeLut.Parse("LUT_1D_SIZE 2\nDOMAIN_MIN 1 1 1\nDOMAIN_MAX 0 0 0\n0 0 0\n1 1 1\n"));
 
-    // ── Interpolation ────────────────────────────────────────────────────────────────────────
-
     [Theory]
     [InlineData(0f, 0f, 0f)]
     [InlineData(1f, 1f, 1f)]
@@ -105,8 +101,7 @@ public class CubeLutTests
     [Fact]
     public void Evaluate_LinearFunction_IsReproducedExactly_InEverySixTetrahedra()
     {
-        // Tetrahedral interpolation is exact for any function linear in (r,g,b). Probing points whose
-        // fractional offsets take all six orderings exercises every branch of the case split.
+        // Tetrahedral interpolation is exact for linear functions; the probe points cover all six branches.
         static (float, float, float) F(float r, float g, float b) =>
             (0.7f * r + 0.2f * g + 0.1f * b, 0.1f * r + 0.8f * g + 0.1f * b, 0.05f * r + 0.15f * g + 0.8f * b);
 
@@ -130,7 +125,6 @@ public class CubeLutTests
     [Fact]
     public void Evaluate_GridNodes_ReturnStoredValues()
     {
-        // A non-linear table: nodes must come back exactly regardless of interpolation.
         var lut = CubeLut.Parse(Cube3D(5, (r, g, b) => (r * r, MathF.Sqrt(g), 1f - b)));
         var o = lut.Evaluate(0.5f, 0.25f, 0.75f);
         Assert.Equal(0.25f, o.X, 5);
@@ -165,8 +159,6 @@ public class CubeLutTests
         Assert.Equal(0.5f, lut.Evaluate(0.25f, 0.25f, 0.25f).X, 5);
         Assert.Equal(1f, lut.Evaluate(0.9f, 0.9f, 0.9f).X, 5);
     }
-
-    // ── Applying to images ───────────────────────────────────────────────────────────────────
 
     private static Image<Rgb24> Gradient()
     {
@@ -213,7 +205,7 @@ public class CubeLutTests
     {
         using var img = new Image<Rgb24>(1, 1);
         img[0, 0] = new Rgb24(0, 0, 0);
-        var white = CubeLut.Parse(Cube1D(2, _ => 1f)); // everything -> white
+        var white = CubeLut.Parse(Cube1D(2, _ => 1f));
 
         LutApplier.Apply(img, white, 0.5f);
 

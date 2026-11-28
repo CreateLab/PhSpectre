@@ -29,6 +29,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\PhSpectre.Skin\PhSpectre.Skin.csproj" />
         <ProjectReference Include="..\PhSpectre.Avalonia\PhSpectre.Avalonia.csproj"/>
     </ItemGroup>
 </Project>

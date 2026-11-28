@@ -2,11 +2,7 @@ using SixLabors.ImageSharp;
 
 namespace PhSpectre.Heif;
 
-// Called once at startup by PhSpectre.Desktop, PhSpectre.CLI and PhSpectre.API — never by
-// PhSpectre.Android, which doesn't reference this project at all (see HeifPixelDecoder's
-// header comment). After this call, Image.Load<Rgb24>/Image.Identify in
-// PhSpectre.Services.ImageLoader work for .heic files through their existing code paths, no
-// further changes needed there.
+// Called at startup by Desktop, CLI and API; afterwards ImageLoader handles .heic.
 public static class HeifDesktopSupport
 {
     public static void Register(Configuration? configuration = null)

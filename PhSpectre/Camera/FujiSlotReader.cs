@@ -9,10 +9,7 @@ public sealed record FujiSlotInfo(int Slot, string? Name, FilmRecipe Recipe, IRe
     public bool IsEmpty => Name == null;
 }
 
-/// <summary>
-/// Everything the UI needs to offer a camera: model, whether writing is allowed, and every slot.
-/// <see cref="Profile"/> is null for a body outside the table, in which case <see cref="Slots"/> is empty.
-/// </summary>
+/// <summary>Camera model, writability and slots. <see cref="Profile"/> is null for unknown bodies.</summary>
 public sealed record FujiCameraSnapshot(string Model, string Firmware, FujiCameraProfile? Profile,
     bool RawConvMode, IReadOnlyList<FujiSlotInfo> Slots, string? ReadError = null)
 {
@@ -74,7 +71,7 @@ public static class FujiSlotReader
         }
         catch (Exception e) when (e is PtpException or FujiWriteException)
         {
-            // An unverified body may not follow the X-T5's layout; report it instead of failing the whole dialog.
+            // An unverified body may use another layout.
             slots.Clear();
             readError = e.Message;
         }

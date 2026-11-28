@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using PhSpectre.Models;
 
 namespace PhSpectre.Camera;
@@ -14,10 +15,10 @@ public sealed record FujiWriteProgress(FujiWritePhase Phase, int Index, int Tota
 
 public sealed record FujiWriteOptions
 {
-    /// <summary>Plan only: read and validate, send nothing but the bank selector.</summary>
+    /// <summary>Dry run: only the bank selector is written.</summary>
     public bool DryRun { get; init; } = true;
 
-    /// <summary>Allow replacing a slot that already has a name. Off by default so a user recipe is never overwritten by accident.</summary>
+    /// <summary>Allow replacing a named slot.</summary>
     public bool AllowOverwrite { get; init; }
 
     /// <summary>Receives a callback after every write and every read-back; null for none.</summary>
@@ -39,9 +40,8 @@ public sealed record FujiWriteReport(
 public sealed record FujiRestoreReport(bool Success, IReadOnlyList<string> Problems);
 
 /// <summary>
-/// Writes a <see cref="FilmRecipe"/> into one custom-setting slot. Every write is verified by reading it back
-/// (an OK response alone does not prove a setting changed), the slot is backed up first, and any failure or
-/// cancellation restores the backup. The bank selector is always put back on exit.
+/// Writes a <see cref="FilmRecipe"/> into a slot: backup first, every write read back, restore on failure or
+/// cancellation, bank selector put back.
 /// </summary>
 public static class FujiRecipeWriter
 {
@@ -56,13 +56,13 @@ public static class FujiRecipeWriter
     {
         var info = await session.GetDeviceInfoAsync(ct);
         var profile = FujiCameraProfiles.Find(info.Model)
-            ?? throw new FujiWriteException($"Unknown camera '{info.Model}': refusing to write.");
+            ?? throw new FujiWriteException(Loc.F("Unknown camera '{0}': refusing to write.", info.Model));
         if (profile.Access != FujiBankAccess.Direct)
-            throw new FujiWriteException($"{profile.Model} keeps its slots inside the full settings backup; direct slot access is not supported.");
+            throw new FujiWriteException(Loc.F("{0} keeps its slots inside the full settings backup; direct slot access is not supported.", profile.Model));
         if (!options.DryRun && !profile.WriteVerified)
-            throw new FujiWriteException($"{profile.Model} is read-only until its encodings are verified on a real device.");
+            throw new FujiWriteException(Loc.F("{0} is read-only until its encodings are verified on a real device.", profile.Model));
         if (slot < 1 || slot > profile.SlotCount)
-            throw new FujiWriteException($"{profile.Model} has slots 1-{profile.SlotCount}, not {slot}.");
+            throw new FujiWriteException(Loc.F("{0} has slots 1-{1}, not {2}.", profile.Model, profile.SlotCount, slot));
 
         await EnsureRawConvModeAsync(session, ct);
 
@@ -90,22 +90,19 @@ public static class FujiRecipeWriter
         }
     }
 
-    /// <summary>
-    /// Puts a slot back to a previously saved backup (undo, or recovery after a failed write). Only properties
-    /// that differ are written, and every one is read back.
-    /// </summary>
+    /// <summary>Restores a slot from a backup, writing only what differs and reading it back.</summary>
     public static async Task<FujiRestoreReport> RestoreAsync(PtpSession session, int slot,
         IReadOnlyDictionary<ushort, byte[]> backup, CancellationToken ct = default)
     {
         var info = await session.GetDeviceInfoAsync(ct);
         var profile = FujiCameraProfiles.Find(info.Model)
-            ?? throw new FujiWriteException($"Unknown camera '{info.Model}': refusing to write.");
+            ?? throw new FujiWriteException(Loc.F("Unknown camera '{0}': refusing to write.", info.Model));
         if (profile.Access != FujiBankAccess.Direct)
-            throw new FujiWriteException($"{profile.Model} keeps its slots inside the full settings backup; direct slot access is not supported.");
+            throw new FujiWriteException(Loc.F("{0} keeps its slots inside the full settings backup; direct slot access is not supported.", profile.Model));
         if (!profile.WriteVerified)
-            throw new FujiWriteException($"{profile.Model} is read-only until its encodings are verified on a real device.");
+            throw new FujiWriteException(Loc.F("{0} is read-only until its encodings are verified on a real device.", profile.Model));
         if (slot < 1 || slot > profile.SlotCount)
-            throw new FujiWriteException($"{profile.Model} has slots 1-{profile.SlotCount}, not {slot}.");
+            throw new FujiWriteException(Loc.F("{0} has slots 1-{1}, not {2}.", profile.Model, profile.SlotCount, slot));
         await EnsureRawConvModeAsync(session, ct);
 
         var originalSelector = await session.GetPropertyAsync(BankSelector, ct);
@@ -115,7 +112,7 @@ public static class FujiRecipeWriter
             await session.SetPropertyAsync(BankSelector, U16Bytes((ushort)slot), ct);
             var current = await ReadSlotAsync(session, profile, ct);
 
-            // Kelvin only means something under the Kelvin WB mode; under others the camera rewrites it itself.
+            // Under other WB modes the camera rewrites Kelvin itself.
             var kelvinMeaningful = backup.TryGetValue(FujiSlotCodec.PropWhiteBalance, out var wb)
                 && wb.Length >= 2 && (ushort)(wb[0] | wb[1] << 8) == FujiSlotCodec.WbKelvin;
 
@@ -128,7 +125,7 @@ public static class FujiRecipeWriter
             {
                 try
                 {
-                    // D-Range Priority is written last (see RestoreOrder), but a stored DR is only accepted with it off.
+                    // A stored DR is accepted only with D-Range Priority off.
                     foreach (var value in RestoreValues(prop, backup[prop]))
                         await session.SetPropertyAsync(prop, value, CancellationToken.None);
                 }
@@ -142,7 +139,7 @@ public static class FujiRecipeWriter
             {
                 var actual = await session.GetPropertyAsync(prop, CancellationToken.None);
                 if (!Matches(prop, backup[prop], actual))
-                    problems.Add($"0x{prop:X4}: restored value reads {Convert.ToHexString(actual)}, expected {Convert.ToHexString(backup[prop])}");
+                    problems.Add(Loc.F("0x{0:X4}: restored value reads {1}, expected {2}", prop, Convert.ToHexString(actual), Convert.ToHexString(backup[prop])));
             }
         }
         finally
@@ -165,8 +162,8 @@ public static class FujiRecipeWriter
             }
             catch (PtpException e)
             {
-                // A backup with holes cannot be restored, so do not start writing without a complete one.
-                throw new FujiWriteException($"Cannot back up slot: property 0x{prop:X4} unreadable ({e.Message}).");
+                // An incomplete backup cannot be restored.
+                throw new FujiWriteException(Loc.F("Cannot back up slot: property 0x{0:X4} unreadable ({1}).", prop, e.Message));
             }
         }
         return slot;
@@ -176,7 +173,7 @@ public static class FujiRecipeWriter
     {
         var mode = ReadU16(await session.GetPropertyAsync(UsbModeProperty, ct));
         if (mode != RawConvMode)
-            throw new FujiWriteException($"Camera must be in USB RAW CONV./BACKUP RESTORE mode (reports mode {mode}).");
+            throw new FujiWriteException(Loc.F("Camera must be in USB RAW CONV./BACKUP RESTORE mode (reports mode {0}).", mode));
     }
 
     internal static async Task TryRestoreSelectorAsync(PtpSession session, byte[] selector)
@@ -187,7 +184,7 @@ public static class FujiRecipeWriter
         }
         catch (Exception e) when (e is PtpException or IOException)
         {
-            // The camera is gone; there is no selector left to restore and the caller already has the real failure.
+            // The camera is gone; the caller already has the failure.
         }
     }
 
@@ -207,7 +204,7 @@ public static class FujiRecipeWriter
                 var write = encoding.Writes[i];
                 try
                 {
-                    // Not cancellable mid-transaction: abandoning a PTP transfer can desync the camera.
+                    // Not cancellable: an abandoned PTP transfer can desync the camera.
                     await session.SetPropertyAsync(write.Property, write.Value, CancellationToken.None);
                     touched.Add(write.Property);
                 }
@@ -226,20 +223,20 @@ public static class FujiRecipeWriter
                 var write = encoding.Writes[i];
                 var actual = await session.GetPropertyAsync(write.Property, CancellationToken.None);
                 if (!Matches(write, actual))
-                    problems.Add($"{write.Description}: read back {Convert.ToHexString(actual)}, wrote {Convert.ToHexString(write.Value)}");
+                    problems.Add(Loc.F("{0}: read back {1}, wrote {2}", write.Description, Convert.ToHexString(actual), Convert.ToHexString(write.Value)));
                 progress?.Report(new FujiWriteProgress(FujiWritePhase.Verifying, i + 1, total, write.Description));
             }
         }
         catch (OperationCanceledException)
         {
-            problems.Add("Cancelled by the user.");
+            problems.Add(Loc.T("Cancelled by the user."));
             var cancelled = await RollBackAsync(session, profile, slot, encoding, backup, planned, touched, problems);
             return cancelled with { Cancelled = true };
         }
         catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException)
         {
-            // Cable pulled or camera switched off: try to roll back, it will report if it cannot.
-            problems.Add($"Connection lost: {e.Message}");
+            // Cable pulled or camera off: try to roll back.
+            problems.Add(Loc.F("Connection lost: {0}", e.Message));
             return await RollBackAsync(session, profile, slot, encoding, backup, planned, touched, problems);
         }
 
@@ -252,7 +249,7 @@ public static class FujiRecipeWriter
         SlotEncoding encoding, Dictionary<ushort, byte[]> backup, List<string> planned, List<ushort> touched,
         List<string> problems)
     {
-        // Restore in the same dependency order the writes used so refusal rules (film sim before Color, etc.) hold.
+        // Same dependency order as writing.
         var order = encoding.Writes.Select(w => w.Property).Where(touched.Contains).Distinct().ToList();
         var failures = new List<string>();
 
@@ -275,7 +272,7 @@ public static class FujiRecipeWriter
             {
                 var actual = await session.GetPropertyAsync(prop, CancellationToken.None);
                 if (!actual.AsSpan().SequenceEqual(backup[prop]) && !Matches(prop, backup[prop], actual))
-                    failures.Add($"0x{prop:X4}: restored value reads {Convert.ToHexString(actual)}, expected {Convert.ToHexString(backup[prop])}");
+                    failures.Add(Loc.F("0x{0:X4}: restored value reads {1}, expected {2}", prop, Convert.ToHexString(actual), Convert.ToHexString(backup[prop])));
             }
             catch (Exception e) when (e is PtpException or IOException or TimeoutException or InvalidOperationException)
             {
@@ -283,14 +280,11 @@ public static class FujiRecipeWriter
             }
         }
 
-        problems.AddRange(failures.Select(f => $"rollback: {f}"));
+        problems.AddRange(failures.Select(f => Loc.F("rollback: {0}", f)));
         return new FujiWriteReport(profile.Model, slot, false, false, planned, encoding.Skipped, backup, problems, failures.Count == 0);
     }
 
-    /// <summary>
-    /// Dependency order for putting a whole slot back: name and film simulation first, DR only with D-Range
-    /// Priority off, Kelvin before the WB shifts, and D-Range Priority's own value last.
-    /// </summary>
+    /// <summary>Restore order: name and film simulation first, Kelvin before the shifts, D-Range Priority last.</summary>
     private static IEnumerable<ushort> RestoreOrder(IEnumerable<ushort> available)
     {
         ushort[] first =
@@ -309,10 +303,7 @@ public static class FujiRecipeWriter
         if (set.Contains(FujiSlotCodec.PropDRangePriority)) yield return FujiSlotCodec.PropDRangePriority;
     }
 
-    /// <summary>
-    /// Grain reads back 6/7 for "Off, size remembered" but those codes are refused on write; a size followed by
-    /// Off reproduces them.
-    /// </summary>
+    /// <summary>Grain 6/7 ("Off, size remembered") is refused on write; writing the size, then Off, reproduces it.</summary>
     internal static IEnumerable<byte[]> RestoreValues(ushort prop, byte[] original)
     {
         if (prop == FujiSlotCodec.PropGrain && original.Length >= 2 && original[0] is 6 or 7)

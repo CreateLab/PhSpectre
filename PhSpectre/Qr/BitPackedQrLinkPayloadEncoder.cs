@@ -5,18 +5,15 @@ using PhSpectre.Models;
 
 namespace PhSpectre.Qr;
 
-// Bit-packer for the phspectre-view URL format, mirroring byte-for-byte the format comment at the top of that repo's index.html:
-// flags byte, length-prefixed camera/lens strings, a 5-byte exposure block, an 8-byte recipe block, all multi-bit fields MSB-first.
-// Replaces PlaceholderQrLinkPayloadEncoder (base64url(JSON)), whose payloads were ~27x larger and made every QR dense.
-// PhSpectre's FilmRecipe/PhotoMetadata vocabularies don't exactly match the viewer's fixed SIMS/WB/DR/GRAIN enums, so legacy/rare values and
-// detail PhSpectre doesn't capture fall back to the closest slot. The mapping is lossy by design; each fallback is noted at its table.
+// Bit-packed payload of the phspectre-view URL, matching the format comment in that repo's index.html. Values the
+// viewer's enums lack fall back to the closest one.
 public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
 {
     public string Encode(QrLinkFields fields)
     {
         bool hasRecipe = fields.Recipe != null;
         bool hasNote = !string.IsNullOrWhiteSpace(fields.Note);
-        // bit1 (hasPhoto) is never set — photo hosting is out of scope (v3 spec §7).
+        // bit1 (hasPhoto) is never set.
         byte flags = (byte)((hasRecipe ? 1 : 0) | (hasNote ? 4 : 0));
 
         using var ms = new MemoryStream();
@@ -37,7 +34,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         return ToBase64Url(ms.ToArray());
     }
 
-    // ── exposure block: 5 bytes, MSB-first, 34 packed bits + 6 zero pad ─────────────────────
+    // Exposure block: 5 bytes, MSB first
     private static byte[] EncodeExposure(QrLinkFields f)
     {
         var w = new BitWriter(40);
@@ -48,7 +45,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         return w.ToBytes(5);
     }
 
-    // ── recipe block: 8 bytes, MSB-first, 62 packed bits + 2 zero pad ───────────────────────
+    // Recipe block: 8 bytes, MSB first
     private static byte[] EncodeRecipe(FilmRecipe r)
     {
         var w = new BitWriter(64);
@@ -74,8 +71,6 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
     private static int HalfStopRaw(decimal? v) => Math.Clamp((int)Math.Round((v ?? 0m) * 2, MidpointRounding.AwayFromZero) + 8, 0, 15);
     private static int? RoundToInt(decimal? v) => v.HasValue ? (int)Math.Round(v.Value, MidpointRounding.AwayFromZero) : null;
 
-    // ── string / byte-stream helpers ─────────────────────────────────────────────────────────
-
     private static string? StripFujifilmPrefix(string? camera)
     {
         if (string.IsNullOrWhiteSpace(camera)) return camera;
@@ -91,7 +86,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         ms.Write(bytes, 0, bytes.Length);
     }
 
-    // Trim by character count, not bytes, so a multi-byte UTF-8 char is never split (only matters for the free-text Note).
+    // Trimmed by characters, so UTF-8 is never split.
     private static string TruncateToUtf8ByteLimit(string s, int maxBytes)
     {
         int len = s.Length;
@@ -102,7 +97,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
     private static string ToBase64Url(byte[] bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    // MSB-first bit accumulator mirroring the viewer's bitWriter/toBytes; a ulong holds every field (max 62 of 64 bits).
+    // MSB-first bit accumulator, like the viewer's bitWriter.
     private sealed class BitWriter(int totalBits)
     {
         private ulong _acc;
@@ -128,7 +123,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         }
     }
 
-    // ── exposure field parsers: reverse PaletteImageRenderer.ReadMetadata's formatting ("35mm", "f/1.4", "1/500s" or "2s", "ISO 400") into numbers ──
+    // Parse the formatted strings ("35mm", "f/1.4", "1/500s", "ISO 400") back into numbers
 
     private static readonly Regex FocalRegex = new(@"^(\d+)\s*mm$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
     private static readonly Regex ApertureRegex = new(@"^f/(\d+(?:\.\d+)?)$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -180,15 +175,14 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
     private static int EncodeIsoCode(int? iso) =>
         iso is > 0 ? ClampByte((int)Math.Round(3 * Math.Log2(iso.Value / 100.0)) + 64) : 255;
 
-    // ── recipe field -> viewer-enum mappings ────────────────────────────────────────────────
-    // Viewer arrays (from index.html): SIMS[20], WB[12], DR[4], GRAIN[5], CHROME[3].
+    // Recipe fields to the viewer's enums: SIMS[20], WB[12], DR[4], GRAIN[5], CHROME[3]
 
     private static int SimCode(string? sim) => sim != null && SimCodes.TryGetValue(sim, out int c) ? c : 0;
 
     private static readonly Dictionary<string, int> SimCodes = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Provia/Standard"] = 0,
-        // Legacy Portrait-mode simulations have no viewer slot; fall back to the closest color character.
+        // Legacy Portrait simulations map to the closest colour.
         ["Studio Portrait"] = 0,
         ["Studio Portrait Increased Sharpness"] = 0,
         ["Studio Portrait Enhanced Saturation"] = 1,
@@ -234,7 +228,7 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         ["Custom 2"] = 11,
         ["Custom 3"] = 11,
         ["Custom 4"] = 11,
-        // "Flash" has no equivalent slot in the viewer's fixed WB enum — falls back to Auto (0).
+        // No "Flash" slot: Auto.
     };
 
     private static int DrCode(string? dr) => dr switch
@@ -242,13 +236,13 @@ public sealed class BitPackedQrLinkPayloadEncoder : IQrLinkPayloadEncoder
         "DR100" => 1,
         "DR200" => 2,
         "DR400" => 3,
-        // Auto, "Off" (manual-entry-only), "Film Simulation" or any other DR{d} value fall back to Auto; the viewer's DR enum has no slot for them.
+        // Anything the viewer's DR enum lacks becomes Auto.
         _ => 0,
     };
 
     private static int GrainCode(string? grain) => grain switch
     {
-        // FujiRecipeExtractor reports only Off/Weak/Strong (grain size isn't decoded), so Weak/Strong assume "· Small".
+        // Grain size is not decoded, so Small is assumed.
         "Weak" => 1,
         "Strong" => 2,
         _ => 0,

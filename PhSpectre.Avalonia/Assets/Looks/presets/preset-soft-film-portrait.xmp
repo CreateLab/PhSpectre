@@ -1,0 +1,8 @@
+<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:RDF>
+ <!-- Soft Film Portrait, made for PhSpectre (original work). SkinSmoothing is PhSpectre's own setting. -->
+ <rdf:Description rdf:about="" crs:Name="Soft Film Portrait" crs:Treatment="Color" crs:SkinSmoothing="45" crs:Sharpness="15" crs:Contrast2012="-12" crs:Saturation="-14" crs:GrainAmount="22" crs:GrainSize="30" crs:PostCropVignetteAmount="-10" crs:PostCropVignetteMidpoint="40" crs:HueAdjustmentGreen="-16" crs:SaturationAdjustmentGreen="-26" crs:LuminanceAdjustmentGreen="4" crs:HueAdjustmentBlue="-22" crs:SaturationAdjustmentBlue="-18" crs:LuminanceAdjustmentBlue="0" crs:HueAdjustmentOrange="0" crs:SaturationAdjustmentOrange="4" crs:LuminanceAdjustmentOrange="7" crs:ColorGradeShadowHue="170" crs:ColorGradeShadowSat="11" crs:ColorGradeHighlightHue="35" crs:ColorGradeHighlightSat="13">
+  <crs:ToneCurvePV2012><rdf:Seq><rdf:li>0, 20</rdf:li><rdf:li>64, 72</rdf:li><rdf:li>128, 131</rdf:li><rdf:li>192, 192</rdf:li><rdf:li>255, 247</rdf:li></rdf:Seq></crs:ToneCurvePV2012>
+ </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>

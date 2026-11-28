@@ -114,7 +114,7 @@ public class NoiseReductionTests(ITestOutputHelper output)
     {
         using var clean = new Image<Rgb24>(256, 192, new Rgb24(120, 120, 120));
         using var noisy = AddNoise(clean, 10, 0);
-        // Share of the noise (standard deviation) that is left at each position of the slider.
+        // Share of noise (standard deviation) left at each slider position.
         double original = Math.Pow(10, -Psnr(clean, noisy) / 20);
         var left = new[] { 10f, 25f, 50f, 75f, 100f }.Select(s =>
         {

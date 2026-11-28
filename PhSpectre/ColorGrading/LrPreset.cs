@@ -3,18 +3,17 @@ using System.Xml.Linq;
 
 namespace PhSpectre.ColorGrading;
 
-// A Lightroom / Camera Raw preset (.xmp with crs: settings). Holds the numeric develop settings and
-// tone curves; anything we parse but cannot reproduce is listed in Skipped so callers can tell the user.
+// A Lightroom / Camera Raw preset (.xmp): numeric settings and tone curves. What cannot be reproduced is listed in
+// Skipped.
 public sealed class LrPreset
 {
     private static readonly XNamespace Crs = "http://ns.adobe.com/camera-raw-settings/1.0/";
     private static readonly XNamespace Rdf = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
 
-    // Keys we read but do not implement (spatial filters, embedded profiles). Reported only when non-zero.
+    // Recognised but not implemented; reported when non-zero.
     private static readonly string[] UnsupportedKeys =
     [
-        "Texture", "Clarity2012", "Dehaze", "Sharpness", "LuminanceSmoothing", "ColorNoiseReduction",
-        "RGBTable"
+        "Texture", "Clarity2012", "Dehaze", "RGBTable"
     ];
 
     public string? Name { get; }

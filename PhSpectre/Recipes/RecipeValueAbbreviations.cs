@@ -1,17 +1,11 @@
 namespace PhSpectre.Recipes;
 
-// Shortened display forms for recipe values whose full text is too wide to sit comfortably
-// in a fixed-width plate cell (both the exported/previewed RecipeCardRenderer grid and the
-// in-app Settings panel's plate chips). Anything not in this table is left as-is and relies
-// on the caller's own wrap/shrink handling for the rare longer value.
+// Short forms for values too wide for a plate; others wrap or shrink.
 public static class RecipeValueAbbreviations
 {
     private static readonly IReadOnlyDictionary<string, string> Map = new Dictionary<string, string>
     {
-        // "Auto (white/ambiance priority)" used to shorten to "Auto W"/"Auto A" — cryptic to
-        // the point of being unreadable (v2 bugfix §5). Left unmapped so the full text goes
-        // through the plate grid's own wrap-to-two-lines handling instead (RecipeCardRenderer's
-        // anyValueWraps), which keeps the words intact rather than losing their meaning.
+        // "Auto (white/ambiance priority)" is left unshortened: "Auto W" is unreadable.
         ["Fluorescent (Daylight)"] = "Fluor. Daylight",
         ["Fluorescent (Warm White)"] = "Fluor. Warm",
         ["Fluorescent (Cool White)"] = "Fluor. Cool",

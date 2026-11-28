@@ -2,14 +2,8 @@ using System.Numerics;
 
 namespace PhSpectre.ColorGrading;
 
-// An Adobe/Resolve ".cube" lookup table, held as float RGB triples. Supports both the 3D form
-// (LUT_3D_SIZE — a cube of N^3 colors, red varying fastest) and the 1D form (LUT_1D_SIZE — an
-// independent curve per channel). The spec forbids files carrying both, so exactly one applies.
-//
-// Evaluate() is the whole runtime contract: feed it an RGB triple in 0..1 *image* space and get the
-// graded RGB back (unclamped — the caller decides how to quantize). 3D tables use tetrahedral
-// interpolation rather than trilinear: it follows the cube's neutral diagonal exactly and avoids the
-// color fringing trilinear shows on coarse grids (the freely available 13^3 film CLUTs especially).
+// A ".cube" lookup table, 3D (red varying fastest) or 1D. Evaluate takes RGB in 0..1 and returns it unclamped. 3D
+// uses tetrahedral interpolation, which avoids the fringing trilinear shows on coarse grids.
 public sealed class CubeLut
 {
     public string? Title { get; }
@@ -45,8 +39,7 @@ public sealed class CubeLut
 
     public Vector3 Evaluate(float r, float g, float b)
     {
-        // Map image space 0..1 through the table's declared input domain, then clamp: values outside
-        // the domain take the edge entry, which is what every grading tool does.
+        // Values outside the domain take the edge entry.
         float x = Normalize(r, DomainMin.X, DomainMax.X);
         float y = Normalize(g, DomainMin.Y, DomainMax.Y);
         float z = Normalize(b, DomainMin.Z, DomainMax.Z);
@@ -70,16 +63,15 @@ public sealed class CubeLut
     {
         int max = Size - 1;
         float fx = x * max, fy = y * max, fz = z * max;
-        // Clamp the base cell to N-2 so x == 1.0 lands on the last cell with frac 1, not out of range.
+        // Clamped so x == 1 lands in the last cell.
         int ix = Math.Min((int)fx, max - 1), iy = Math.Min((int)fy, max - 1), iz = Math.Min((int)fz, max - 1);
         float dx = fx - ix, dy = fy - iy, dz = fz - iz;
 
         var c000 = At(ix, iy, iz);
         var c111 = At(ix + 1, iy + 1, iz + 1);
 
-        // The cell is split into six tetrahedra along its main diagonal; which one holds the point is
-        // decided by the ordering of the three fractional offsets. Walk 000 -> ... -> 111 along the
-        // axes in descending-offset order, adding each edge scaled by its offset.
+        // Six tetrahedra along the main diagonal, chosen by the order of the offsets; walk 000 to 111 along the
+        // axes in that order.
         if (dx >= dy)
         {
             if (dy >= dz)

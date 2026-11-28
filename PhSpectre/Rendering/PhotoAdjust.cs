@@ -5,10 +5,8 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// Geometry and exposure applied to the photo before any Look or frame: rotate by 90°, straighten,
-// crop to a ratio (with zoom), then exposure. The straightened picture is always cropped to the largest
-// rectangle that fits inside it, so no empty corners ever appear. Pure data + Render: the same settings
-// give the same framing on the preview copy and on the full-size export, because everything is relative.
+// Geometry, exposure, tone and effects applied before the Look and frame. Straightening crops to the largest inner
+// rectangle. Everything is relative, so preview and export match.
 public sealed record PhotoAdjust
 {
     public const float MaxStraighten = 15f;
@@ -25,12 +23,11 @@ public sealed record PhotoAdjust
     public float Zoom { get; init; } = 1f;
     // Exposure compensation in stops, applied in linear light.
     public float Exposure { get; init; }
-    // Where the crop sits, as a shift of its centre in crop widths / heights (0 = centred). Always pulled
-    // back inside the picture when rendering, so it can never reveal the empty corners.
+    // Crop position as a shift of its centre in crop sizes; always kept inside the picture.
     public float PanX { get; init; }
     public float PanY { get; init; }
 
-    // Tone, colour and effects, all 0 = untouched. Range -100..100, except Sharpness, Grain, Glow and Halation (0..100).
+    // 0 = untouched. -100..100; Sharpness, Grain, Glow and Halation 0..100.
     public float Contrast { get; init; }
     public float Highlights { get; init; }
     public float Shadows { get; init; }
@@ -45,10 +42,11 @@ public sealed record PhotoAdjust
     public float Grain { get; init; }
     public float Glow { get; init; }
     public float Halation { get; init; }
-    // Classic noise reduction 0..100 (NoiseReduction), separate for luminance and colour. Runs on
-    // the photo before any geometry, so it is part of neither the geometry nor the tone half.
+    // Noise reduction 0..100, on the photo before geometry.
     public float NoiseLuma { get; init; }
     public float NoiseColor { get; init; }
+    // Skin smoothing 0..100, also before geometry.
+    public float SkinSmoothing { get; init; }
 
     public static readonly (string Label, double? Ratio)[] CropChoices =
     [
@@ -69,7 +67,7 @@ public sealed record PhotoAdjust
         Saturation = Slider(Saturation), Vibrance = Slider(Vibrance), Temperature = Slider(Temperature), Tint = Slider(Tint),
         Vignette = Slider(Vignette), Sharpness = Slider(Sharpness, 0f), Grain = Slider(Grain, 0f),
         Glow = Slider(Glow, 0f), Halation = Slider(Halation, 0f),
-        NoiseLuma = Slider(NoiseLuma, 0f), NoiseColor = Slider(NoiseColor, 0f),
+        NoiseLuma = Slider(NoiseLuma, 0f), NoiseColor = Slider(NoiseColor, 0f), SkinSmoothing = Slider(SkinSmoothing, 0f),
     };
 
     private static float Slider(float v, float min = -100f) => Math.Clamp(float.IsFinite(v) ? v : 0f, min, 100f);
@@ -83,14 +81,16 @@ public sealed record PhotoAdjust
         or { Glow: not 0f } or { Halation: not 0f };
     public bool HasLight => Normalized() is { Exposure: not 0f } or { Contrast: not 0f } or { Highlights: not 0f } or { Shadows: not 0f } or { Whites: not 0f } or { Blacks: not 0f };
     public bool HasColor => Normalized() is { Saturation: not 0f } or { Vibrance: not 0f } or { Temperature: not 0f } or { Tint: not 0f };
-    public bool HasEffects => Normalized() is { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f } or { Glow: not 0f } or { Halation: not 0f } or { NoiseLuma: not 0f } or { NoiseColor: not 0f };
+    public bool HasEffects => Normalized() is { Sharpness: not 0f } or { Vignette: not 0f } or { Grain: not 0f } or { Glow: not 0f } or { Halation: not 0f } or { NoiseLuma: not 0f } or { NoiseColor: not 0f } or { SkinSmoothing: not 0f };
     public bool HasNoiseReduction => Normalized() is { NoiseLuma: > 0f } or { NoiseColor: > 0f };
-    public bool IsNoOp => !HasGeometry && !HasTone && !HasNoiseReduction;
+    public bool HasSkinSmoothing => Normalized() is { SkinSmoothing: > 0f };
+    // Cleaning is what happens to the pixels of the photo itself: noise reduction and skin smoothing.
+    public bool HasCleaning => HasNoiseReduction || HasSkinSmoothing;
+    public bool IsNoOp => !HasGeometry && !HasTone && !HasCleaning;
 
-    // Noise cleaning is slow and independent of everything else, so a preview can
-    // run it once and keep the result.
-    public PhotoAdjust CleaningOnly() => new() { NoiseLuma = NoiseLuma, NoiseColor = NoiseColor };
-    public PhotoAdjust WithoutCleaning() => this with { NoiseLuma = 0, NoiseColor = 0 };
+    // Cleaning is slow and independent of everything else, so a preview can run it once and keep the result.
+    public PhotoAdjust CleaningOnly() => new() { NoiseLuma = NoiseLuma, NoiseColor = NoiseColor, SkinSmoothing = SkinSmoothing };
+    public PhotoAdjust WithoutCleaning() => this with { NoiseLuma = 0, NoiseColor = 0, SkinSmoothing = 0 };
 
     // The geometry half and the tone half, so a preview can cache the slow geometry and redo only the tone.
     public PhotoAdjust WithoutTone() => this with
@@ -124,8 +124,7 @@ public sealed record PhotoAdjust
         return (cw == 0 ? 0f : (float)(dx / cw), ch == 0 ? 0f : (float)(dy / ch));
     }
 
-    // Scales the wanted offset down until all four corners of the crop lie inside the original picture
-    // (coordinates of the picture are the output's rotated back by the straighten angle).
+    // Shrinks the offset until the crop's corners lie inside the picture.
     private static (double, double) FitOffset(int w, int h, int cw, int ch, float degrees, double dx, double dy)
     {
         if (dx == 0 && dy == 0) return (0, 0);
@@ -143,8 +142,7 @@ public sealed record PhotoAdjust
         return (dx * lo, dy * lo);
     }
 
-    // Largest centred rectangle of the wanted ratio inside the picture rotated by the straighten angle,
-    // shrunk by the zoom. Derived from: w·cosθ + h·sinθ ≤ W and w·sinθ + h·cosθ ≤ H.
+    // Largest centred rectangle of the ratio inside the rotated picture, shrunk by zoom.
     private static (int, int) CropSize(int w, int h, PhotoAdjust a)
     {
         double r = a.Aspect ?? (double)w / h;
@@ -157,15 +155,15 @@ public sealed record PhotoAdjust
         return (Math.Min(outW, w), Math.Min(outH, h));
     }
 
-    // Returns a new image; the source is untouched.
-    public Image<Rgb24> Render(Image<Rgb24> photo)
+    // Returns a new image; the source is untouched. A preview passes the skin mask it has already found.
+    public Image<Rgb24> Render(Image<Rgb24> photo, SkinMask? skin = null)
     {
         ArgumentNullException.ThrowIfNull(photo);
         var a = Normalized();
         var img = photo.Clone();
         try
         {
-            a.Clean(ref img, null);
+            a.Clean(ref img, null, skin);
             if (a.HasGeometry)
             {
                 if (a.Quarter != 0)
@@ -174,8 +172,7 @@ public sealed record PhotoAdjust
                 var (dx, dy) = FitOffset(img.Width, img.Height, cw, ch, a.Straighten, a.PanX * cw, a.PanY * ch);
                 if (a.Straighten != 0f)
                 {
-                    // Rotating the whole frame only to throw most of it away is the slow part at full size:
-                    // cut out just the area the crop needs (its rotated bounding box + a margin) and rotate that.
+                    // Rotate only the area the crop needs: rotating the whole frame is slow.
                     double t = a.Straighten * Math.PI / 180.0, cos = Math.Cos(t), sin = Math.Sin(t);
                     double sx = img.Width / 2.0 + dx * cos + dy * sin, sy = img.Height / 2.0 - dx * sin + dy * cos;
                     double bw = cw * Math.Abs(cos) + ch * Math.Abs(sin), bh = cw * Math.Abs(sin) + ch * Math.Abs(cos);
@@ -185,7 +182,7 @@ public sealed record PhotoAdjust
                     if (region.X >= 0 && region.Y >= 0 && region.Right <= img.Width && region.Bottom <= img.Height
                         && (region.Width < img.Width || region.Height < img.Height))
                     {
-                        // The region's centre is the pixel (px, py); the crop is centred on the exact point, so keep the sub-pixel part.
+                        // Keep the sub-pixel part of the centre.
                         img.Mutate(x => x.Crop(region).Rotate(a.Straighten));
                         double ox = (sx - px) * cos - (sy - py) * sin, oy = (sx - px) * sin + (sy - py) * cos;
                         int rx = Math.Clamp((int)Math.Round((img.Width - cw) / 2.0 + ox), 0, Math.Max(0, img.Width - cw));
@@ -207,34 +204,34 @@ public sealed record PhotoAdjust
         catch { img.Dispose(); throw; }
     }
 
-    // A piece of the full-size photo shown at 100%: cleaning, tone and sharpening as the export will do them.
-    // Geometry, glow, halation, vignette and grain are left out: they depend on the whole frame. `profile` and `photoLongSide`
-    // describe the whole photo.
-    public Image<Rgb24> RenderDetail(Image<Rgb24> piece, int photoLongSide, NoiseReduction.NoiseProfile profile)
+    // A piece shown at 100%, processed like the export. Whole-frame effects and geometry are left out; `profile`,
+    // `photoLongSide` and `skin` describe the whole photo.
+    public Image<Rgb24> RenderDetail(Image<Rgb24> piece, int photoLongSide, NoiseReduction.NoiseProfile profile, SkinMask? skin = null)
     {
         ArgumentNullException.ThrowIfNull(piece);
         var a = Normalized();
         var img = piece.Clone();
         try
         {
-            a.Clean(ref img, profile);
+            a.Clean(ref img, profile, skin);
             ApplyTone(img, a with { Glow = 0, Halation = 0, Vignette = 0, Grain = 0 }, photoLongSide);
             return img;
         }
         catch { img.Dispose(); throw; }
     }
 
-    // Replaces `img` with its cleaned version when noise reduction is on.
-    private void Clean(ref Image<Rgb24> img, NoiseReduction.NoiseProfile? profile)
+    private void Clean(ref Image<Rgb24> img, NoiseReduction.NoiseProfile? profile, SkinMask? skin)
     {
-        if (!HasNoiseReduction) return;
-        var cleaned = NoiseReduction.Apply(img, NoiseLuma, NoiseColor, profile: profile);
-        img.Dispose();
-        img = cleaned;
+        if (HasNoiseReduction)
+        {
+            var cleaned = NoiseReduction.Apply(img, NoiseLuma, NoiseColor, profile: profile);
+            img.Dispose();
+            img = cleaned;
+        }
+        if (HasSkinSmoothing) SkinRetouch.Apply(img, SkinSmoothing / 100f, skin);
     }
 
-    // Order: exposure + white balance (linear light) → light → colour → sharpen → glow + halation → vignette + grain.
-    // Exposure alone keeps the one-table fast path; anything else runs one per-pixel pass.
+    // Order: exposure and white balance (linear), light, colour, sharpen, glow and halation, vignette and grain.
     private static void ApplyTone(Image<Rgb24> img, PhotoAdjust a, int photoLongSide = 0)
     {
         bool light = a.Contrast != 0f || a.Highlights != 0f || a.Shadows != 0f || a.Whites != 0f || a.Blacks != 0f;
@@ -269,11 +266,13 @@ public sealed record PhotoAdjust
         }
         if (a.Sharpness > 0f) Sharpen(img, a.Sharpness / 100f, photoLongSide > 0 ? photoLongSide : Math.Max(img.Width, img.Height));
         LightEffects.Apply(img, a.Glow / 100f, a.Halation / 100f);
-        if (a.Vignette != 0f || a.Grain > 0f) ApplyVignetteGrain(img, a.Vignette / 100f, a.Grain / 100f);
+        if (a.Vignette != 0f || a.Grain > 0f)
+            ApplyVignetteGrain(img, a.Vignette / 100f, a.Grain / 100f,
+                FilmGrain.CellSize(photoLongSide > 0 ? photoLongSide : Math.Max(img.Width, img.Height)));
     }
 
     // Unsharp mask; the blur radius follows the picture size so the same slider looks the same on preview and full size.
-    private static void Sharpen(Image<Rgb24> img, float amount, int photoLongSide)
+    internal static void Sharpen(Image<Rgb24> img, float amount, int photoLongSide)
     {
         float sigma = Math.Max(0.6f, photoLongSide / 2200f);
         using var blur = img.Clone(x => x.GaussianBlur(sigma));
@@ -290,7 +289,7 @@ public sealed record PhotoAdjust
         });
     }
 
-    private static void ApplyVignetteGrain(Image<Rgb24> img, float vig, float grain)
+    private static void ApplyVignetteGrain(Image<Rgb24> img, float vig, float grain, float grainCell)
     {
         int w = img.Width, h = img.Height;
         float cx = (w - 1) / 2f, cy = (h - 1) / 2f, inv = 1f / MathF.Sqrt(cx * cx + cy * cy + 1e-6f);
@@ -309,15 +308,14 @@ public sealed record PhotoAdjust
                 if (grain > 0f)
                 {
                     float luma = ToneMath.Luma(c);
-                    c += new System.Numerics.Vector3((ToneMath.Hash(x, y) - 0.5f) * 2f * grain * 0.6f * luma * (1f - luma));
+                    c += new System.Numerics.Vector3(FilmGrain.Sample(x, y, grainCell) * grain * 0.6f * luma * (1f - luma));
                 }
                 row[x] = new Rgb24(ToneMath.ToByte(c.X), ToneMath.ToByte(c.Y), ToneMath.ToByte(c.Z));
             }
         });
     }
 
-    // Stops are multiplications in linear light, so brightening does not wash out the picture the way a
-    // plain add in sRGB would. One 256-entry table covers every pixel.
+    // Exposure is applied in linear light through one table.
     private static void ApplyExposure(Image<Rgb24> img, float stops)
     {
         var table = new byte[256];
@@ -327,7 +325,6 @@ public sealed record PhotoAdjust
             float lin = SrgbToLinear(i / 255f) * gain;
             table[i] = (byte)Math.Clamp((int)MathF.Round(LinearToSrgb(Math.Min(lin, 1f)) * 255f), 0, 255);
         }
-        // Rows are independent; the accessor of ProcessPixelRows can't be captured by a parallel body, so go by row memory.
         Parallel.For(0, img.Height, y =>
         {
             var row = img.Frames.RootFrame.DangerousGetPixelRowMemory(y).Span;

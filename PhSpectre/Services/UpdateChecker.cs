@@ -13,10 +13,7 @@ public sealed record UpdateCheckResult(UpdateStatus Status, Version? Version = n
     public static readonly UpdateCheckResult UpToDate = new(UpdateStatus.UpToDate);
 }
 
-// Pure comparison/parsing logic is kept separate from the network call so it can be
-// unit-tested without hitting GitHub. Any failure in CheckAsync (network, timeout,
-// non-2xx, malformed JSON) collapses to Unknown — callers are expected to stay silent
-// on Unknown, never surface it as an error.
+// Comparison is separate from the network call for testing. Any failure gives Unknown, which callers ignore.
 public static class UpdateChecker
 {
     private const string LatestReleaseUrl = "https://api.github.com/repos/CreateLab/PhSpectre/releases/latest";
@@ -58,7 +55,6 @@ public static class UpdateChecker
         }
         catch
         {
-            // Network errors, timeouts, malformed JSON — all silently Unknown by design.
             return UpdateCheckResult.Unknown;
         }
     }

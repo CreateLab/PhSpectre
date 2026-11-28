@@ -74,7 +74,7 @@ public class FujiRecipeWriterTests
                 Selector = value[0];
                 return PtpSession.ResponseOk;
             }
-            // The selector is the only write that is not a slot write.
+            // The selector is the one write outside a slot.
             SlotWrites.Add((Selector, prop));
             if (RefuseWrites.Contains(prop)) return 0x201C;
             var bank = Banks[Selector];

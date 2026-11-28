@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -10,8 +11,7 @@ using PhSpectre.Rendering;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
-// Frame type Film: the shot data is printed on a film edge (see FilmStyle / FilmFrameRenderer). Like Border it is the
-// last layer on the graded photo, and the two are mutually exclusive (the frame type picks one).
+// Frame type Film: shot data printed on a film edge, drawn last like Border.
 public partial class ProcessViewModel
 {
     /// <summary>A film edge to draw: the style, the photo's metadata and the frame number printed on it.</summary>
@@ -43,8 +43,8 @@ public partial class ProcessViewModel
         ("Custom text", [FilmToken.Custom]),
     ];
 
-    public IReadOnlyList<string> FilmContentLabels { get; } = FilmContentChoices.Select(c => c.Label).ToList();
-    public IReadOnlyList<string> FilmPerforationLabels { get; } = ["None", "Both sides", "Top & bottom"];
+    public IReadOnlyList<string> FilmContentLabels { get; } = FilmContentChoices.Select(c => Loc.T(c.Label)).ToList();
+    public IReadOnlyList<string> FilmPerforationLabels { get; } = [Loc.T("None"), Loc.T("Both sides"), Loc.T("Top & bottom")];
 
     private FilmStyleStore? _filmStore;
     private FilmStyleStore FilmStore => _filmStore ??= new FilmStyleStore(Path.Combine(LibraryRoot, "film-styles.json"));
@@ -143,7 +143,7 @@ public partial class ProcessViewModel
         _ => FilmSideRightIndex
     };
 
-    // The style as currently set in the controls; Id/Name stay empty so identical settings compare equal.
+    // Id and Name stay empty so identical settings compare equal.
     private FilmStyle CurrentFilmStyle()
     {
         var zones = new Dictionary<FilmZone, List<FilmToken>>();
@@ -174,8 +174,6 @@ public partial class ProcessViewModel
         return new FilmLayer(CurrentFilmStyle(), meta, FrameNumberOf(path), CurrentLookName(), FrameLabelFor(path, 0));
     }
 
-    // What the FilmSim token prints: the name of the Look that is actually applied (LUT and/or preset); null when
-    // none is, in which case the photo's own film simulation is used.
     private string? CurrentLookName()
     {
         var names = new List<string>();
@@ -184,12 +182,12 @@ public partial class ProcessViewModel
         return names.Count == 0 ? null : string.Join(" + ", names);
     }
 
-    // ── Frame number: typed by the user, else read from the file name / EXIF (see FilmFrameNumber) ──
+    // Frame number: typed, else from the file name or EXIF
     [ObservableProperty] private string _filmFrameText = "";
 
     /// <summary>The number read from the current photo, or "" when it has none.</summary>
     public string FilmFrameAuto => FilmFrameNumber.Resolve(_loadedPath);
-    public string FilmFrameWatermark => FilmFrameAuto.Length > 0 ? "Auto: " + FilmFrameAuto : "Auto";
+    public string FilmFrameWatermark => FilmFrameAuto.Length > 0 ? Loc.F("Auto: {0}", FilmFrameAuto) : Loc.T("Auto");
     public bool FilmFrameIsManual => !string.IsNullOrWhiteSpace(FilmFrameText);
 
     partial void OnFilmFrameTextChanged(string value) { OnPropertyChanged(nameof(FilmFrameIsManual)); ScheduleRender(); }
@@ -205,8 +203,7 @@ public partial class ProcessViewModel
         FilmFrameText = Math.Max(0, cur + d).ToString();
     }
 
-    // What the frame-number tokens print for a photo: the typed value (a number counts up with `index` when many photos
-    // are exported in one go, text is repeated), else the number from the photo itself, else nothing.
+    // The typed value (counting up across a batch), else the photo's number.
     private string FrameLabelFor(string? path, int index)
     {
         var manual = FilmFrameText?.Trim() ?? "";
@@ -214,7 +211,7 @@ public partial class ProcessViewModel
         return FilmFrameNumber.Resolve(path);
     }
 
-    // 1-based position of the photo in the current folder/tray, so each exported frame gets its own number.
+    // 1-based position, so each exported frame gets its own number.
     private int FrameNumberOf(string? path)
     {
         if (path == null) return 1;
@@ -238,7 +235,7 @@ public partial class ProcessViewModel
         ScheduleRender();
     }
 
-    // Touching a control means the settings no longer match the chosen style.
+    // A changed control no longer matches the style.
     private void DetachSelectedFilm()
     {
         if (SelectedFilm == null) return;

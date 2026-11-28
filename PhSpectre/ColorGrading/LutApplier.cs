@@ -4,14 +4,10 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.ColorGrading;
 
-// Runs a CubeLut over an image's pixels. Operates in the image's own (display-referred) RGB: it is up
-// to the caller to supply LUTs authored for sRGB/Rec.709 input. Log-input LUTs are applied as-is, with
-// no log conversion and no warning.
+// Applies a LUT in the image's own RGB. Log-input LUTs are applied as they are.
 public static class LutApplier
 {
-    // strength 0 leaves the image untouched, 1 is the full LUT, in between blends original -> graded
-    // per channel (the "intensity" slider every grading tool offers). Mutates in place; rows are
-    // independent so they run in parallel.
+    // strength blends from the original (0) to the full LUT (1). In place, parallel by rows.
     public static void Apply(Image<Rgb24> image, CubeLut lut, float strength = 1f)
     {
         ArgumentNullException.ThrowIfNull(image);
@@ -21,8 +17,6 @@ public static class LutApplier
 
         const float inv = 1f / 255f;
 
-        // ProcessPixelRows' accessor is a ref struct and can't be captured by the parallel body, so
-        // go through the per-row memory handle instead (safe here: each row is touched by one thread).
         Parallel.For(0, image.Height, y =>
         {
             var row = image.Frames.RootFrame.DangerousGetPixelRowMemory(y).Span;

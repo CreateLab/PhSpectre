@@ -5,8 +5,8 @@ namespace PhSpectre.Usb;
 public static class LibUsbCameraFactory
 {
     /// <summary>
-    /// Opens the first plugged-in Fujifilm body over libusb (macOS and Linux), or returns null when there is none.
-    /// A missing native libusb surfaces as a <see cref="PtpException"/> that says how to install it.
+    /// Opens the first Fujifilm body over libusb, or returns null. A missing native libusb becomes a
+    /// <see cref="PtpException"/> that says how to install it.
     /// </summary>
     public static Task<IPtpTransport?> OpenFirstFujifilmAsync(CancellationToken ct) => Task.Run(() =>
     {

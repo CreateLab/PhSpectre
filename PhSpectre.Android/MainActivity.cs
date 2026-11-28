@@ -4,7 +4,7 @@ using Avalonia;
 using Avalonia.Android;
 
 #if !PLAY_STORE
-// Only the GitHub APK checks for updates (UpdateChecker); the Play build needs no permissions at all.
+// Only the GitHub APK checks for updates; the Play build asks for no permissions.
 [assembly: global::Android.App.UsesPermission(global::Android.Manifest.Permission.Internet)]
 #endif
 

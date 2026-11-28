@@ -5,10 +5,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// Covers the Export-Mode-aware preset guidance added in the v2 bugfix pass §2: Recipe mode
-// already prints the whole recipe as text and InfoOnly/CollageInfoOnly already print camera/
-// lens/EXIF as text, so the recommended default and the "duplicates" hint must line up with
-// what each mode actually renders as text.
+// The recommended preset and the "duplicates" hint must match what each export mode prints as text.
 public class QrModeGuidanceTests
 {
     [Theory]

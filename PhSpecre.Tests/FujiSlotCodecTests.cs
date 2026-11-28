@@ -4,9 +4,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// Ground truth: raw bank dumps from a real X-T5 (fw 4.31) read over USB, paired with the recipe
-// FujiRecipeExtractor reads from a JPEG shot from that same slot. Each case asserts the slot decodes
-// to the JPEG's recipe, which is what validates the PTP wire encodings.
+// Raw slot dumps from a real X-T5 (fw 4.31), each paired with the recipe read from a JPEG shot with that slot.
 public class FujiSlotCodecTests
 {
     private static readonly Dictionary<string, string> Banks = new()

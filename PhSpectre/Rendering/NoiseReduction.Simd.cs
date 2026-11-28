@@ -10,10 +10,8 @@ public static partial class NoiseReduction
     // Tests run the transpose that machines without SSE use.
     internal static bool PortableTranspose;
 
-    // The 8x8 DCT on four columns at a time. A block is 16 vectors: block[2r] and block[2r + 1] are the left and
-    // right half of row r. One pass transforms all columns; a transpose between two passes does the rows. The
-    // coefficients therefore come out transposed, which thresholding does not care about (the mean stays first),
-    // and the same pass-transpose-pass brings the pixels back the right way round.
+    // 8x8 DCT on four columns at once; block[2r] and block[2r+1] are the halves of row r. Pass, transpose, pass
+    // leaves transposed coefficients, which thresholding ignores.
     private static class SimdDct
     {
         private static readonly Vector128<float> A = Vector128.Create(0.5f * MathF.Cos(MathF.PI / 4));
@@ -82,10 +80,8 @@ public static partial class NoiseReduction
             }
         }
 
-        // With SSE an 8x8 transpose is four 4x4 ones, the two off-diagonal quarters trading places. Elsewhere the
-        // floats are swapped one by one: Android's .NET runtime offers no ARM shuffle instructions, and the portable
-        // Vector128.Shuffle proved slower there than not using vectors at all. This way the whole step is still
-        // about three times faster than the plain code on a tablet.
+        // Android's runtime has no ARM shuffles and Vector128.Shuffle is slower than scalar there, so without SSE
+        // floats are swapped one by one: still about 3x faster than scalar.
         private static void Transpose(ref Vector128<float> v)
         {
             if (!Sse.IsSupported || PortableTranspose) { TransposeSwapping(ref Unsafe.As<Vector128<float>, float>(ref v)); return; }

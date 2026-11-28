@@ -15,24 +15,20 @@ internal sealed class KMeansService
         CancellationToken cancellationToken = default)
     {
         var hsl = Array.ConvertAll(pixels, p => RgbToHsl(p.R, p.G, p.B));
-        // Weighted sample (same size via weighted-with-replacement) for centroid discovery.
-        // Original hsl is used for final assignments and accurate percentages.
+        // Weighted sample for finding centroids; the original pixels give the final percentages.
         var sample = mode == SamplingMode.Standard ? hsl : BuildWeightedSample(hsl, mode);
-        // Each sample's hue is fixed across iterations and across the candidate k's of the Auto (elbow) path; only its cluster changes.
-        // sin/cos are precomputed once and threaded through instead of recomputed per iteration (RecomputeCentroids needs them for the circular hue mean).
+        // Hue sin and cos are computed once; only cluster assignments change.
         var (sinH, cosH) = PrecomputeHueTrig(sample);
         cancellationToken.ThrowIfCancellationRequested();
         float[][] centroids = colorCount is int cc
             ? RunKMeans(sample, cc, sinH, cosH, cancellationToken)
-            // FindElbowCentroids already ran k-means for the winning k; reuse those centroids instead of running it again.
+            // Reuse the centroids of the winning k.
             : FindElbowCentroids(sample, sinH, cosH, cancellationToken);
         return BuildPalette(hsl, centroids);
     }
 
-    // Weighted sampling with replacement at the same size.
-    // Vivid: saturated pixels get a higher weight (s x 5 bonus).
-    // Contrast: stratified by lightness (dark/mid/light get 1/3 each) so rare highlights and shadows appear,
-    // and weighted toward saturation within each band so a colorful minority still wins its band.
+    // Vivid weights saturated pixels up; Contrast takes equal shares of dark, middle and light,
+    // saturation-weighted.
     private static float[][] BuildWeightedSample(float[][] hsl, SamplingMode mode)
     {
         if (mode == SamplingMode.Contrast)
@@ -67,9 +63,7 @@ internal sealed class KMeansService
         return sample;
     }
 
-    // Splits pixels into 3 lightness bands [0, 0.33) / [0.33, 0.67) / [0.67, 1] with equal quotas, so highlights (e.g. white petals in a green photo)
-    // get 1/3 of the k-means input. Picks within a band are saturation-weighted (as in Vivid); otherwise a vivid minority hue would be outvoted
-    // by the duller majority and Contrast would do only luminance stratification.
+    // Three lightness bands with equal quotas, saturation-weighted, so rare highlights and vivid minorities show.
     private static float[][] BuildStratifiedByLightness(float[][] hsl)
     {
         var bands = new List<int>[3];
@@ -148,7 +142,6 @@ internal sealed class KMeansService
         return centroids;
     }
 
-    // Precomputes each sample's hue angle as (sin, cos) once; see the call site in Cluster.
     private static (double[] SinH, double[] CosH) PrecomputeHueTrig(float[][] pixels)
     {
         var sinH = new double[pixels.Length];
@@ -252,8 +245,7 @@ internal sealed class KMeansService
         }
     }
 
-    // Tries k = ElbowKMin..ElbowKMax, picks the elbow via the max second derivative of WCSS and returns that candidate's centroids directly
-    // (k-means already ran for every candidate, deterministically seeded, so re-running it would give the same result).
+    // Picks k by the largest second derivative of WCSS.
     private static float[][] FindElbowCentroids(
         float[][] pixels, double[] pixelSinH, double[] pixelCosH, CancellationToken cancellationToken = default)
     {

@@ -14,6 +14,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Assets\Fonts\JetBrainsMono[wght].ttf" />
+        <EmbeddedResource Include="Localization\*.json" LogicalName="PhSpectre.Localization.%(Filename).json" WithCulture="false" />
     </ItemGroup>
 
 </Project>

@@ -1,14 +1,10 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!--
-        V2 component kit (HANDOFF §4). Everything reads tokens through DynamicResource so the
-        app theme switch restyles it live. Controls are re-templated here instead of overriding
-        Fluent's part names, which keeps them independent of the Fluent version.
-    -->
+    <!-- Own templates for the controls; tokens through DynamicResource so theme switching restyles them. -->
 
-    <!-- Base fills live in styles, not in the templates: a value set inside a template is a local
-         value and would beat the :selected / :checked overrides below. -->
+    <!-- Base fills are set by styles: a value set in a template would beat the :selected and :checked overrides.
+         -->
     <Style Selector="ListBox.seg > ListBoxItem /template/ Border#Bg">
         <Setter Property="Background" Value="Transparent"/>
     </Style>
@@ -31,7 +27,7 @@
         <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
 
-    <!-- ── Segmented control: ListBox.seg ─────────────────────────────────────────────── -->
+    <!-- Segmented control: ListBox.seg -->
     <Style Selector="ListBox.seg">
         <Setter Property="Background" Value="{DynamicResource ControlBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -86,7 +82,7 @@
         <Setter Property="FontSize" Value="14"/>
     </Style>
 
-    <!-- ── Switch: ToggleButton.switch ────────────────────────────────────────────────── -->
+    <!-- Switch: ToggleButton.switch -->
     <Style Selector="ToggleButton.switch">
         <Setter Property="Width" Value="40"/>
         <Setter Property="Height" Value="24"/>
@@ -115,7 +111,7 @@
         <Setter Property="Opacity" Value="0.45"/>
     </Style>
 
-    <!-- ── Slider: Slider.v2 ──────────────────────────────────────────────────────────── -->
+    <!-- Slider: Slider.v2 -->
     <Style Selector="Slider.v2">
         <Setter Property="MinHeight" Value="28"/>
         <Setter Property="Template">
@@ -149,8 +145,7 @@
                         <Thumb Name="thumb" Width="22" Height="22">
                             <Thumb.Template>
                                 <ControlTemplate>
-                                    <!-- Surface-coloured knob with an accent ring: a text-coloured fill turned into
-                                         a heavy black blob on the light theme. -->
+                                    <!-- Ringed knob: a solid text-coloured fill looks heavy on the light theme. -->
                                     <Ellipse Fill="{DynamicResource SurfaceBrush}"
                                              Stroke="{DynamicResource AccentBrush}" StrokeThickness="2.5"/>
                                 </ControlTemplate>
@@ -162,7 +157,7 @@
         </Setter>
     </Style>
 
-    <!-- ── Fields ─────────────────────────────────────────────────────────────────────── -->
+    <!-- Fields -->
     <Style Selector="TextBox, ComboBox">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource FieldBorderBrush}"/>
@@ -190,7 +185,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
     </Style>
 
-    <!-- ── Text roles ─────────────────────────────────────────────────────────────────── -->
+    <!-- Text roles -->
     <Style Selector="TextBlock.section-title">
         <Setter Property="FontFamily" Value="avares://PhSpectre.Avalonia/Assets/Fonts/JetBrainsMono[wght].ttf#JetBrains Mono"/>
         <Setter Property="FontSize" Value="11"/>
@@ -229,7 +224,7 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
-    <!-- ── Color chip (Card: Dark / Light / Custom): ListBox.chips ────────────────────── -->
+    <!-- Colour chips: ListBox.chips -->
     <Style Selector="ListBox.chips">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -258,7 +253,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
     </Style>
 
-    <!-- ── Option row (export size): ListBox.options ──────────────────────────────────── -->
+    <!-- Option row: ListBox.options -->
     <Style Selector="ListBox.options">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -288,7 +283,7 @@
         <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
     </Style>
 
-    <!-- ── Panels ─────────────────────────────────────────────────────────────────────── -->
+    <!-- Panels -->
     <Style Selector="Border.pill">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}"/>
@@ -413,7 +408,7 @@
     </Style>
 
 
-    <!-- Accordion (Expander): a quiet header with a hairline under it, no filled boxes; the content sits on the panel. -->
+    <!-- Accordion: quiet header with a hairline -->
     <Style Selector="Expander">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>

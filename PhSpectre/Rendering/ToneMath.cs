@@ -2,8 +2,7 @@ using System.Numerics;
 
 namespace PhSpectre.Rendering;
 
-// Per-pixel maths of the Edit sliders (colour in 0..1, sRGB). Same curves as the Lightroom preset grader,
-// so a slider here feels like the same slider there.
+// Per-pixel maths of the Edit sliders, with the same curves as the preset grader.
 internal static class ToneMath
 {
     public static readonly float[] Decode = BuildDecode();
@@ -74,7 +73,7 @@ internal static class ToneMath
         return new Vector3(gray) + (c - new Vector3(gray)) * MathF.Max(scale, 0f);
     }
 
-    // Cheap deterministic noise in 0..1 (same picture every run).
+    // Deterministic noise in 0..1.
     public static float Hash(int x, int y)
     {
         uint h = (uint)x * 374761393u + (uint)y * 668265263u;

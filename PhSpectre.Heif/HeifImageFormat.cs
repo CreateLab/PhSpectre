@@ -2,8 +2,7 @@ using SixLabors.ImageSharp.Formats;
 
 namespace PhSpectre.Heif;
 
-// Minimal IImageFormat — read-only support (no encoder), so this only needs enough identity
-// for ImageFormatsManager's decoder/detector registries to key off.
+// Read only, so just enough identity for the decoder registry.
 public sealed class HeifImageFormat : IImageFormat
 {
     public static readonly HeifImageFormat Instance = new();

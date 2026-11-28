@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -33,16 +34,15 @@ public partial class GradeItemViewModel : ObservableObject
     public string Name => Entry.Name;
     public string Detail => string.IsNullOrEmpty(Entry.Category) ? "" : Entry.Category;
     public bool CanDelete => !Entry.Bundled;
-    public string Badge => Entry.Kind == GradeKind.Preset ? "PRESET" : "LUT";
-    public string FavoriteMenuText => IsFavorite ? "Remove from favorites" : "Add to favorites";
+    public string Badge => Entry.Kind == GradeKind.Preset ? Loc.T("PRESET") : "LUT";
+    public string FavoriteMenuText => IsFavorite ? Loc.T("Remove from favorites") : Loc.T("Add to favorites");
     partial void OnIsFavoriteChanged(bool value) => OnPropertyChanged(nameof(FavoriteMenuText));
     public bool HasThumb => Thumb != null;
     partial void OnThumbChanged(Bitmap? value) => OnPropertyChanged(nameof(HasThumb));
     public GradeItemViewModel(GradeEntry e, ProcessViewModel owner) { Entry = e; Owner = owner; _isFavorite = e.Favorite; }
 }
 
-// State of the Process screen: the photo, the user's LUT / preset library, the two grading layers
-// (Lightroom preset, then LUT), a live preview on a downscaled copy, undo/redo and export at full size.
+// The Edit screen: photo, Look library, adjustments, live preview, undo and export.
 public partial class ProcessViewModel : ViewModelBase
 {
     private const int PreviewLongSide = 1600;
@@ -52,7 +52,7 @@ public partial class ProcessViewModel : ViewModelBase
     public ProcessViewModel(SettingsViewModel settings)
     {
         _settings = settings;
-        // The Export tab is shared by every frame: start from the saved format.
+        // The Export tab starts from the saved format.
         ExportFormatIndex = settings.OutputFormat == PhSpectre.Rendering.OutputFormat.Png ? 1 : 0;
     }
 
@@ -66,10 +66,9 @@ public partial class ProcessViewModel : ViewModelBase
     public static string LibraryRoot => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PhSpectre", "library");
 
-    // Created on first use so the folders are not made for people who never open Process.
+    // Lazy, so folders are only created when used.
     public GradeLibrary Grades => _grades ??= new GradeLibrary(LibraryRoot, Services.BundledLooks.All);
 
-    // ── Photo ───────────────────────────────────────────────────────────────────────────
     [ObservableProperty] private Bitmap? _original;
     [ObservableProperty] private Bitmap? _graded;
     [ObservableProperty] private string _photoName = "";
@@ -80,10 +79,21 @@ public partial class ProcessViewModel : ViewModelBase
 
     public bool HasPhoto => Original != null;
     private bool _compareHidden;
-    /// <summary>Phone: the Result | Original switch steps aside while the Adjust sheet covers the stage.</summary>
-    public bool CompareHidden { get => _compareHidden; set { if (_compareHidden == value) return; _compareHidden = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(StageMargin)); } }
+    // Phone: hidden while the Adjust sheet covers the stage.
+    public bool CompareHidden
+    {
+        get => _compareHidden;
+        set
+        {
+            if (_compareHidden == value) return;
+            _compareHidden = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(ShowCompare));
+            OnPropertyChanged(nameof(StageMargin));
+        }
+    }
     private bool _phoneStage;
-    /// <summary>Phone layout: the photo gets almost the whole stage and nothing is laid over its corners.</summary>
+    // Phone: no overlays on the photo's corners.
     public bool PhoneStage
     {
         get => _phoneStage;
@@ -93,9 +103,10 @@ public partial class ProcessViewModel : ViewModelBase
             _phoneStage = value;
             OnPropertyChanged(); OnPropertyChanged(nameof(StageMargin));
             OnPropertyChanged(nameof(CompareMargin)); OnPropertyChanged(nameof(ShowPhotoName));
+            OnPropertyChanged(nameof(HistogramWidth)); OnPropertyChanged(nameof(HistogramHeight));
         }
     }
-    /// <summary>Room around the photo; the bottom strip is only reserved while the compare switch floats there.</summary>
+    // Bottom room only while the compare switch is there.
     public global::Avalonia.Thickness StageMargin => _phoneStage
         ? new(4, 4, 4, _compareHidden ? 4 : 52)
         : new(32, 28, 32, _compareHidden ? 16 : 84);
@@ -107,15 +118,22 @@ public partial class ProcessViewModel : ViewModelBase
     public Bitmap? Shown => ShowOriginal || Graded == null ? Original : Graded;
     public string? PhotoPath => _loadedPath;
 
-    partial void OnOriginalChanged(Bitmap? value) { OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView)); OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark)); OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowPhotoName)); OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
-    partial void OnGradedChanged(Bitmap? value) => OnPropertyChanged(nameof(Shown));
+    partial void OnOriginalChanged(Bitmap? value)
+    {
+        OnPropertyChanged(nameof(ShowCropView)); OnPropertyChanged(nameof(ShowPhotoView));
+        OnPropertyChanged(nameof(FilmFrameAuto)); OnPropertyChanged(nameof(FilmFrameWatermark));
+        OnPropertyChanged(nameof(HasPhoto)); OnPropertyChanged(nameof(ShowPhotoName));
+        OnPropertyChanged(nameof(ShowCompare)); OnPropertyChanged(nameof(ShowEmpty)); OnPropertyChanged(nameof(Shown));
+        OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll));
+        ResetHistogram();
+    }
+    partial void OnGradedChanged(Bitmap? value) { OnPropertyChanged(nameof(Shown)); RaiseHistogram(); }
     partial void OnShowOriginalChanged(bool value)
     {
-        OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex));
+        OnPropertyChanged(nameof(Shown)); OnPropertyChanged(nameof(CompareIndex)); RaiseHistogram();
         if (IsDetailActive) ScheduleRender();
     }
 
-    // Result | Original segment (same control as the pill on the Main screen).
     public int CompareIndex
     {
         get => ShowOriginal ? 1 : 0;
@@ -123,7 +141,6 @@ public partial class ProcessViewModel : ViewModelBase
     }
     partial void OnErrorTextChanged(string value) { OnPropertyChanged(nameof(HasError)); OnPropertyChanged(nameof(ShowEmpty)); }
 
-    // Picks up the photo that is current in the shell; cheap when it has not changed.
     public void Refresh()
     {
         if (!_libraryBuilt) RefreshLibrary(); else if (Items.Any(i => i.Thumb == null)) ScheduleThumbs();
@@ -137,7 +154,7 @@ public partial class ProcessViewModel : ViewModelBase
             return;
         }
         if (entry.FullPath == _loadedPath && Original != null) return;
-        if (entry.FullPath == _loadingPath) return; // already decoding this one
+        if (entry.FullPath == _loadingPath) return;
         _ = LoadPhotoAsync(entry.FullPath, entry.FileName);
     }
 
@@ -162,7 +179,7 @@ public partial class ProcessViewModel : ViewModelBase
     /// <summary>The Look as a stack, or null when nothing is applied (used by Frame → Card).</summary>
     public GradeStack? LookStack() { var s = BuildStack(); return s.IsEmpty ? null : s; }
 
-    /// <summary>Changes whenever the applied Look changes (cache key for renders built from the graded photo).</summary>
+    // Cache key of the applied Look.
     public string LookKey => LookStack() == null ? "" :
         $"{_presetEntry?.Id}:{PresetEnabled}:{PresetStrength:0}|{_lutEntry?.Id}:{LutEnabled}:{LutStrength:0}";
 
@@ -190,8 +207,7 @@ public partial class ProcessViewModel : ViewModelBase
             int fullW = 0, fullH = 0;
             var img = await Task.Run(() =>
             {
-                // Decode straight to ~preview size: JPEG decoders can skip most of the work by scaling in the DCT,
-                // which matters on phones (a 24 MP photo no longer gets fully decoded just to be shrunk).
+                // Decode near preview size: JPEG scales in the DCT, much faster on phones.
                 var info = Image.Identify(path);
                 fullW = info?.Width ?? 0; fullH = info?.Height ?? 0;
                 int big = info == null ? 0 : Math.Max(info.Width, info.Height);
@@ -217,7 +233,6 @@ public partial class ProcessViewModel : ViewModelBase
                 }
                 return i;
             });
-            // The user may have switched photos while this one decoded.
             if (_settings.CurrentPhotoProvider?.Invoke()?.FullPath != path) { img.Dispose(); return; }
             ReleaseDetail();
             _source?.Dispose();
@@ -241,7 +256,7 @@ public partial class ProcessViewModel : ViewModelBase
         {
             ClearPhoto();
             PhotoName = fileName;
-            ErrorText = "This photo can't be opened for grading.";
+            ErrorText = Loc.T("This photo can't be opened for grading.");
         }
         finally { if (_loadingPath == path) _loadingPath = null; }
     }
@@ -254,10 +269,9 @@ public partial class ProcessViewModel : ViewModelBase
         return new Bitmap(ms);
     }
 
-    // ── Library ─────────────────────────────────────────────────────────────────────────
     public ObservableCollection<GradeItemViewModel> Items { get; } = [];
     public ObservableCollection<GradeGroup> Groups { get; } = [];
-    [ObservableProperty] private int _libraryTab; // filter: 0 All, 1 Favorites, 2 Presets, 3 LUTs
+    [ObservableProperty] private int _libraryTab; // 0 All, 1 Favorites, 2 Presets, 3 LUTs
     [ObservableProperty] private string _searchText = "";
     private bool FavoritesOnly => LibraryTab == 1;
     [ObservableProperty] private string _importStatus = "";
@@ -265,12 +279,12 @@ public partial class ProcessViewModel : ViewModelBase
     public bool HasItems => Items.Count > 0;
     public bool ShowLibraryEmpty => Items.Count == 0;
     public string LibraryEmptyText => SearchText.Length > 0 || FavoritesOnly
-        ? "Nothing matches."
+        ? Loc.T("Nothing matches.")
         : LibraryTab switch
         {
-            2 => "No presets yet. Import Lightroom .xmp files.",
-            3 => "No LUTs yet. Import .cube files.",
-            _ => "No looks yet. Import presets (.xmp) or LUTs (.cube).",
+            2 => Loc.T("No presets yet. Import Lightroom .xmp files."),
+            3 => Loc.T("No LUTs yet. Import .cube files."),
+            _ => Loc.T("No looks yet. Import presets (.xmp) or LUTs (.cube)."),
         };
     public bool HasImportStatus => ImportStatus.Length > 0;
 
@@ -296,19 +310,21 @@ public partial class ProcessViewModel : ViewModelBase
         Groups.Clear();
         // Mixed tabs (All, Fav) split presets and LUTs into separate sections.
         bool mixed = kind == null;
+        // Portrait looks come first.
         foreach (var g in Items.GroupBy(i => (Kind: mixed ? i.Entry.Kind : GradeKind.Preset,
                                               Cat: string.IsNullOrWhiteSpace(i.Entry.Category) ? "Imported" : i.Entry.Category))
-                               .OrderBy(g => g.Key.Kind).ThenBy(g => g.Key.Cat == "Imported" ? 1 : 0)
+                               .OrderBy(g => g.Key.Cat == "Portrait" ? 0 : 1)
+                               .ThenBy(g => g.Key.Kind).ThenBy(g => g.Key.Cat == "Imported" ? 1 : 0)
                                .ThenBy(g => g.Key.Cat, StringComparer.CurrentCultureIgnoreCase))
         {
-            string title = mixed ? $"{(g.Key.Kind == GradeKind.Preset ? "Presets" : "LUTs")} · {g.Key.Cat}" : g.Key.Cat;
+            var category = g.Key.Cat == "Imported" ? Loc.T("Imported") : g.Key.Cat;
+            string title = mixed ? $"{(g.Key.Kind == GradeKind.Preset ? Loc.T("Presets") : Loc.T("LUTs"))} · {category}" : category;
             Groups.Add(new GradeGroup(title, g.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList()));
         }
         OnPropertyChanged(nameof(HasItems)); OnPropertyChanged(nameof(ShowLibraryEmpty)); OnPropertyChanged(nameof(LibraryEmptyText));
         _ = FillThumbsAsync();
     }
 
-    // ── Look thumbnails: each tile is the user's own photo with that Look at 100% ──────────
     private const int ThumbLongSide = 180;
     private readonly Dictionary<string, Bitmap> _thumbs = [];
     private Image<Rgb24>? _thumbSource;
@@ -319,7 +335,7 @@ public partial class ProcessViewModel : ViewModelBase
     private async Task FillThumbsAsync()
     {
         int gen = ++_thumbGeneration;
-        // Let the photo and its first render reach the screen before the tiles start to compete for the CPU.
+        // Let the photo appear before the tiles compete for the CPU.
         await Task.Delay(250);
         if (gen != _thumbGeneration || _settings.EditTab != 0) return;
         var src = _thumbSource;
@@ -331,7 +347,7 @@ public partial class ProcessViewModel : ViewModelBase
             var key = ThumbKey(item.Entry.Id);
             _cache.TryGetValue(item.Entry.Id, out var cached);
             var entry = item.Entry;
-            // Parsing a big LUT and rendering the tile both happen off the UI thread.
+            // Off the UI thread.
             var (bytes, loaded) = await Task.Run(() =>
             {
                 try
@@ -355,7 +371,7 @@ public partial class ProcessViewModel : ViewModelBase
 
     private void ScheduleThumbs() { SyncThumbsToAdjust(); _ = FillThumbsAsync(); }
 
-    // The adjustment Look tiles are drawn with: noise cleaning cannot be seen at their size and is skipped.
+    // Tiles skip cleaning: it is invisible at their size.
     private PhotoAdjust? ThumbAdjust() => CurrentAdjustSettings().WithoutCleaning() is { IsNoOp: false } a ? a : null;
 
     private void ResetThumbs()
@@ -382,15 +398,15 @@ public partial class ProcessViewModel : ViewModelBase
         int ok = results.Count(r => r.Error == null);
         var errors = results.Where(r => r.Error != null).Select(r => $"{Path.GetFileName(r.Source)}: {r.Error}").ToList();
         var lines = new List<string>();
-        if (ok > 0) lines.Add($"Imported {ok}.");
+        if (ok > 0) lines.Add(Loc.F("Imported {0}.", ok));
         foreach (var r in results.Where(r => r.Entry is { Skipped.Count: > 0 }))
-            lines.Add($"“{r.Entry!.Name}”: not applied — {string.Join(", ", r.Entry.Skipped)}");
+            lines.Add(Loc.F("“{0}”: not applied — {1}", r.Entry!.Name, string.Join(", ", r.Entry.Skipped)));
         lines.AddRange(errors.Take(5));
-        if (errors.Count > 5) lines.Add($"…and {errors.Count - 5} more failed.");
+        if (errors.Count > 5) lines.Add(Loc.F("…and {0} more failed.", errors.Count - 5));
         ImportStatus = string.Join("\n", lines);
-        // Show the tab of what was just imported.
+        // Show the tab holding the imports.
         var last = results.LastOrDefault(r => r.Entry != null)?.Entry;
-        if (last != null && LibraryTab == 1) LibraryTab = 0; // show the new arrivals
+        if (last != null && LibraryTab == 1) LibraryTab = 0;
         RefreshLibrary();
     }
 
@@ -454,12 +470,12 @@ public partial class ProcessViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is FormatException or IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException)
         {
-            error = $"“{e.Name}” can't be loaded: {ex.Message}";
+            error = Loc.F("“{0}” can't be loaded: {1}", e.Name, ex.Message);
             return false;
         }
     }
 
-    // ── Layers: Lightroom preset, then LUT ──────────────────────────────────────────────
+    // Layers: preset, then LUT
     private LrPreset? _preset; private GradeEntry? _presetEntry;
     private CubeLut? _lut; private GradeEntry? _lutEntry;
 
@@ -473,8 +489,9 @@ public partial class ProcessViewModel : ViewModelBase
     public bool HasLayers => HasPreset || HasLut;
     public string PresetName => _presetEntry?.Name ?? "";
     public string LutName => _lutEntry?.Name ?? "";
-    public string SkippedText => _presetEntry is { Skipped.Count: > 0 } e
-        ? "Not applied: " + string.Join(", ", e.Skipped) : "";
+    // From the loaded preset: the list saved at import may be outdated.
+    public string SkippedText => _preset is { Skipped.Count: > 0 } preset
+        ? Loc.T("Not applied:") + " " + string.Join(", ", preset.Skipped) : "";
     public bool HasSkipped => SkippedText.Length > 0;
     public string PresetStrengthText => $"{(int)Math.Round(PresetStrength)}%";
     public string LutStrengthText => $"{(int)Math.Round(LutStrength)}%";
@@ -487,7 +504,7 @@ public partial class ProcessViewModel : ViewModelBase
     [RelayCommand] private void ClearPreset() { _preset = null; _presetEntry = null; PresetStrength = 100; LayersChanged(); CommitNow(); RefreshLibrary(); }
     [RelayCommand] private void ClearLut() { _lut = null; _lutEntry = null; LutStrength = 100; LayersChanged(); CommitNow(); RefreshLibrary(); }
 
-    /// <summary>Removes the preset and the LUT in one step (the "Remove the look" link in the Recipe warning).</summary>
+    /// <summary>Removes preset and LUT in one step.</summary>
     [RelayCommand]
     private void ClearLook()
     {
@@ -514,14 +531,14 @@ public partial class ProcessViewModel : ViewModelBase
         Lut = _lut, LutStrength = (float)(LutStrength / 100), LutEnabled = LutEnabled
     };
 
-    // ── Frame (last layer: drawn around the graded photo) ──────────────────────────────
+    // Frame, the last layer
     private PhotoFrameStore? _frameStore;
     private PhotoFrameStore FrameStore => _frameStore ??= new PhotoFrameStore(Path.Combine(LibraryRoot, "frames.json"));
     private bool _applyingFrame;
     private string _validColorHex = "#FFFFFF";
 
     public ObservableCollection<PhotoFrame> Frames { get; } = [];
-    public IReadOnlyList<string> AspectLabels { get; } = PhotoFrame.AspectChoices.Select(a => a.Label).ToList();
+    public IReadOnlyList<string> AspectLabels { get; } = PhotoFrame.AspectChoices.Select(a => Loc.T(a.Label)).ToList();
 
     [ObservableProperty] private bool _frameEnabled;
     [ObservableProperty] private PhotoFrame? _selectedFrame;
@@ -548,8 +565,7 @@ public partial class ProcessViewModel : ViewModelBase
         OnPropertyChanged(nameof(CanDeleteFrame));
     }
 
-    // The frame as currently set in the controls; null while the layer is off. Id/Name stay empty so that
-    // two identical settings compare equal in the undo history.
+    // Id and Name stay empty so identical settings compare equal in undo history.
     private PhotoFrame? CurrentFrame(bool ignoreEnabled = false)
     {
         if (!FrameEnabled && !ignoreEnabled) return null;
@@ -576,7 +592,7 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnFrameColorHexChanged(string value) { SelectedFrameDetach(); FrameChanged(false); }
     partial void OnFrameAspectIndexChanged(int value) { SelectedFrameDetach(); FrameChanged(true); }
 
-    // Touching a control means the settings no longer match the chosen frame.
+    // A changed control no longer matches the chosen frame.
     private void SelectedFrameDetach()
     {
         if (_restoring || _applyingFrame || SelectedFrame == null) return;
@@ -628,19 +644,20 @@ public partial class ProcessViewModel : ViewModelBase
         LoadFrames();
     }
 
-    // Grade, then frame. Returns a new image; the source is untouched.
-    private static Image<Rgb24> RenderAll(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film = null, PhotoAdjust? adjust = null)
+    // Adjust, Look, then frame. Returns a new image. `beforeFrame` sees the picture without the frame.
+    private static Image<Rgb24> RenderAll(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film = null, PhotoAdjust? adjust = null,
+        Action<Image<Rgb24>>? beforeFrame = null)
     {
-        // Crop / straighten / exposure come first, so the Look and the frame see the picture as it will be shown.
+        // Adjustments come first, so Look and frame see the final picture.
         using var adjusted = adjust is { IsNoOp: false } ? adjust.Render(src) : null;
         var basis = adjusted ?? src;
         using var graded = stack.IsEmpty ? null : stack.Render(basis);
+        beforeFrame?.Invoke(graded ?? basis);
         if (film != null) return FilmFrameRenderer.Render(graded ?? basis, film.Style, film.Meta, film.Number, film.LookName, film.Label);
         return frame is { IsNoOp: false } ? frame.Render(graded ?? basis) : (graded ?? basis).Clone();
     }
 
-    // ── Adjust (first layer: straighten, crop, exposure) ───────────────────────────────
-    public IReadOnlyList<string> CropLabels { get; } = PhotoAdjust.CropChoices.Select(c => c.Label).ToList();
+    public IReadOnlyList<string> CropLabels { get; } = PhotoAdjust.CropChoices.Select(c => Loc.T(c.Label)).ToList();
     public double MaxStraighten => PhotoAdjust.MaxStraighten;
     public double MaxExposure => PhotoAdjust.MaxExposure;
     public double MaxZoom => PhotoAdjust.MaxZoom;
@@ -668,16 +685,18 @@ public partial class ProcessViewModel : ViewModelBase
     [ObservableProperty] private double _halation;
     [ObservableProperty] private double _noiseLuma;
     [ObservableProperty] private double _noiseColor;
+    [ObservableProperty] private double _skinSmoothing;
+    public bool HasSkinSupport => SkinRetouch.IsAvailable;
     private bool _noReclamp;
 
-    // Inner sections of the Look tab: Looks · Crop · Light · Color · Effects.
+    // Sections of the Look tab: Looks, Crop, Light, Color, Effects.
     [ObservableProperty] private int _lookSection;
     public bool LookIsLooks => LookSection == 0;
     public bool LookIsCrop => LookSection == 1;
     public bool LookIsLight => LookSection == 2;
     public bool LookIsColor => LookSection == 3;
     public bool LookIsEffects => LookSection == 4;
-    // The single tool strip: 0-4 are the Look sections above, 5 = Frame, 6 = Export.
+    // 0-4 are the Look sections, 5 Frame, 6 Export.
     public int EditSection
     {
         get => _settings.EditTab == 0 ? LookSection : _settings.EditTab + 4;
@@ -698,11 +717,13 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnLookSectionChanged(int value)
     {
         OnPropertyChanged(nameof(EditSection));
-        OnPropertyChanged(nameof(LookIsLooks)); OnPropertyChanged(nameof(LookIsCrop)); OnPropertyChanged(nameof(LookIsLight)); OnPropertyChanged(nameof(LookIsColor)); OnPropertyChanged(nameof(LookIsEffects));
-        OnPropertyChanged(nameof(ShowCropView));
+        OnPropertyChanged(nameof(LookIsLooks)); OnPropertyChanged(nameof(LookIsCrop));
+            OnPropertyChanged(nameof(LookIsLight)); OnPropertyChanged(nameof(LookIsColor));
+            OnPropertyChanged(nameof(LookIsEffects));
+        OnPropertyChanged(nameof(ShowCropView)); RaiseHistogram();
         if (!IsDetailActive) DropDetailPixels();
         RaiseDetailVisibility();
-        // Crop shows the whole photo moved by transforms (no re-render per drag); the cropped result is built once on leaving it.
+        // Crop moves the photo by transforms; the result is rendered on leaving.
         ScheduleRender();
         LookChanged?.Invoke();
         if (value == 0) ScheduleThumbs();
@@ -717,7 +738,7 @@ public partial class ProcessViewModel : ViewModelBase
     /// <summary>Size of the crop in photo pixels (the shape the crop window has on screen).</summary>
     public (int Width, int Height) CropOutputSize() => _source == null ? (0, 0) : CurrentAdjustSettings().OutputSize(_source.Width, _source.Height);
 
-    // Look tiles are drawn from the adjusted photo, so they are rebuilt when the crop or exposure changed since.
+    // Rebuild the tiles when crop or exposure changed.
     private string _thumbAdjustKey = "";
     private string AdjustKey => ThumbAdjust()?.ToString() ?? "";
     private void SyncThumbsToAdjust()
@@ -740,17 +761,23 @@ public partial class ProcessViewModel : ViewModelBase
     private PhotoAdjust CurrentAdjustSettings() => new PhotoAdjust
     {
         Quarter = Quarter, Straighten = (float)Straighten, Zoom = (float)Zoom, Exposure = (float)Exposure, PanX = (float)PanX, PanY = (float)PanY,
-        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites, Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance, Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness, Vignette = (float)Vignette, Grain = (float)Grain, Glow = (float)Glow, Halation = (float)Halation, NoiseLuma = (float)NoiseLuma, NoiseColor = (float)NoiseColor,
+        Contrast = (float)Contrast, Highlights = (float)Highlights, Shadows = (float)Shadows, Whites = (float)Whites,
+            Blacks = (float)Blacks, Saturation = (float)Saturation, Vibrance = (float)Vibrance,
+            Temperature = (float)Temperature, Tint = (float)Tint, Sharpness = (float)Sharpness,
+            Vignette = (float)Vignette, Grain = (float)Grain, Glow = (float)Glow, Halation = (float)Halation,
+            NoiseLuma = (float)NoiseLuma, NoiseColor = (float)NoiseColor, SkinSmoothing = (float)SkinSmoothing,
         Aspect = PhotoAdjust.CropChoices[Math.Clamp(CropIndex, 0, PhotoAdjust.CropChoices.Length - 1)].Ratio
     }.Normalized();
 
-    // null while nothing is changed, so an untouched photo skips the step entirely.
     private PhotoAdjust? CurrentAdjust() => CurrentAdjustSettings() is { IsNoOp: false } a ? a : null;
 
     private void ApplyAdjustSettings(PhotoAdjust a)
     {
         Quarter = a.Quarter; Straighten = a.Straighten; Zoom = a.Zoom; Exposure = a.Exposure; PanX = a.PanX; PanY = a.PanY;
-        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks; Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint; Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain; Glow = a.Glow; Halation = a.Halation; NoiseLuma = a.NoiseLuma; NoiseColor = a.NoiseColor;
+        Contrast = a.Contrast; Highlights = a.Highlights; Shadows = a.Shadows; Whites = a.Whites; Blacks = a.Blacks;
+            Saturation = a.Saturation; Vibrance = a.Vibrance; Temperature = a.Temperature; Tint = a.Tint;
+            Sharpness = a.Sharpness; Vignette = a.Vignette; Grain = a.Grain; Glow = a.Glow; Halation = a.Halation;
+            NoiseLuma = a.NoiseLuma; NoiseColor = a.NoiseColor; SkinSmoothing = a.SkinSmoothing;
         CropIndex = Math.Max(0, Array.FindIndex(PhotoAdjust.CropChoices, c => c.Ratio == a.Aspect));
     }
 
@@ -776,7 +803,6 @@ public partial class ProcessViewModel : ViewModelBase
         finally { _noReclamp = false; }
     }
 
-    // Zoom, ratio or angle changed: keep the crop inside the picture.
     private void ReclampPan()
     {
         if (_noReclamp || _source == null || (PanX == 0 && PanY == 0)) return;
@@ -801,7 +827,7 @@ public partial class ProcessViewModel : ViewModelBase
         if (geometry) UpdateExportSize();
         if (!_restoring) ReclampPan();
         RaiseAdjustTexts();
-        // In Crop the picture is moved by transforms, so nothing is rebuilt (and nothing else is told) until the section is left.
+        // In Crop nothing is re-rendered until the section is left.
         bool live = geometry && LookIsCrop;
         if (!live) LookChanged?.Invoke(); // Card frames are built from the adjusted photo too
         if (_restoring) { if (!live) ScheduleRender(); return; }
@@ -832,17 +858,19 @@ public partial class ProcessViewModel : ViewModelBase
     partial void OnHalationChanged(double value) => AdjustChanged(false, geometry: false);
     partial void OnNoiseLumaChanged(double value) => AdjustChanged(false, geometry: false);
     partial void OnNoiseColorChanged(double value) => AdjustChanged(false, geometry: false);
+    partial void OnSkinSmoothingChanged(double value) => AdjustChanged(false, geometry: false);
 
     [RelayCommand] private void RotateLeft() => Quarter = (Quarter + 3) % 4;
     [RelayCommand] private void RotateRight() => Quarter = (Quarter + 1) % 4;
     [RelayCommand] private void ResetExposure() => Exposure = 0;
-    [RelayCommand] private void ResetLight() => ResetGroup(() => { Exposure = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; });
-    [RelayCommand] private void ResetColor() => ResetGroup(() => { Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; });
-    [RelayCommand] private void ResetEffects() => ResetGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; NoiseLuma = 0; NoiseColor = 0; });
-    private void ResetGroup(Action reset)
+    [RelayCommand] private void ResetLight() => ApplyGroup(() => { Exposure = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; });
+    [RelayCommand] private void ResetColor() => ApplyGroup(() => { Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; });
+    [RelayCommand] private void ResetEffects() => ApplyGroup(() => { Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; NoiseLuma = 0; NoiseColor = 0; SkinSmoothing = 0; });
+    // Several sliders at once, as one undo step.
+    private void ApplyGroup(Action change)
     {
         _restoring = true;
-        try { reset(); }
+        try { change(); }
         finally { _restoring = false; }
         AdjustChanged(true, geometry: false);
     }
@@ -855,24 +883,30 @@ public partial class ProcessViewModel : ViewModelBase
         AdjustChanged(true);
     }
 
-    // A new photo starts straight and uncropped; the Look and frame carry over, but a tilt or exposure fix is one photo's.
+    // A new photo starts unadjusted; Look and frame carry over.
     private void ResetPhotoAdjust()
     {
         _restoring = true;
-        try { Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0; Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0; Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; NoiseLuma = 0; NoiseColor = 0; }
+        try
+        {
+            Quarter = 0; Straighten = 0; Zoom = 1; Exposure = 0; CropIndex = 0; PanX = 0; PanY = 0; Contrast = 0;
+            Highlights = 0; Shadows = 0; Whites = 0; Blacks = 0; Saturation = 0; Vibrance = 0; Temperature = 0;
+            Tint = 0; Sharpness = 0; Vignette = 0; Grain = 0; Glow = 0; Halation = 0; NoiseLuma = 0; NoiseColor = 0;
+            SkinSmoothing = 0;
+        }
         finally { _restoring = false; }
         RaiseAdjustTexts();
         _commitTimer?.Stop();
         _committed = Capture();
     }
 
-    // ── Live preview ───────────────────────────────────────────────────────────────────
+    // Live preview
     private bool _isRendering;
     /// <summary>A preview render is in flight (shown as an "Updating…" chip so a slow phone doesn't look frozen).</summary>
     public bool IsRendering { get => _isRendering; private set { if (_isRendering == value) return; _isRendering = value; OnPropertyChanged(); } }
 
-    // One render runs at a time and only the newest request waits behind it, so a dragged slider shows every frame the
-    // machine can produce (no fixed delay, no half-finished renders thrown away). All of this runs on the UI thread.
+    // One render at a time with only the newest queued, so a dragged slider shows every frame it can. UI thread
+    // only.
     private Func<Task>? _pendingRender;
     private bool _renderPumping;
     private int _renderEpoch;
@@ -920,30 +954,40 @@ public partial class ProcessViewModel : ViewModelBase
     {
         try
         {
-            // The bitmap is filled on the worker thread straight from the render, so the UI thread only swaps it in.
+            ImageHistogram? measured = null;
+            Action<Image<Rgb24>>? measure = ShowHistogram && !forCrop ? img => measured = ImageHistogram.Compute(img) : null;
             var shown = await Task.Run(() =>
             {
-                // _source is only replaced on the UI thread together with a new render, and a
-                // stale result is dropped below, so reading it here is safe.
-                using var graded = RenderPreview(src, stack, frame, film, adjust);
+                // _source is only replaced on the UI thread and stale results are dropped, so reading it here is
+                // safe.
+                using var graded = RenderPreview(src, stack, frame, film, adjust, measure);
                 return ToWriteable(graded);
             });
             if (epoch != _renderEpoch || !ReferenceEquals(src, _source)) return;
-            if (forCrop) CropBase = shown; else Graded = shown;
+            if (forCrop) CropBase = shown; else { _resultHistogram = measured; Graded = shown; }
         }
         catch (ObjectDisposedException) { } // photo changed mid-render
         finally { if (_pendingRender == null) IsRendering = false; }
     }
 
-    // Preview render. Cleaning (noise) and geometry (rotate, crop) are the slow steps and do not change while the
-    // exposure or a Look slider moves, so each result is kept and reused until its own settings or the photo change.
+    // Cleaning and geometry are slow and rarely change, so each result is cached.
     private readonly object _geomLock = new();
     private string? _geomKey;
     private Image<Rgb24>? _geomImg, _geomSrc;
     private string? _cleanKey;
     private Image<Rgb24>? _cleanImg, _cleanSrc;
+    private SkinMask? _skinMask;
+    private Image<Rgb24>? _skinSrc;
 
-    private Image<Rgb24> RenderPreview(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust)
+    // Segmentation runs once per photo. Call under _geomLock.
+    private SkinMask? PreviewSkin(Image<Rgb24> src)
+    {
+        if (!ReferenceEquals(_skinSrc, src)) { _skinMask = SkinRetouch.Segmenter?.Segment(src); _skinSrc = src; }
+        return _skinMask;
+    }
+
+    private Image<Rgb24> RenderPreview(Image<Rgb24> src, GradeStack stack, PhotoFrame? frame, FilmLayer? film, PhotoAdjust? adjust,
+        Action<Image<Rgb24>>? measure)
     {
         var geometry = adjust == null ? new PhotoAdjust() : adjust.WithoutTone().WithoutCleaning();
         var cleaning = adjust?.CleaningOnly();
@@ -957,9 +1001,9 @@ public partial class ProcessViewModel : ViewModelBase
                 if (!ReferenceEquals(_cleanSrc, src) || key != _cleanKey)
                 {
                     _cleanImg?.Dispose();
-                    _cleanImg = cleaning.Render(src);
+                    _cleanImg = cleaning.Render(src, cleaning.HasSkinSmoothing ? PreviewSkin(src) : null);
                     _cleanKey = key; _cleanSrc = src;
-                    _geomSrc = null; // the cached geometry was cut from the previous cleaned picture
+                    _geomSrc = null; // Cut from the previous cleaned picture.
                 }
                 basis = _cleanImg!;
             }
@@ -975,11 +1019,11 @@ public partial class ProcessViewModel : ViewModelBase
                 basis = _geomImg!;
             }
             using var exposed = tone is { HasTone: true } ? tone.Render(basis) : null;
-            return RenderAll(exposed ?? basis, stack, frame, film);
+            return RenderAll(exposed ?? basis, stack, frame, film, beforeFrame: measure);
         }
     }
 
-    // Preview pixels go to the screen as raw BGRA: no BMP file is written and decoded again for every slider tick.
+    // Raw BGRA, no encode and decode per slider tick.
     private static unsafe WriteableBitmap ToWriteable(Image<Rgb24> img)
     {
         int w = img.Width, h = img.Height;
@@ -1000,14 +1044,6 @@ public partial class ProcessViewModel : ViewModelBase
         return wb;
     }
 
-    private static byte[] ToBitmapBytes(Image<Rgb24> img)
-    {
-        using var ms = new MemoryStream();
-        img.SaveAsBmp(ms);
-        return ms.ToArray();
-    }
-
-    // ── Undo / redo ────────────────────────────────────────────────────────────────────
     private sealed record Snapshot(string? PresetId, double PresetStrength, bool PresetOn,
         string? LutId, double LutStrength, bool LutOn, PhotoFrame? Frame, bool FrameOn, PhotoAdjust Adjust);
 
@@ -1020,11 +1056,11 @@ public partial class ProcessViewModel : ViewModelBase
     public bool CanUndo => _undo.Count > 0;
     public bool CanRedo => _redo.Count > 0;
 
-    // The frame is captured even while its layer is off, so re-enabling it after an undo keeps its settings.
+    // Captured while off too, so re-enabling keeps the settings.
     private Snapshot Capture() => new(_presetEntry?.Id, PresetStrength, PresetEnabled, _lutEntry?.Id, LutStrength, LutEnabled,
         CurrentFrame(ignoreEnabled: true), FrameEnabled, CurrentAdjustSettings());
 
-    // Slider drags fire many changes; one history step is recorded once they settle.
+    // One history step once a slider drag settles.
     private void CommitSoon()
     {
         _commitTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -1094,7 +1130,7 @@ public partial class ProcessViewModel : ViewModelBase
         NotifyHistory();
     }
 
-    // A layer whose library file was deleted since the snapshot simply restores as empty.
+    // A deleted library file restores as an empty layer.
     private void SetLayer(string? id, GradeKind kind)
     {
         var entry = id == null ? null : Grades.Entries.FirstOrDefault(e => e.Id == id);
@@ -1110,17 +1146,21 @@ public partial class ProcessViewModel : ViewModelBase
         UndoCommand.NotifyCanExecuteChanged(); RedoCommand.NotifyCanExecuteChanged();
     }
 
-    // ── Export (full resolution) ───────────────────────────────────────────────────────
     [ObservableProperty] private bool _isExporting;
     [ObservableProperty] private string _exportStatus = "";
     public bool HasExportStatus => ExportStatus.Length > 0;
     partial void OnExportStatusChanged(string value) => OnPropertyChanged(nameof(HasExportStatus));
-    [ObservableProperty] private int _exportFormatIndex;   // 0 JPEG, 1 PNG
+    [ObservableProperty] private int _exportFormatIndex; // 0 JPEG, 1 PNG
     [ObservableProperty] private double _exportQuality = 95;
     public bool ExportIsJpeg => ExportFormatIndex == 0;
-    public string ExportButtonText => ExportFormatIndex == 1 ? "Export PNG" : "Export JPEG";
+    public string ExportButtonText => ExportFormatIndex == 1 ? Loc.T("Export PNG") : Loc.T("Export JPEG");
     public string ExportQualityText => $"{(int)Math.Round(ExportQuality)}";
-    partial void OnExportFormatIndexChanged(int value) { _settings.OutputFormat = value == 1 ? PhSpectre.Rendering.OutputFormat.Png : PhSpectre.Rendering.OutputFormat.Jpeg; OnPropertyChanged(nameof(ExportIsJpeg)); OnPropertyChanged(nameof(ExportButtonText)); OnPropertyChanged(nameof(SuggestedExportName)); }
+    partial void OnExportFormatIndexChanged(int value)
+    {
+        _settings.OutputFormat = value == 1 ? PhSpectre.Rendering.OutputFormat.Png : PhSpectre.Rendering.OutputFormat.Jpeg;
+        OnPropertyChanged(nameof(ExportIsJpeg)); OnPropertyChanged(nameof(ExportButtonText));
+        OnPropertyChanged(nameof(SuggestedExportName));
+    }
     partial void OnExportQualityChanged(double value) { PhSpectre.Rendering.ExportDefaults.JpegQuality = (int)Math.Round(value); OnPropertyChanged(nameof(ExportQualityText)); }
     public bool CanExport => HasPhoto && !IsExporting;
     partial void OnIsExportingChanged(bool value) { OnPropertyChanged(nameof(CanExport)); OnPropertyChanged(nameof(CanExportAll)); }
@@ -1128,12 +1168,12 @@ public partial class ProcessViewModel : ViewModelBase
     public string SuggestedExportName =>
         Path.GetFileNameWithoutExtension(PhotoName) + (HasLayers || FrameEnabled || FilmEnabled || CurrentAdjust() != null ? "_graded" : "") + (ExportFormatIndex == 1 ? ".png" : ".jpg");
 
-    // The folder chosen under Export → Save to, else next to the photo.
+    // The Save to folder, else next to the photo.
     public string DefaultExportDir =>
         !string.IsNullOrEmpty(_settings.SaveFolder) && Directory.Exists(_settings.SaveFolder) ? _settings.SaveFolder
         : _loadedPath != null ? Path.GetDirectoryName(_loadedPath)! : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures);
 
-    // Export → Size: the same choices as for cards. Original (or half), or the photo fitted onto a social canvas.
+    // Same size choices as for cards.
     private static Image<Rgb24> ApplyOutputSize(Image<Rgb24> img, PhSpectre.Rendering.ExportPreset preset, bool half)
     {
         (int W, int H)? canvas = preset switch
@@ -1154,19 +1194,19 @@ public partial class ProcessViewModel : ViewModelBase
         return img;
     }
 
-    // ── Export all: the current Look and Border applied to every photo of the folder ───────
+    // Export all: the current Look and Border on every photo of the folder
     public int PhotoCount => _settings.PhotosProvider?.Invoke().Count ?? 0;
     public bool CanExportAll => PhotoCount > 1 && !IsExporting;
-    public string ExportAllText => $"Export all {PhotoCount} photos…";
+    public string ExportAllText => Loc.N(PhotoCount, "Export all {0} photo…", "Export all {0} photos…");
 
-    // gallery: mobile heads hand each finished file to the system gallery instead of a folder.
+    // On mobile `gallery` receives each file instead of a folder.
     public async Task ExportAllAsync(string folder, Func<string, string, Task<bool>>? gallery = null)
     {
         var files = _settings.PhotosProvider?.Invoke().ToList();
         if (files == null || files.Count == 0) return;
         var stack = BuildStack();
         var frame = CurrentFrame();
-        // Straighten, turn and zoom belong to one photo; the crop ratio and exposure are carried over to the rest.
+        // Rotation, zoom and position belong to one photo; ratio and exposure apply to all.
         var adjust = CurrentAdjustSettings() with { Quarter = 0, Straighten = 0, Zoom = 1, PanX = 0, PanY = 0 };
         var filmStyle = FilmEnabled ? CurrentFilmStyle() : null;
         var lookName = CurrentLookName();
@@ -1181,14 +1221,13 @@ public partial class ProcessViewModel : ViewModelBase
             Directory.CreateDirectory(folder);
             foreach (var f in files)
             {
-                ExportStatus = $"Saving {done + failed + 1} of {files.Count}…";
+                ExportStatus = Loc.F("Saving {0} of {1}…", done + failed + 1, files.Count);
                 var dest = Path.Combine(folder, Path.GetFileNameWithoutExtension(f.FileName) + "_graded" + (png ? ".png" : ".jpg"));
                 try
                 {
                     await Task.Run(() =>
                     {
                         using var img = Services.FastDecode.LoadUpright(f.FullPath);
-                        // Each photo gets its own metadata and frame number.
                         var film = filmStyle == null ? null
                             : new FilmLayer(filmStyle, PaletteImageRenderer.ReadMetadata(f.FullPath), files.IndexOf(f) + 1, lookName, FrameLabelFor(f.FullPath, files.IndexOf(f)));
                         using var final = RenderAll(img, stack, frame, film, adjust);
@@ -1198,7 +1237,7 @@ public partial class ProcessViewModel : ViewModelBase
                     });
                     if (gallery != null)
                     {
-                        try { if (!await gallery(dest, Path.GetFileName(dest))) throw new IOException("gallery refused the file"); }
+                        try { if (!await gallery(dest, Path.GetFileName(dest))) throw new IOException(Loc.T("gallery refused the file")); }
                         finally { try { File.Delete(dest); } catch { /* temp */ } }
                     }
                     done++;
@@ -1207,23 +1246,23 @@ public partial class ProcessViewModel : ViewModelBase
                                                or InvalidImageContentException || gallery != null)
                 { failed++; }
             }
-            ExportStatus = failed == 0 ? $"Saved {done} photos." : $"Saved {done}, {failed} failed.";
+            ExportStatus = failed == 0 ? Loc.N(done, "Saved {0} photo.", "Saved {0} photos.") : Loc.F("Saved {0}, {1} failed.", done, failed);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            ExportStatus = $"Couldn't save: {ex.Message}";
+            ExportStatus = Loc.F("Couldn't save: {0}", ex.Message);
         }
         finally { IsExporting = false; }
     }
 
-    // Re-reads the original file, grades it at full size and writes it; the source is never modified.
+    // Grades the original at full size; the source is never modified.
     public async Task ExportAsync(string outPath, Func<string, string, Task<bool>>? gallery = null)
     {
         var src = _loadedPath;
         if (src == null) return;
         if (string.Equals(Path.GetFullPath(outPath), Path.GetFullPath(src), StringComparison.OrdinalIgnoreCase))
         {
-            ExportStatus = "Pick a different file name: the original is never overwritten.";
+            ExportStatus = Loc.T("Pick a different file name: the original is never overwritten.");
             return;
         }
         var stack = BuildStack();
@@ -1233,7 +1272,7 @@ public partial class ProcessViewModel : ViewModelBase
         int quality = (int)Math.Round(ExportQuality);
         var preset = _settings.ExportPreset; bool half = _settings.HalfSize && !_settings.IsMobile;
         IsExporting = true;
-        ExportStatus = "Saving…";
+        ExportStatus = Loc.T("Saving…");
         try
         {
             await Task.Run(() =>
@@ -1255,16 +1294,16 @@ public partial class ProcessViewModel : ViewModelBase
                 var name = Path.GetFileName(outPath);
                 try
                 {
-                    ExportStatus = await gallery(outPath, name) ? $"Saved {name} to Pictures/PhSpectre" : "Couldn't save to the gallery.";
+                    ExportStatus = await gallery(outPath, name) ? Loc.F("Saved {0} to Pictures/PhSpectre", name) : Loc.T("Couldn't save to the gallery.");
                 }
                 finally { try { File.Delete(outPath); } catch { /* temp */ } }
             }
-            else ExportStatus = $"Saved {Path.GetFileName(outPath)}";
+            else ExportStatus = Loc.F("Saved {0}", Path.GetFileName(outPath));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or UnknownImageFormatException
                                        or InvalidImageContentException || gallery != null)
         {
-            ExportStatus = $"Couldn't save: {ex.Message}";
+            ExportStatus = Loc.F("Couldn't save: {0}", ex.Message);
         }
         finally { IsExporting = false; }
     }

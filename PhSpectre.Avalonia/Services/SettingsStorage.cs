@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,17 +18,11 @@ internal sealed class PersistedSettings
     public MetaVerbosity MetaVerbosity { get; set; } = MetaVerbosity.Default;
     public MetaStyle MetaStyle { get; set; } = MetaStyle.FilmStrip;
     public SamplingMode SamplingMode { get; set; } = SamplingMode.Vivid;
-    // True only as the *fresh-install* default (no settings.json on disk yet, so this
-    // record's own field initializer is what SettingsStorage.Load() returns) — anyone who
-    // already has a settings.json gets their previously-saved value back unchanged, since
-    // deserialization overwrites this default. No forced migration for existing users.
+    // Applies to fresh installs only; a saved settings.json overrides it.
     public bool HalfSize { get; set; } = true;
     public ExportMode ExportMode { get; set; } = ExportMode.Card;
     public bool ShowCameraInfo { get; set; }
-    // Fresh-install default only (see HalfSize above) — matches SettingsViewModel's own
-    // default. JPEG: these cards are made for sharing to social apps, not print, and PNG's
-    // lossless encode at native photo resolution is by far the biggest cost in the whole
-    // render pipeline, regardless of export mode.
+    // JPEG by default: cards are made for sharing, and PNG encoding dominates render time.
     public OutputFormat OutputFormat { get; set; } = OutputFormat.Jpeg;
     public ExportPreset ExportPreset { get; set; } = ExportPreset.Original;
     public float LabelScale { get; set; } = 1.0f;
@@ -35,13 +30,10 @@ internal sealed class PersistedSettings
     public bool ShowPercent { get; set; }
     public SwatchShape SwatchShape { get; set; } = SwatchShape.Rectangle;
     public SortOrder SortOrder { get; set; } = SortOrder.None;
-    // Legacy field, kept only so Apply() can migrate a pre-BackgroundMode settings.json
-    // (one with no BackgroundMode key at all) into the right BackgroundMode on first load —
-    // no longer written to directly, always derived from BackgroundMode in Capture().
+    // Legacy: only used to migrate a settings.json without BackgroundMode.
     public bool UseCustomBackground { get; set; }
     public string CustomBackgroundHex { get; set; } = "#FFFFFF";
-    // Nullable so a missing key (older settings.json) is distinguishable from an explicit
-    // Theme choice — Apply() falls back to UseCustomBackground above only when this is null.
+    // Nullable, to tell a missing key from an explicit choice.
     public BackgroundMode? BackgroundMode { get; set; }
     public CompositionGuide CompositionGuide { get; set; } = CompositionGuide.None;
     public int GutterThickness { get; set; } = 8;
@@ -57,6 +49,7 @@ internal sealed class PersistedSettings
     public string HiddenRecipeFields { get; set; } = "";
     public bool RecipeVisibilityUserSet { get; set; }
     public AppAppearance Appearance { get; set; } = AppAppearance.System;
+    public AppLanguage Language { get; set; } = AppLanguage.System;
     public string SaveFolder { get; set; } = "";
     public bool ShowInFolderAfterSave { get; set; } = false;
     public bool CameraExperimental { get; set; }
@@ -85,7 +78,7 @@ internal static class SettingsStorage
         nameof(SettingsViewModel.QrCustomUrl), nameof(SettingsViewModel.QrIncludeNote),
         nameof(SettingsViewModel.QrNoteText), nameof(SettingsViewModel.ShowRecipeCard),
         nameof(SettingsViewModel.HiddenRecipeFields), nameof(SettingsViewModel.RecipeVisibilityUserSet),
-        nameof(SettingsViewModel.Appearance), nameof(SettingsViewModel.SaveFolder), nameof(SettingsViewModel.ShowInFolderAfterSave),
+        nameof(SettingsViewModel.Appearance), nameof(SettingsViewModel.Language), nameof(SettingsViewModel.SaveFolder), nameof(SettingsViewModel.ShowInFolderAfterSave),
         nameof(SettingsViewModel.CameraExperimental), nameof(SettingsViewModel.RestoreKeepLast),
         nameof(SettingsViewModel.WorkingQuality),
     };
@@ -127,6 +120,7 @@ internal static class SettingsStorage
         vm.HiddenRecipeFields    = s.HiddenRecipeFields ?? "";
         vm.RecipeVisibilityUserSet = s.RecipeVisibilityUserSet;
         vm.Appearance            = s.Appearance;
+        vm.Language              = s.Language;
         vm.SaveFolder            = s.SaveFolder;
         vm.ShowInFolderAfterSave = s.ShowInFolderAfterSave;
         vm.CameraExperimental    = s.CameraExperimental;
@@ -170,6 +164,7 @@ internal static class SettingsStorage
         HiddenRecipeFields  = vm.HiddenRecipeFields,
         RecipeVisibilityUserSet = vm.RecipeVisibilityUserSet,
         Appearance          = vm.Appearance,
+        Language            = vm.Language,
         SaveFolder          = vm.SaveFolder,
         ShowInFolderAfterSave = vm.ShowInFolderAfterSave,
         CameraExperimental  = vm.CameraExperimental,

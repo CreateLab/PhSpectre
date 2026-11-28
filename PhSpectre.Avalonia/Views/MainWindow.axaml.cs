@@ -17,8 +17,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContextChanged += (_, _) => WireViewModel();
 
-        // The app bar doubles as the title bar (extended client area): keep room for the system
-        // buttons (right on Windows/Linux, left traffic lights on macOS) and let the empty bar drag the window.
+        // The app bar is the title bar: leave room for the window buttons and let the empty bar drag.
         TopBar.Padding = OperatingSystem.IsMacOS() ? new Thickness(84, 10, 16, 10) : new Thickness(16, 10, 150, 10);
         WireFilmstrip();
         EditExportButton.Click += async (_, _) =>
@@ -28,7 +27,7 @@ public partial class MainWindow : Window
             if (m.Settings.IsProcessMode) await EditActions.ExportAsync(this, m.Settings.Process);
             else if (m.SavePngAsync2Command.CanExecute(null)) m.SavePngAsync2Command.Execute(null);
         };
-        // Dev hook: PHSPECTRE_OPEN=<folder> loads that folder at startup (used for automated UI checks).
+        // Dev hook: PHSPECTRE_OPEN=<folder> opens it at startup (UI checks).
         Opened += (_, _) =>
         {
             var dev = Environment.GetEnvironmentVariable("PHSPECTRE_OPEN");
@@ -47,7 +46,7 @@ public partial class MainWindow : Window
     }
 
 
-    // ── Edit shortcuts: Ctrl+Z / Ctrl+Y, Ctrl+S exports, 1–3 switch tabs, hold \ to see the original ──
+    // Edit shortcuts: Ctrl+Z / Ctrl+Y, Ctrl+S, 1-3 tabs, hold \ for the original
     private void OnEditKeyDown(object? sender, KeyEventArgs e)
     {
         if (DataContext is not MainWindowViewModel m || !m.Settings.IsProcessMode || e.Source is TextBox) return;
@@ -78,7 +77,7 @@ public partial class MainWindow : Window
             string.IsNullOrEmpty(vm.Settings.SaveFolder) ? SuggestedFileName.DefaultOutputFolder() : vm.Settings.SaveFolder);
     }
 
-    // ── Filmstrip: wheel scrolls sideways, mouse drag pans, selection stays in view ───────────
+    // Filmstrip: wheel and drag scroll sideways, the selection stays in view
     private const double WheelStep = 70, DragThreshold = 5;
     private Point _dragStart;
     private double _dragStartOffset;
@@ -103,8 +102,7 @@ public partial class MainWindow : Window
     private void OnFilmWheel(object? sender, PointerWheelEventArgs e)
     {
         if (e.Pointer.Type != PointerType.Mouse || FilmScroller is not { } sv) return;
-        // Vertical wheel has nothing to scroll here, so it pans sideways; Delta.X (tilt wheel,
-        // touchpad) already works natively.
+        // The vertical wheel pans sideways; Delta.X already works.
         if (Math.Abs(e.Delta.Y) > Math.Abs(e.Delta.X))
         {
             sv.Offset = new Vector(Math.Max(0, sv.Offset.X - e.Delta.Y * WheelStep), 0);
@@ -123,7 +121,7 @@ public partial class MainWindow : Window
         _dragArmed = true;
         _dragging = false;
         _pressedItem = (e.Source as Visual)?.FindAncestorOfType<ListBoxItem>(true);
-        // Selection is applied on release (so a drag never selects the tile under the cursor).
+        // Select on release, so a drag does not select.
         e.Handled = true;
     }
 

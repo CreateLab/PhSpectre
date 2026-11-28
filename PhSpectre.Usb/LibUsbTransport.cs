@@ -7,17 +7,13 @@ using PhSpectre.Camera;
 
 namespace PhSpectre.Usb;
 
-/// <summary>
-/// <see cref="ICameraTransport"/> over libusb bulk endpoints of a USB Still Image (PTP) interface.
-/// Kept out of core so native libusb never reaches PhSpectre.Android, which needs its own UsbManager transport.
-/// </summary>
+/// <summary><see cref="ICameraTransport"/> over libusb bulk endpoints. Outside core, so libusb never reaches Android.</summary>
 public sealed class LibUsbTransport : ICameraTransport
 {
     private const int StillImageClass = 6;
     private const int TransferTimeoutMs = 15_000;
 
-    // One libusb context for the whole process: on macOS, initialising a second context right after the first one
-    // is torn down fails with "Other error" (every other attempt), which broke the camera polling.
+    // One context per process: on macOS a second context fails every other time.
     private static readonly Lazy<UsbContext> SharedContext = new(() => new UsbContext());
 
     private readonly IUsbDevice _device;
@@ -55,7 +51,7 @@ public sealed class LibUsbTransport : ICameraTransport
             }
             catch (Exception)
             {
-                // Unopenable device (no driver access) can't be a usable candidate.
+                // A device that cannot be opened is no candidate.
             }
             finally
             {
@@ -127,7 +123,7 @@ public sealed class LibUsbTransport : ICameraTransport
         }
         finally
         {
-            // The context outlives every transport, so the handles of devices we didn't pick must be released here.
+            // The context outlives transports, so release the handles of unused devices.
             foreach (var device in devices)
                 if (opened == null || !ReferenceEquals(device, opened._device)) device.Dispose();
         }
@@ -159,7 +155,7 @@ public sealed class LibUsbTransport : ICameraTransport
 
     private static void Claim(IUsbDevice device, int interfaceNumber)
     {
-        // Linux: let libusb take the interface from the kernel's usbfs/gphoto-style drivers; harmless elsewhere.
+        // Linux: detach whatever holds the interface.
         if (device is UsbDevice native)
         {
             try { native.SetAutoDetachKernelDriver(true); }
@@ -175,8 +171,8 @@ public sealed class LibUsbTransport : ICameraTransport
             }
             catch (Exception ex) when (ex is not PtpException)
             {
-                // macOS: ptpcamerad grabs every camera the moment it is plugged in and launchd restarts it after
-                // a kill, so stopping it and claiming right away usually wins the race.
+                // macOS: ptpcamerad grabs every camera and gets restarted when killed; claiming right after the
+                // kill usually wins.
                 if (OperatingSystem.IsMacOS() && attempt < ClaimAttempts)
                 {
                     StopPtpCameraDaemon();
@@ -203,7 +199,7 @@ public sealed class LibUsbTransport : ICameraTransport
         }
         catch (Exception)
         {
-            // killall missing or not allowed; the claim will report the real failure.
+            // killall failed; the claim will report the error.
         }
     }
 
@@ -217,13 +213,13 @@ public sealed class LibUsbTransport : ICameraTransport
         return "Could not claim the camera's USB interface. " + detail;
     }
 
-    /// <summary>What a Linux user has to install and allow before libusb can talk to the camera.</summary>
+    /// <summary>What Linux users must install and allow.</summary>
     public const string LinuxSetupHint =
         "Linux setup: install libusb (Debian/Ubuntu: sudo apt install libusb-1.0-0; Fedora: sudo dnf install libusb1; Arch: sudo pacman -S libusb), " +
         "then add the udev rule SUBSYSTEM==\"usb\", ATTR{idVendor}==\"04cb\", MODE=\"0666\" to /etc/udev/rules.d/70-fujifilm.rules, " +
         "run sudo udevadm control --reload-rules and replug the camera.";
 
-    /// <summary>Explains an exception thrown while loading or using libusb itself; null when the cause isn't a missing native library.</summary>
+    /// <summary>Explains a libusb load or usage error; null when a missing native library is not the cause.</summary>
     internal static string? MissingLibraryHint(Exception ex)
     {
         for (var e = ex; e != null; e = e.InnerException)
@@ -243,7 +239,7 @@ public sealed class LibUsbTransport : ICameraTransport
         {
             ct.ThrowIfCancellationRequested();
             Write(container);
-            // A transfer that ends exactly on a packet boundary needs a zero-length packet to terminate it.
+            // A transfer ending on a packet boundary needs a zero-length packet.
             if (container.Length % _maxPacket == 0)
                 Write([]);
         }, ct);
@@ -253,7 +249,7 @@ public sealed class LibUsbTransport : ICameraTransport
         {
             var buffer = new byte[_maxPacket];
             int read;
-            // Skip zero-length terminator packets left over from the previous transfer.
+            // Skip leftover zero-length packets.
             do
             {
                 ct.ThrowIfCancellationRequested();

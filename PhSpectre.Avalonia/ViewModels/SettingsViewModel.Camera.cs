@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using Avalonia.Threading;
@@ -9,7 +10,7 @@ using PhSpectre.Models;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
-// The Camera mode (recipe picker + slots + write) and its switch, wired into the top bar and Content → Recipe.
+// The Camera mode and its on/off switch.
 public partial class SettingsViewModel
 {
     private const int MaxSlotNameLength = 25;
@@ -32,15 +33,15 @@ public partial class SettingsViewModel
         return camera;
     }
 
-    // Persisted: the feature stays off until the user turns it on (CAMERA.md: Experimental).
+    // Persisted; the feature is off until turned on.
     [ObservableProperty] private bool _cameraExperimental;
-    // How many restore points to keep: 5, 20 or 0 for all.
+    // 5, 20 or 0 for all
     [ObservableProperty] private int _restoreKeepLast = 20;
 
     [ObservableProperty] private string _recipeStatusText = "";
 
     public bool CameraSupported => CameraService.IsSupported;
-    // The tab is always there where the camera is supported; while the feature is off, it opens the setup dialog.
+    // While the feature is off the tab opens the setup dialog.
     public bool ShowCameraMode => CameraSupported;
     public bool HasRecipeStatus => RecipeStatusText.Length > 0;
 
@@ -100,8 +101,8 @@ public partial class SettingsViewModel
         if (DetectedRecipe is not { } recipe) return;
         var result = RecipeLibraryService.User.Add(recipe, null, PhSpectre.Recipes.RecipeOrigin.FromImage);
         SetRecipeStatus(result.Outcome == PhSpectre.Recipes.AddOutcome.Added
-            ? $"Saved “{result.Entry.Name}” to Saved recipes"
-            : $"Already saved as “{result.Entry.Name}”");
+            ? Loc.F("Saved “{0}” to Saved recipes", result.Entry.Name)
+            : Loc.F("Already saved as “{0}”", result.Entry.Name));
         _library?.Refresh();
     }
     /// <summary>"Send to camera" in Content → Recipe, and the top-bar indicator: the Camera mode, or its setup dialog while off.</summary>

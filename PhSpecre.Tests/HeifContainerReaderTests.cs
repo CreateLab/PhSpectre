@@ -7,12 +7,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// Synthetic ISO-BMFF fixtures, same hand-built-byte-array convention as
-// FujiRecipeExtractorTests.BuildMakerNote — no real camera files committed to the repo. The
-// parser this exercises was separately validated against 4 real Fuji X-T5 .HEIC files during
-// development (see HeifContainerReader.cs's header comment); these tests instead pin down its
-// box-walking behavior against deliberately minimal/adversarial inputs that are impractical to
-// get from a real camera file (missing boxes, box-order variants).
+// Hand-built ISO-BMFF fixtures for cases real camera files do not cover (missing boxes, box order).
 public class HeifContainerReaderTests
 {
     [Theory]
@@ -60,9 +55,7 @@ public class HeifContainerReaderTests
     [Fact]
     public void TryReadExifProfile_IlocBeforeIinf_StillLocatesItem()
     {
-        // Box order within `meta` isn't guaranteed by the spec — different encoders emit
-        // iinf/iloc in different orders. This is exactly the bug the single-pass
-        // FindChildBoxes scan (as opposed to two independent re-scans) was written to fix.
+        // iinf and iloc may come in either order.
         var tiff = BuildMinimalTiff(make: "FUJIFILM", model: null, makerNoteBytes: null);
         var heif = BuildSyntheticHeif(tiff, ilocBeforeIinf: true);
         var path = WriteTempFile(heif);
@@ -79,11 +72,7 @@ public class HeifContainerReaderTests
     [Fact]
     public void TryReadExifProfile_EndToEnd_FeedsFujiRecipeExtractorCorrectly()
     {
-        // Full HEIC -> ExifProfile -> FilmRecipe path, without any real camera file: reuses
-        // FujiRecipeExtractorTests' own MakerNote fixture builder as the payload.
-        // FujiRecipeExtractorTests.BuildMakerNote already returns bytes in the exact shape
-        // FujiRecipeExtractor expects ("FUJIFILM" + sub-IFD offset + entries) — reuse it
-        // directly as this TIFF's MakerNote tag value.
+        // HEIC to recipe, reusing the MakerNote fixture as the TIFF's MakerNote tag.
         var makerNote = FujiRecipeExtractorTests.BuildMakerNote(
             (0x1401, 4, 1, [0x00, 0x06, 0x00, 0x00]), // FilmMode: Classic Chrome
             (0x1003, 3, 1, [0x00, 0x00])              // Saturation: 0 ("Color" level 0)
@@ -105,7 +94,6 @@ public class HeifContainerReaderTests
     [Fact]
     public void TryReadExifProfile_MissingIinf_ReturnsNull()
     {
-        // meta with only iloc, no iinf at all — a structurally incomplete container.
         var iloc = BuildIlocBox(itemId: 1, extentOffset: 0, extentLength: 0);
         var meta = BuildFullBox("meta", version: 0, flags: 0, children: iloc);
         var ftyp = BuildFtypBox("heic");
@@ -126,16 +114,12 @@ public class HeifContainerReaderTests
         var path = WriteTempFile(heif);
         try
         {
-            // Non-Fuji camera: HeifContainerReader must still be reached (proven by getting a
-            // real ExifProfile back), but no extractor claims it, so the recipe comes back null
-            // rather than throwing.
+            // A non-Fuji camera yields an ExifProfile and a null recipe.
             Assert.True(HeifContainerReader.IsHeifFile(path));
             Assert.Null(RecipeReader.Read(path));
         }
         finally { File.Delete(path); }
     }
-
-    // ── Fixture builders ────────────────────────────────────────────────────
 
     private static string WriteTempFile(byte[] bytes)
     {
@@ -199,8 +183,7 @@ public class HeifContainerReaderTests
         BuildFullBox("iinf", version: 0, flags: 0,
             children: [BE16((ushort)infeBoxes.Length), .. infeBoxes]);
 
-    // iloc version 0: offsetSize=4, lengthSize=4, baseOffsetSize=0, indexSize=0, one item with
-    // one extent — the shape every camera/phone HEIF this reader targets actually uses.
+    // iloc v0: 4-byte offsets and lengths, no base offset, one item with one extent.
     private static byte[] BuildIlocBox(uint itemId, uint extentOffset, uint extentLength) =>
         BuildFullBox("iloc", version: 0, flags: 0, children:
         [
@@ -274,8 +257,7 @@ public class HeifContainerReaderTests
         return ms.ToArray();
     }
 
-    // Assembles a minimal ISO-BMFF container: ftyp + meta(iinf, iloc) + mdat(Exif item).
-    // `ilocBeforeIinf` exercises FindChildBoxes' order-independence.
+    // ftyp + meta(iinf, iloc) + mdat(Exif item).
     private static byte[] BuildSyntheticHeif(byte[] tiffBytes, bool ilocBeforeIinf = false)
     {
         var exifPayload = Concat(BE32(6), "Exif\0\0"u8.ToArray(), tiffBytes);
@@ -284,9 +266,7 @@ public class HeifContainerReaderTests
         var infe = BuildInfeBox(itemId: 1, itemType: "Exif");
         var iinf = BuildIinfBox(infe);
 
-        // mdat's absolute start depends on ftyp + meta's total size, and meta's size depends
-        // on iloc, whose content embeds mdat's payload offset — so build meta with a
-        // placeholder extent_offset first to measure its size, then rebuild with the real one.
+        // iloc stores the payload offset, which depends on meta's size: build with a placeholder, then rebuild.
         var ilocPlaceholder = BuildIlocBox(itemId: 1, extentOffset: 0, extentLength: (uint)exifPayload.Length);
         var metaChildrenPlaceholder = ilocBeforeIinf ? Concat(ilocPlaceholder, iinf) : Concat(iinf, ilocPlaceholder);
         var metaPlaceholder = BuildFullBox("meta", version: 0, flags: 0, children: metaChildrenPlaceholder);
@@ -296,7 +276,6 @@ public class HeifContainerReaderTests
         var metaChildren = ilocBeforeIinf ? Concat(iloc, iinf) : Concat(iinf, iloc);
         var meta = BuildFullBox("meta", version: 0, flags: 0, children: metaChildren);
 
-        // Sizes must match exactly for the offset math above to hold.
         if (meta.Length != metaPlaceholder.Length)
             throw new InvalidOperationException("meta box size changed after patching extent_offset — fixture bug.");
 

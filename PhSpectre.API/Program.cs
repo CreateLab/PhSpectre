@@ -111,8 +111,7 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
         await using (var fs = File.OpenRead(tmpIn))
             palette = await new PaletteExtractor().ExtractAsync(fs, colors, parsedMode);
 
-        // json=true skips the PNG render entirely — the caller wants structured data
-        // (swatches + recipe), not the composited image, so there's nothing to render.
+        // json=true skips rendering: the caller wants data only.
         if (json == true)
         {
             var recipe = RecipeReader.Read(tmpIn);
@@ -155,10 +154,7 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
     op.Summary = "Extract color palette from JPEG";
     op.Description = "Returns the original photo composited with its dominant color swatches as a PNG, " +
         "or (with json=true) the swatches and any detected Fujifilm film recipe as JSON instead of an image.";
-    // content.Schema can itself be null here once the handler has enough [FromForm]
-    // parameters (observed once `json` became the 9th) — a minimal-API OpenAPI-generation
-    // quirk unrelated to the request handling itself, so guard it rather than crash route
-    // building for the whole app.
+    // content.Schema can be null with this many [FromForm] parameters; guard so route building does not crash.
     if (op.RequestBody?.Content.TryGetValue("multipart/form-data", out var content) == true
         && content.Schema != null)
     {
@@ -174,6 +170,5 @@ app.MapPost("/api/palette", async (IFormFile? file, [FromForm] int? colors, [Fro
 
 app.Run();
 
-// json=true response shape for POST /api/palette — Recipe is null when the photo isn't a
-// recognized Fuji camera or no MakerNote could be parsed (never an error in that case).
+// Recipe is null for non-Fuji photos.
 internal sealed record PaletteJsonResponse(IReadOnlyList<ColorSwatch> Swatches, FilmRecipe? Recipe);

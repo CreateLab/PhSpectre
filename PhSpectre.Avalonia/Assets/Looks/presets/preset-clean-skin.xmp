@@ -1,0 +1,8 @@
+<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:RDF>
+ <!-- Clean Skin, made for PhSpectre (original work). SkinSmoothing is PhSpectre's own setting. -->
+ <rdf:Description rdf:about="" crs:Name="Clean Skin" crs:Treatment="Color" crs:SkinSmoothing="55" crs:Sharpness="30" crs:Contrast2012="4" crs:Shadows2012="10" crs:HueAdjustmentRed="12" crs:SaturationAdjustmentRed="-8" crs:LuminanceAdjustmentRed="6" crs:HueAdjustmentOrange="0" crs:SaturationAdjustmentOrange="-5" crs:LuminanceAdjustmentOrange="10" crs:HueAdjustmentYellow="-14" crs:SaturationAdjustmentYellow="-18" crs:LuminanceAdjustmentYellow="4" crs:ColorGradeShadowHue="205" crs:ColorGradeShadowSat="5">
+  <crs:ToneCurvePV2012><rdf:Seq><rdf:li>0, 4</rdf:li><rdf:li>64, 69</rdf:li><rdf:li>128, 134</rdf:li><rdf:li>192, 196</rdf:li><rdf:li>255, 255</rdf:li></rdf:Seq></crs:ToneCurvePV2012>
+ </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>

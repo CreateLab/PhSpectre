@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:PhSpectre.Avalonia.Localization"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
              xmlns:rend="using:PhSpectre.Rendering"
              xmlns:local="using:PhSpectre.Avalonia.Views"
@@ -16,82 +17,82 @@
         </Style>
     </UserControl.Styles>
 
-    <!-- Edit inspector (DataContext = Settings.Process): Look · Frame · Export, one topic at a time. -->
+    <!-- Edit inspector; DataContext = Settings.Process. -->
     <Border Background="{DynamicResource PanelBrush}">
         <Grid RowDefinitions="Auto,*">
 
-            <!-- Phone: the same tools as one row of icons. -->
+            <!-- Phone tool row -->
             <ListBox Grid.Row="0" Classes="seg touch" Margin="16,12,16,0"
                      IsVisible="{Binding !Rail, RelativeSource={RelativeSource AncestorType=local:EditInspector}}"
-                     SelectedIndex="{Binding EditSection}" AutomationProperties.Name="Edit tools">
-                <ListBoxItem Padding="0" ToolTip.Tip="Looks" AutomationProperties.Name="Looks">
+                     SelectedIndex="{Binding EditSection}" AutomationProperties.Name="{l:T 'Edit tools'}">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Looks'}" AutomationProperties.Name="{l:T 'Looks'}">
                     <materialIcons:MaterialIcon Kind="PaletteOutline" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem Padding="0" ToolTip.Tip="Crop" AutomationProperties.Name="Crop">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Crop'}" AutomationProperties.Name="{l:T 'Crop'}">
                     <materialIcons:MaterialIcon Kind="Crop" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem Padding="0" ToolTip.Tip="Light" AutomationProperties.Name="Light">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Light'}" AutomationProperties.Name="{l:T 'Light'}">
                     <materialIcons:MaterialIcon Kind="Brightness6" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem Padding="0" ToolTip.Tip="Color" AutomationProperties.Name="Color">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Color'}" AutomationProperties.Name="{l:T 'Color'}">
                     <materialIcons:MaterialIcon Kind="Thermometer" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem Padding="0" ToolTip.Tip="Effects" AutomationProperties.Name="Effects">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Effects'}" AutomationProperties.Name="{l:T 'Effects'}">
                     <materialIcons:MaterialIcon Kind="AutoFix" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem Padding="0" ToolTip.Tip="Frame" AutomationProperties.Name="Frame">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Frame'}" AutomationProperties.Name="{l:T 'Frame'}">
                     <materialIcons:MaterialIcon Kind="ImageFrame" Width="20" Height="20"/>
                 </ListBoxItem>
-                <ListBoxItem Padding="0" ToolTip.Tip="Export" AutomationProperties.Name="Export">
+                <ListBoxItem Padding="0" ToolTip.Tip="{l:T 'Export'}" AutomationProperties.Name="{l:T 'Export'}">
                     <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="20" Height="20"/>
                 </ListBoxItem>
             </ListBox>
 
-            <!-- ═══════════ Look ═══════════ -->
+            <!-- Look -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsLook}"
                           IsEnabled="{Binding Settings.HasPhoto}">
                 <StackPanel Margin="16,12,16,16" Spacing="10">
-                    <!-- Crop and straighten -->
+                    <!-- Crop -->
                     <StackPanel Spacing="12" IsVisible="{Binding LookIsCrop}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Crop and straighten" Classes="section-title first"/>
-                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasGeometryAdjust}"
+                            <TextBlock Text="{l:T 'Crop and straighten'}" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="{l:T 'Reset'}" IsVisible="{Binding HasGeometryAdjust}"
                                     Command="{Binding ResetGeometryCommand}"/>
                         </Grid>
                         <Grid ColumnDefinitions="72,*">
-                            <TextBlock Text="Ratio" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Ratio'}" Classes="hint" VerticalAlignment="Center"/>
                             <ComboBox Grid.Column="1" ItemsSource="{Binding CropLabels}" SelectedIndex="{Binding CropIndex}"
-                                      HorizontalAlignment="Stretch" AutomationProperties.Name="Crop ratio"/>
+                                      HorizontalAlignment="Stretch" AutomationProperties.Name="{l:T 'Crop ratio'}"/>
                         </Grid>
                         <Grid ColumnDefinitions="72,*,56">
-                            <TextBlock Text="Straighten" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Straighten'}" Classes="hint" VerticalAlignment="Center"/>
                             <Slider Grid.Column="1" Classes="v2" Minimum="-15" Maximum="15" Value="{Binding Straighten}"
-                                    AutomationProperties.Name="Straighten"/>
+                                    AutomationProperties.Name="{l:T 'Straighten'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding StraightenText}" Classes="mono-data"
                                        HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                         <Grid ColumnDefinitions="72,*,56">
-                            <TextBlock Text="Zoom" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Zoom'}" Classes="hint" VerticalAlignment="Center"/>
                             <Slider Grid.Column="1" Classes="v2" Minimum="1" Maximum="4" local:SliderTapToSeek.Default="1" Value="{Binding Zoom}"
-                                    AutomationProperties.Name="Crop zoom"/>
+                                    AutomationProperties.Name="{l:T 'Crop zoom'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding ZoomText}" Classes="mono-data"
                                        HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                         <Grid ColumnDefinitions="72,*">
-                            <TextBlock Text="Rotate" Classes="hint" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Rotate'}" Classes="hint" VerticalAlignment="Center"/>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                                 <Button Classes="secondary" Height="36" Padding="12,0" Command="{Binding RotateLeftCommand}"
-                                        ToolTip.Tip="Rotate 90° left" AutomationProperties.Name="Rotate left">
+                                        ToolTip.Tip="{l:T 'Rotate 90° left'}" AutomationProperties.Name="{l:T 'Rotate left'}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <materialIcons:MaterialIcon Kind="RotateLeft" Width="16" Height="16" VerticalAlignment="Center"/>
-                                        <TextBlock Text="90° left" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{l:T '90° left'}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                                 <Button Classes="secondary" Height="36" Padding="12,0" Command="{Binding RotateRightCommand}"
-                                        ToolTip.Tip="Rotate 90° right" AutomationProperties.Name="Rotate right">
+                                        ToolTip.Tip="{l:T 'Rotate 90° right'}" AutomationProperties.Name="{l:T 'Rotate right'}">
                                     <StackPanel Orientation="Horizontal" Spacing="6">
                                         <materialIcons:MaterialIcon Kind="RotateRight" Width="16" Height="16" VerticalAlignment="Center"/>
-                                        <TextBlock Text="90° right" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{l:T '90° right'}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </StackPanel>
@@ -101,71 +102,87 @@
                     <!-- Light -->
                     <StackPanel Spacing="12" IsVisible="{Binding LookIsLight}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Light" Classes="section-title first"/>
-                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasLightAdjust}" Command="{Binding ResetLightCommand}"/>
+                            <TextBlock Text="{l:T 'Light'}" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="{l:T 'Reset'}" IsVisible="{Binding HasLightAdjust}" Command="{Binding ResetLightCommand}"/>
                         </Grid>
-                        <CheckBox Content="100% view" IsChecked="{Binding DetailView}"
-                                  ToolTip.Tip="Show a piece of the full-size photo at its real pixels"
-                                  AutomationProperties.Name="Show the photo at 100 percent"/>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Exposure" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-3" Maximum="3" Value="{Binding Exposure}" AutomationProperties.Name="Exposure"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Button Classes="secondary" Height="36" Padding="12,0" Command="{Binding AutoLightCommand}"
+                                    ToolTip.Tip="{l:T 'Set the sliders below from the histogram'}" AutomationProperties.Name="{l:T 'Auto light'}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="AutoFix" Width="16" Height="16" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Auto'}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <ToggleButton Height="36" Padding="12,0" CornerRadius="10" FontSize="13" VerticalContentAlignment="Center"
+                                          IsChecked="{Binding ShowHistogram}" ToolTip.Tip="{l:T 'Show the histogram over the photo'}"
+                                          AutomationProperties.Name="{l:T 'Histogram'}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <materialIcons:MaterialIcon Kind="ChartHistogram" Width="16" Height="16" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Histogram'}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ToggleButton>
+                        </StackPanel>
+                        <CheckBox Content="{l:T '100% view'}" IsChecked="{Binding DetailView}"
+                                  ToolTip.Tip="{l:T 'Show a piece of the full-size photo at its real pixels'}"
+                                  AutomationProperties.Name="{l:T 'Show the photo at 100 percent'}"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Exposure'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-3" Maximum="3" Value="{Binding Exposure}" AutomationProperties.Name="{l:T 'Exposure'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding ExposureText}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Contrast" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Contrast}" AutomationProperties.Name="Contrast"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Contrast'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Contrast}" AutomationProperties.Name="{l:T 'Contrast'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Contrast, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Highlights" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Highlights}" AutomationProperties.Name="Highlights"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Highlights'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Highlights}" AutomationProperties.Name="{l:T 'Highlights'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Highlights, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Shadows" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Shadows}" AutomationProperties.Name="Shadows"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Shadows'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Shadows}" AutomationProperties.Name="{l:T 'Shadows'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Shadows, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Whites" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Whites}" AutomationProperties.Name="Whites"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Whites'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Whites}" AutomationProperties.Name="{l:T 'Whites'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Whites, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Blacks" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Blacks}" AutomationProperties.Name="Blacks"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Blacks'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Blacks}" AutomationProperties.Name="{l:T 'Blacks'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Blacks, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                     </StackPanel>
 
-                    <!-- Color -->
                     <StackPanel Spacing="12" IsVisible="{Binding LookIsColor}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Color" Classes="section-title first"/>
-                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasColorAdjust}" Command="{Binding ResetColorCommand}"/>
+                            <TextBlock Text="{l:T 'Color'}" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="{l:T 'Reset'}" IsVisible="{Binding HasColorAdjust}" Command="{Binding ResetColorCommand}"/>
                         </Grid>
-                        <CheckBox Content="100% view" IsChecked="{Binding DetailView}"
-                                  ToolTip.Tip="Show a piece of the full-size photo at its real pixels"
-                                  AutomationProperties.Name="Show the photo at 100 percent"/>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Temperature" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Temperature}" AutomationProperties.Name="Temperature"/>
+                        <CheckBox Content="{l:T '100% view'}" IsChecked="{Binding DetailView}"
+                                  ToolTip.Tip="{l:T 'Show a piece of the full-size photo at its real pixels'}"
+                                  AutomationProperties.Name="{l:T 'Show the photo at 100 percent'}"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Temperature'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Temperature}" AutomationProperties.Name="{l:T 'Temperature'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Temperature, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Tint" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Tint}" AutomationProperties.Name="Tint"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Tint'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Tint}" AutomationProperties.Name="{l:T 'Tint'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Tint, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Vibrance" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vibrance}" AutomationProperties.Name="Vibrance"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Vibrance'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vibrance}" AutomationProperties.Name="{l:T 'Vibrance'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Vibrance, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Saturation" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Saturation}" AutomationProperties.Name="Saturation"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Saturation'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Saturation}" AutomationProperties.Name="{l:T 'Saturation'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Saturation, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                     </StackPanel>
@@ -173,46 +190,52 @@
                     <!-- Effects -->
                     <StackPanel Spacing="12" IsVisible="{Binding LookIsEffects}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Effects" Classes="section-title first"/>
-                            <Button Grid.Column="1" Classes="link" Content="Reset" IsVisible="{Binding HasEffectsAdjust}" Command="{Binding ResetEffectsCommand}"/>
+                            <TextBlock Text="{l:T 'Effects'}" Classes="section-title first"/>
+                            <Button Grid.Column="1" Classes="link" Content="{l:T 'Reset'}" IsVisible="{Binding HasEffectsAdjust}" Command="{Binding ResetEffectsCommand}"/>
                         </Grid>
-                        <CheckBox Content="100% view" IsChecked="{Binding DetailView}"
-                                  ToolTip.Tip="Show a piece of the full-size photo at its real pixels"
-                                  AutomationProperties.Name="Show the photo at 100 percent"/>
-                        <!-- Noise reduction without a model: works at once, luminance and colour separately. -->
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Luma noise" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding NoiseLuma}" AutomationProperties.Name="Luminance noise reduction"/>
+                        <CheckBox Content="{l:T '100% view'}" IsChecked="{Binding DetailView}"
+                                  ToolTip.Tip="{l:T 'Show a piece of the full-size photo at its real pixels'}"
+                                  AutomationProperties.Name="{l:T 'Show the photo at 100 percent'}"/>
+                        <!-- Skin smoothing -->
+                        <Grid ColumnDefinitions="96,*,56" IsVisible="{Binding HasSkinSupport}">
+                            <TextBlock Text="{l:T 'Smooth skin'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding SkinSmoothing}" AutomationProperties.Name="{l:T 'Skin smoothing'}"/>
+                            <TextBlock Grid.Column="2" Text="{Binding SkinSmoothing, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        </Grid>
+                        <!-- Noise reduction -->
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Luma noise'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding NoiseLuma}" AutomationProperties.Name="{l:T 'Luminance noise reduction'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding NoiseLuma, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Color noise" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding NoiseColor}" AutomationProperties.Name="Color noise reduction"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Color noise'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding NoiseColor}" AutomationProperties.Name="{l:T 'Color noise reduction'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding NoiseColor, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Sharpness" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Sharpness}" AutomationProperties.Name="Sharpness"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Sharpness'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Sharpness}" AutomationProperties.Name="{l:T 'Sharpness'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Sharpness, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Glow" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Glow}" AutomationProperties.Name="Glow"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Glow'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Glow}" AutomationProperties.Name="{l:T 'Glow'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Glow, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Halation" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Halation}" AutomationProperties.Name="Halation"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Halation'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Halation}" AutomationProperties.Name="{l:T 'Halation'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Halation, StringFormat={}{0:0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Vignette" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vignette}" AutomationProperties.Name="Vignette"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Vignette'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="-100" Maximum="100" Value="{Binding Vignette}" AutomationProperties.Name="{l:T 'Vignette'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Vignette, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
-                        <Grid ColumnDefinitions="84,*,56">
-                            <TextBlock Text="Grain" Classes="hint" VerticalAlignment="Center"/>
-                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Grain}" AutomationProperties.Name="Grain"/>
+                        <Grid ColumnDefinitions="96,*,56">
+                            <TextBlock Text="{l:T 'Grain'}" Classes="hint" VerticalAlignment="Center"/>
+                            <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" Value="{Binding Grain}" AutomationProperties.Name="{l:T 'Grain'}"/>
                             <TextBlock Grid.Column="2" Text="{Binding Grain, StringFormat={}{0:+0;-0;0}}" Classes="mono-data" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                         </Grid>
                     </StackPanel>
@@ -223,35 +246,35 @@
                     <!-- Amount -->
                     <StackPanel Spacing="4" IsVisible="{Binding HasLayers}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Amount" Classes="section-title first"/>
+                            <TextBlock Text="{l:T 'Amount'}" Classes="section-title first"/>
                             <TextBlock Grid.Column="1" Text="{Binding AmountText}" Classes="mono-data"/>
                         </Grid>
                         <Slider Classes="v2" Minimum="0" Maximum="100" local:SliderTapToSeek.Default="100" Value="{Binding Amount}"
-                                AutomationProperties.Name="Look amount"/>
+                                AutomationProperties.Name="{l:T 'Look amount'}"/>
                     </StackPanel>
 
                     <!-- Layers -->
-                    <local:LayerRow IsVisible="{Binding HasPreset}" Kind="Preset" IsOn="{Binding PresetEnabled}" LayerName="{Binding PresetName}"
+                    <local:LayerRow IsVisible="{Binding HasPreset}" Kind="{l:T 'Preset'}" IsOn="{Binding PresetEnabled}" LayerName="{Binding PresetName}"
                                 ClearCommand="{Binding ClearPresetCommand}"/>
-                    <local:LayerRow IsVisible="{Binding HasLut}" Kind="LUT" IsOn="{Binding LutEnabled}" LayerName="{Binding LutName}"
+                    <local:LayerRow IsVisible="{Binding HasLut}" Kind="{l:T 'LUT'}" IsOn="{Binding LutEnabled}" LayerName="{Binding LutName}"
                                 ClearCommand="{Binding ClearLutCommand}"/>
                     <TextBlock Text="{Binding SkippedText}" IsVisible="{Binding HasSkipped}"
                                Foreground="{DynamicResource WarningBrush}" FontSize="12" TextWrapping="Wrap"/>
-                    <TextBlock Text="Applying a Look turns off Recipe card." Classes="hint"
+                    <TextBlock Text="{l:T 'Applying a Look turns off Recipe card.'}" Classes="hint"
                                IsVisible="{Binding Settings.IsRecipeCardType}"/>
 
                     <!-- Search, filter, import -->
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                        <TextBox Text="{Binding SearchText}" Watermark="Search looks" AutomationProperties.Name="Search looks"/>
+                        <TextBox Text="{Binding SearchText}" Watermark="{l:T 'Search looks'}" AutomationProperties.Name="{l:T 'Search looks'}"/>
                         <Button Grid.Column="1" x:Name="ImportButton" Classes="secondary" Height="36" Padding="12,0"
-                                ToolTip.Tip="Import .cube, .xmp or a .zip of them" AutomationProperties.Name="Import">
+                                ToolTip.Tip="{l:T 'Import .cube, .xmp or a .zip of them'}" AutomationProperties.Name="{l:T 'Import'}">
                             <StackPanel Orientation="Horizontal" Spacing="6">
                                 <materialIcons:MaterialIcon Kind="Plus" Width="16" Height="16" VerticalAlignment="Center"/>
-                                <TextBlock Text="Import" VerticalAlignment="Center"/>
+                                <TextBlock Text="{l:T 'Import'}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
                     </Grid>
-                    <local:SegmentedControl Labels="All|Fav|Presets|LUTs" SelectedIndex="{Binding LibraryTab}"/>
+                    <local:SegmentedControl Labels="{l:T 'All|Fav|Presets|LUTs'}" SelectedIndex="{Binding LibraryTab}"/>
 
                     <Border IsVisible="{Binding HasImportStatus}" Background="{DynamicResource ControlBrush}"
                             CornerRadius="8" Padding="10,8">
@@ -259,13 +282,12 @@
                             <TextBlock Text="{Binding ImportStatus}" TextWrapping="Wrap" FontSize="12"
                                        Foreground="{DynamicResource TextSecondaryBrush}"/>
                             <Button Grid.Column="1" Classes="icon-toolbar" Width="24" Height="24" VerticalAlignment="Top"
-                                    Command="{Binding DismissImportStatusCommand}" AutomationProperties.Name="Dismiss">
+                                    Command="{Binding DismissImportStatusCommand}" AutomationProperties.Name="{l:T 'Dismiss'}">
                                 <materialIcons:MaterialIcon Kind="Close" Width="12" Height="12"/>
                             </Button>
                         </Grid>
                     </Border>
 
-                    <!-- Empty library -->
                     <TextBlock Text="{Binding LibraryEmptyText}" Classes="hint" TextWrapping="Wrap" Margin="0,8"
                                IsVisible="{Binding ShowLibraryEmpty}"/>
 
@@ -289,11 +311,12 @@
                                     <Button.ContextMenu>
                                         <ContextMenu>
                                             <MenuItem Header="{Binding FavoriteMenuText}" Command="{Binding Owner.ToggleFavoriteCommand}" CommandParameter="{Binding}"/>
-                                            <MenuItem Header="Delete from library" IsVisible="{Binding CanDelete}" Command="{Binding Owner.DeleteItemCommand}" CommandParameter="{Binding}"/>
+                                            <MenuItem Header="{l:T 'Delete from library'}" IsVisible="{Binding CanDelete}" Command="{Binding Owner.DeleteItemCommand}" CommandParameter="{Binding}"/>
                                         </ContextMenu>
                                     </Button.ContextMenu>
                                     <StackPanel Spacing="3">
-                                        <!-- Outer border draws the ring unclipped; the inner one clips the photo -->
+                                        <!-- The outer border draws the ring unclipped, the inner one clips the
+                                             photo -->
                                         <Border Classes="tile-img" Classes.active="{Binding IsActive}"
                                                 Height="76" CornerRadius="10"
                                                 Background="{DynamicResource SurfaceBrush}" BorderThickness="2">
@@ -336,17 +359,17 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ═══════════ Frame (None · Border here; Card · Recipe card open the card layout) ═══════════ -->
+            <!-- Frame -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsFrame}"
                           IsEnabled="{Binding Settings.HasPhoto}">
                 <StackPanel Margin="16,14,16,16" Spacing="12">
-                    <TextBlock Text="Frame type" Classes="section-title first"/>
+                    <TextBlock Text="{l:T 'Frame type'}" Classes="section-title first"/>
                     <ListBox Classes="seg" SelectedIndex="{Binding Settings.FrameTypeIndex}">
-                        <ListBoxItem Content="None"/>
-                        <ListBoxItem Content="Border"/>
-                        <ListBoxItem Content="Card"/>
-                        <ListBoxItem Content="Recipe" IsEnabled="{Binding Settings.RecipeCardAvailable}"/>
-                        <ListBoxItem Content="Film"/>
+                        <ListBoxItem Content="{l:T 'None'}"/>
+                        <ListBoxItem Content="{l:T 'Border'}"/>
+                        <ListBoxItem Content="{l:T 'frame::Card'}"/>
+                        <ListBoxItem Content="{l:T 'Recipe'}" IsEnabled="{Binding Settings.RecipeCardAvailable}"/>
+                        <ListBoxItem Content="{l:T 'frame::Film'}"/>
                     </ListBox>
                     <Border IsVisible="{Binding Settings.ShowRecipeCardReason}" CornerRadius="8" Padding="10,8"
                             BorderThickness="1" BorderBrush="{DynamicResource WarningBrush}"
@@ -354,251 +377,251 @@
                         <StackPanel Spacing="4">
                             <TextBlock Text="{Binding Settings.RecipeCardReason}" TextWrapping="Wrap" FontSize="12"
                                        Foreground="{DynamicResource WarningBrush}"/>
-                            <Button Content="Remove the look" Classes="link" HorizontalAlignment="Left"
+                            <Button Content="{l:T 'Remove the look'}" Classes="link" HorizontalAlignment="Left"
                                     IsVisible="{Binding HasLook}" Command="{Binding ClearLookCommand}"/>
                         </StackPanel>
                     </Border>
                     <TextBlock Text="{Binding Settings.FrameNotice}" Foreground="{DynamicResource WarningBrush}"
                                FontSize="12" TextWrapping="Wrap" IsVisible="{Binding Settings.HasFrameNotice}"/>
 
-                    <TextBlock Text="Card and Recipe card add a palette, camera info or the film recipe under the photo."
+                    <TextBlock Text="{l:T 'Card and Recipe card add a palette, camera info or the film recipe under the photo.'}"
                                Classes="hint" TextWrapping="Wrap" IsVisible="{Binding Settings.ShowCardHint}"/>
 
                     <!-- Border -->
                     <StackPanel Spacing="10" IsVisible="{Binding Settings.FrameIsBorder}">
                         <ComboBox ItemsSource="{Binding Frames}" SelectedItem="{Binding SelectedFrame}"
-                                  PlaceholderText="Custom" HorizontalAlignment="Stretch"
-                                  AutomationProperties.Name="Border style">
+                                  PlaceholderText="{l:T 'Custom'}" HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="{l:T 'Border style'}">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="rend:PhotoFrame">
                                     <TextBlock Text="{Binding Name}"/>
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                        <Expander Header="Customize" IsExpanded="False" HorizontalAlignment="Stretch">
+                        <Expander Header="{l:T 'Customize'}" IsExpanded="False" HorizontalAlignment="Stretch">
                             <StackPanel Spacing="10" Margin="0,8,0,0">
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Border" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Border'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="30" local:SliderTapToSeek.Default="4" Value="{Binding FrameThickness}"
-                                            AutomationProperties.Name="Border thickness"/>
+                                            AutomationProperties.Name="{l:T 'Border thickness'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FrameThicknessText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Bottom'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="40" Value="{Binding FrameBottom}"
-                                            AutomationProperties.Name="Extra space below the photo"/>
+                                            AutomationProperties.Name="{l:T 'Extra space below the photo'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FrameBottomText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Ratio" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Ratio'}" Classes="hint" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding AspectLabels}"
                                               SelectedIndex="{Binding FrameAspectIndex}" HorizontalAlignment="Stretch"
-                                              AutomationProperties.Name="Canvas ratio"/>
+                                              AutomationProperties.Name="{l:T 'Canvas ratio'}"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Color" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Color'}" Classes="hint" VerticalAlignment="Center"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <local:ColorSwatch Color="#FFFFFF" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="White"/>
-                                            <local:ColorSwatch Color="#F4F1EA" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="Cream"/>
-                                            <local:ColorSwatch Color="#808080" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="Grey"/>
-                                            <local:ColorSwatch Color="#000000" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="Black"/>
+                                            <local:ColorSwatch Color="#FFFFFF" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="{l:T 'White'}"/>
+                                            <local:ColorSwatch Color="#F4F1EA" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="{l:T 'Cream'}"/>
+                                            <local:ColorSwatch Color="#808080" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="{l:T 'Grey'}"/>
+                                            <local:ColorSwatch Color="#000000" Command="{Binding SetFrameColorCommand}" AutomationProperties.Name="{l:T 'Black'}"/>
                                         </StackPanel>
                                         <TextBox Text="{Binding FrameColorHex}" Watermark="#RRGGBB" MaxLength="7"
-                                                 AutomationProperties.Name="Border color hex"/>
-                                        <TextBlock Text="Use #RRGGBB" IsVisible="{Binding FrameColorInvalid}"
+                                                 AutomationProperties.Name="{l:T 'Border color hex'}"/>
+                                        <TextBlock Text="{l:T 'Use #RRGGBB'}" IsVisible="{Binding FrameColorInvalid}"
                                                    Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
-                                <local:SaveRow Text="{Binding FrameName}" NameLabel="Name for the custom border" SaveCommand="{Binding SaveFrameCommand}"
-                                    DeleteCommand="{Binding DeleteFrameCommand}" CanDelete="{Binding CanDeleteFrame}" DeleteTip="Delete saved border"/>
+                                <local:SaveRow Text="{Binding FrameName}" NameLabel="{l:T 'Name for the custom border'}" SaveCommand="{Binding SaveFrameCommand}"
+                                    DeleteCommand="{Binding DeleteFrameCommand}" CanDelete="{Binding CanDeleteFrame}" DeleteTip="{l:T 'Delete saved border'}"/>
                             </StackPanel>
                         </Expander>
                     </StackPanel>
 
-                    <!-- Film: shot data printed on a film edge, laid out per zone -->
+                    <!-- Film -->
                     <StackPanel Spacing="10" IsVisible="{Binding Settings.FrameIsFilm}">
                         <ComboBox ItemsSource="{Binding FilmStyles}" SelectedItem="{Binding SelectedFilm}"
-                                  PlaceholderText="Custom" HorizontalAlignment="Stretch"
-                                  AutomationProperties.Name="Film style">
+                                  PlaceholderText="{l:T 'Custom'}" HorizontalAlignment="Stretch"
+                                  AutomationProperties.Name="{l:T 'Film style'}">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="rend:FilmStyle">
                                     <TextBlock Text="{Binding Name}"/>
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>
-                        <TextBlock Text="Each spot on the film edge prints one short piece of data. Anything the photo doesn't carry is left blank."
+                        <TextBlock Text="{l:T 'Each spot on the film edge prints one short piece of data. Anything the photo doesn\'t carry is left blank.'}"
                                    Classes="hint" TextWrapping="Wrap"/>
-                        <Expander Header="Data on the edge" IsExpanded="False" HorizontalAlignment="Stretch">
+                        <Expander Header="{l:T 'Data on the edge'}" IsExpanded="False" HorizontalAlignment="Stretch">
                             <StackPanel Spacing="8" Margin="0,8,0,0">
-                                <local:ChoiceRow Label="Top left" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopLeftIndex}"
-                                                AccessibleName="Top left of the edge"/>
-                                <local:ChoiceRow Label="Top right" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopRightIndex}"
-                                                AccessibleName="Top right of the edge"/>
-                                <local:ChoiceRow Label="Top" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopCenterIndex}"
-                                                AccessibleName="Top of the edge"/>
-                                <local:ChoiceRow Label="Bottom left" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomLeftIndex}"
-                                                AccessibleName="Bottom left of the edge"/>
-                                <local:ChoiceRow Label="Bottom" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomCenterIndex}"
-                                                AccessibleName="Bottom centre of the edge"/>
-                                <local:ChoiceRow Label="Bottom right" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomRightIndex}"
-                                                AccessibleName="Bottom right of the edge"/>
-                                <local:ChoiceRow Label="Left side" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideLeftIndex}"
-                                                AccessibleName="Left side of the edge"/>
-                                <local:ChoiceRow Label="Right side" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideRightIndex}"
-                                                AccessibleName="Right side of the edge"/>
-                                <local:ChoiceRow Label="Between holes" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmHoleGapsIndex}"
-                                                AccessibleName="Between the sprocket holes (needs sprockets)"/>
+                                <local:ChoiceRow Label="{l:T 'Top left'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopLeftIndex}"
+                                                AccessibleName="{l:T 'Top left of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Top right'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopRightIndex}"
+                                                AccessibleName="{l:T 'Top right of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Top'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmTopCenterIndex}"
+                                                AccessibleName="{l:T 'Top of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Bottom left'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomLeftIndex}"
+                                                AccessibleName="{l:T 'Bottom left of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Bottom'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomCenterIndex}"
+                                                AccessibleName="{l:T 'Bottom centre of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Bottom right'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmBottomRightIndex}"
+                                                AccessibleName="{l:T 'Bottom right of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Left side'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideLeftIndex}"
+                                                AccessibleName="{l:T 'Left side of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Right side'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmSideRightIndex}"
+                                                AccessibleName="{l:T 'Right side of the edge'}"/>
+                                <local:ChoiceRow Label="{l:T 'Between holes'}" ItemsSource="{Binding FilmContentLabels}" SelectedIndex="{Binding FilmHoleGapsIndex}"
+                                                AccessibleName="{l:T 'Between the sprocket holes (needs sprockets)'}"/>
                                 <Grid ColumnDefinitions="84,*,Auto,Auto,Auto" ColumnSpacing="6">
-                                    <TextBlock Text="Frame no." Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Frame no.'}" Classes="hint" VerticalAlignment="Center"/>
                                     <TextBox Grid.Column="1" Text="{Binding FilmFrameText}" Watermark="{Binding FilmFrameWatermark}" MaxLength="6"
-                                             AutomationProperties.Name="Frame number printed on the edge (empty = automatic)"/>
+                                             AutomationProperties.Name="{l:T 'Frame number printed on the edge (empty = automatic)'}"/>
                                     <Button Grid.Column="2" Classes="secondary" Width="40" Height="40" Padding="0" FontSize="18" Content="−"
                                             Command="{Binding FilmFrameStepCommand}" CommandParameter="-1"
-                                            ToolTip.Tip="Previous number" AutomationProperties.Name="Decrease frame number"/>
+                                            ToolTip.Tip="{l:T 'Previous number'}" AutomationProperties.Name="{l:T 'Decrease frame number'}"/>
                                     <Button Grid.Column="3" Classes="secondary" Width="40" Height="40" Padding="0" FontSize="18" Content="+"
                                             Command="{Binding FilmFrameStepCommand}" CommandParameter="1"
-                                            ToolTip.Tip="Next number" AutomationProperties.Name="Increase frame number"/>
-                                    <Button Grid.Column="4" Classes="secondary" Height="40" Padding="12,0" Margin="2,0,0,0" Content="Auto"
+                                            ToolTip.Tip="{l:T 'Next number'}" AutomationProperties.Name="{l:T 'Increase frame number'}"/>
+                                    <Button Grid.Column="4" Classes="secondary" Height="40" Padding="12,0" Margin="2,0,0,0" Content="{l:T 'Auto'}"
                                             Command="{Binding FilmFrameAutoResetCommand}" IsEnabled="{Binding FilmFrameIsManual}"
-                                            ToolTip.Tip="Take the number from the file name again" AutomationProperties.Name="Automatic frame number"/>
+                                            ToolTip.Tip="{l:T 'Take the number from the file name again'}" AutomationProperties.Name="{l:T 'Automatic frame number'}"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="84,*">
-                                    <TextBlock Text="Custom text" Classes="hint" VerticalAlignment="Center"/>
-                                    <TextBox Grid.Column="1" Text="{Binding FilmCustomText}" Watermark="e.g. Portra 400" MaxLength="40"
-                                             AutomationProperties.Name="Custom text printed on the edge"/>
+                                    <TextBlock Text="{l:T 'Custom text'}" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBox Grid.Column="1" Text="{Binding FilmCustomText}" Watermark="{l:T 'e.g. Portra 400'}" MaxLength="40"
+                                             AutomationProperties.Name="{l:T 'Custom text printed on the edge'}"/>
                                 </Grid>
                             </StackPanel>
                         </Expander>
-                        <Expander Header="Look of the edge" IsExpanded="False" HorizontalAlignment="Stretch">
+                        <Expander Header="{l:T 'Look of the edge'}" IsExpanded="False" HorizontalAlignment="Stretch">
                             <StackPanel Spacing="10" Margin="0,8,0,0">
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Sides" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Sides'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" local:SliderTapToSeek.Default="3" Value="{Binding FilmSide}"
-                                            AutomationProperties.Name="Side edge width"/>
+                                            AutomationProperties.Name="{l:T 'Side edge width'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmSideText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Top" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Top'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" local:SliderTapToSeek.Default="3" Value="{Binding FilmTop}"
-                                            AutomationProperties.Name="Top edge height"/>
+                                            AutomationProperties.Name="{l:T 'Top edge height'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmTopText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Bottom" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Bottom'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="35" local:SliderTapToSeek.Default="8" Value="{Binding FilmBottom}"
-                                            AutomationProperties.Name="Bottom edge height"/>
+                                            AutomationProperties.Name="{l:T 'Bottom edge height'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmBottomText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Film feel" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Film feel'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" local:SliderTapToSeek.Default="60" Value="{Binding FilmRealism}"
-                                            AutomationProperties.Name="Film feel: grain, uneven light, soft holes"/>
+                                            AutomationProperties.Name="{l:T 'Film feel: grain, uneven light, soft holes'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmRealismText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Dust" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Dust'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="100" local:SliderTapToSeek.Default="30" Value="{Binding FilmDust}"
-                                            AutomationProperties.Name="Dust and scratches"/>
+                                            AutomationProperties.Name="{l:T 'Dust and scratches'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmDustText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*,44">
-                                    <TextBlock Text="Corners" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Corners'}" Classes="hint" VerticalAlignment="Center"/>
                                     <Slider Grid.Column="1" Classes="v2" Minimum="0" Maximum="4" local:SliderTapToSeek.Default="1" Value="{Binding FilmCorner}"
-                                            AutomationProperties.Name="Rounded photo corners"/>
+                                            AutomationProperties.Name="{l:T 'Rounded photo corners'}"/>
                                     <TextBlock Grid.Column="2" Text="{Binding FilmCornerText}" Classes="mono-data"
                                                HorizontalAlignment="Right" VerticalAlignment="Center"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Sprockets" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Sprockets'}" Classes="hint" VerticalAlignment="Center"/>
                                     <ComboBox Grid.Column="1" ItemsSource="{Binding FilmPerforationLabels}"
                                               SelectedIndex="{Binding FilmPerforationIndex}" HorizontalAlignment="Stretch"
-                                              AutomationProperties.Name="Sprocket holes"/>
+                                              AutomationProperties.Name="{l:T 'Sprocket holes'}"/>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Holes" Classes="hint" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{l:T 'Holes'}" Classes="hint" VerticalAlignment="Center"/>
                                     <ListBox Grid.Column="1" Classes="seg" SelectedIndex="{Binding FilmHoleIndex}"
-                                             AutomationProperties.Name="Sprocket hole colour">
-                                        <ListBoxItem Content="Black"/>
-                                        <ListBoxItem Content="White"/>
+                                             AutomationProperties.Name="{l:T 'Sprocket hole colour'}">
+                                        <ListBoxItem Content="{l:T 'Black'}"/>
+                                        <ListBoxItem Content="{l:T 'White'}"/>
                                     </ListBox>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Edge" Classes="hint" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                                    <TextBlock Text="{l:T 'Edge'}" Classes="hint" VerticalAlignment="Top" Margin="0,6,0,0"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <local:ColorSwatch Color="#0B0B0B" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Black"/>
-                                            <local:ColorSwatch Color="#16100C" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Dark brown"/>
-                                            <local:ColorSwatch Color="#8E9298" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Grey"/>
-                                            <local:ColorSwatch Color="#F4F1EA" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="Cream"/>
+                                            <local:ColorSwatch Color="#0B0B0B" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="{l:T 'Black'}"/>
+                                            <local:ColorSwatch Color="#16100C" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="{l:T 'Dark brown'}"/>
+                                            <local:ColorSwatch Color="#8E9298" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="{l:T 'Grey'}"/>
+                                            <local:ColorSwatch Color="#F4F1EA" Command="{Binding SetFilmEdgeColorCommand}" AutomationProperties.Name="{l:T 'Cream'}"/>
                                         </StackPanel>
                                         <TextBox Text="{Binding FilmEdgeHex}" Watermark="#RRGGBB" MaxLength="7"
-                                                 AutomationProperties.Name="Edge color hex"/>
-                                        <TextBlock Text="Use #RRGGBB" IsVisible="{Binding FilmEdgeInvalid}"
+                                                 AutomationProperties.Name="{l:T 'Edge color hex'}"/>
+                                        <TextBlock Text="{l:T 'Use #RRGGBB'}" IsVisible="{Binding FilmEdgeInvalid}"
                                                    Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
                                 <Grid ColumnDefinitions="72,*">
-                                    <TextBlock Text="Text" Classes="hint" VerticalAlignment="Top" Margin="0,6,0,0"/>
+                                    <TextBlock Text="{l:T 'Text'}" Classes="hint" VerticalAlignment="Top" Margin="0,6,0,0"/>
                                     <StackPanel Grid.Column="1" Spacing="6">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
-                                            <local:ColorSwatch Color="#F2F2F2" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="White"/>
-                                            <local:ColorSwatch Color="#FFB020" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="Amber"/>
-                                            <local:ColorSwatch Color="#2A2C30" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="Dark grey"/>
+                                            <local:ColorSwatch Color="#F2F2F2" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="{l:T 'White'}"/>
+                                            <local:ColorSwatch Color="#FFB020" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="{l:T 'Amber'}"/>
+                                            <local:ColorSwatch Color="#2A2C30" Command="{Binding SetFilmTextColorCommand}" AutomationProperties.Name="{l:T 'Dark grey'}"/>
                                         </StackPanel>
                                         <TextBox Text="{Binding FilmTextHex}" Watermark="#RRGGBB" MaxLength="7"
-                                                 AutomationProperties.Name="Text color hex"/>
-                                        <TextBlock Text="Use #RRGGBB" IsVisible="{Binding FilmTextInvalid}"
+                                                 AutomationProperties.Name="{l:T 'Text color hex'}"/>
+                                        <TextBlock Text="{l:T 'Use #RRGGBB'}" IsVisible="{Binding FilmTextInvalid}"
                                                    Foreground="{DynamicResource ErrorBrush}" FontSize="12"/>
                                     </StackPanel>
                                 </Grid>
-                                <CheckBox Content="Glow (backlit look)" IsChecked="{Binding FilmGlow}"/>
-                                <local:SaveRow Text="{Binding FilmName}" NameLabel="Name for the custom film style" SaveCommand="{Binding SaveFilmCommand}"
-                                    DeleteCommand="{Binding DeleteFilmCommand}" CanDelete="{Binding CanDeleteFilm}" DeleteTip="Delete saved film style"/>
+                                <CheckBox Content="{l:T 'Glow (backlit look)'}" IsChecked="{Binding FilmGlow}"/>
+                                <local:SaveRow Text="{Binding FilmName}" NameLabel="{l:T 'Name for the custom film style'}" SaveCommand="{Binding SaveFilmCommand}"
+                                    DeleteCommand="{Binding DeleteFilmCommand}" CanDelete="{Binding CanDeleteFilm}" DeleteTip="{l:T 'Delete saved film style'}"/>
                             </StackPanel>
                         </Expander>
                     </StackPanel>
 
-                    <!-- Card / Recipe card: the same options as before, tucked into two sections -->
+                    <!-- Card and Recipe card -->
                     <StackPanel Spacing="10" DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel"
                                 IsVisible="{Binding FrameIsCardType}">
-                        <Expander Header="Style" IsExpanded="False" HorizontalAlignment="Stretch">
+                        <Expander Header="{l:T 'Style'}" IsExpanded="False" HorizontalAlignment="Stretch">
                             <local:CardStyleSection Margin="0,8,0,0"/>
                         </Expander>
-                        <Expander Header="Content" IsExpanded="False" HorizontalAlignment="Stretch">
+                        <Expander Header="{l:T 'Content'}" IsExpanded="False" HorizontalAlignment="Stretch">
                             <local:CardContentSection Margin="0,8,0,0"/>
                         </Expander>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ═══════════ Export ═══════════ -->
+            <!-- Export -->
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" IsVisible="{Binding Settings.EditIsExport}">
                 <StackPanel Margin="16,14,16,16" Spacing="14">
                     <StackPanel Spacing="14">
-                    <TextBlock Text="Format" Classes="section-title first"/>
+                    <TextBlock Text="{l:T 'Format'}" Classes="section-title first"/>
                     <ListBox Classes="seg" SelectedIndex="{Binding ExportFormatIndex}">
                         <ListBoxItem Content="JPEG"/>
                         <ListBoxItem Content="PNG"/>
                     </ListBox>
                     <StackPanel Spacing="4" IsVisible="{Binding ExportIsJpeg}">
                         <Grid ColumnDefinitions="*,Auto">
-                            <TextBlock Text="Quality" Classes="section-title first" VerticalAlignment="Center"/>
+                            <TextBlock Text="{l:T 'Quality'}" Classes="section-title first" VerticalAlignment="Center"/>
                             <TextBlock Grid.Column="1" Text="{Binding ExportQualityText}" Classes="mono-data" VerticalAlignment="Center"/>
                         </Grid>
                         <Slider Classes="v2" Minimum="50" Maximum="100" local:SliderTapToSeek.Default="95" Value="{Binding ExportQuality}"
-                                AutomationProperties.Name="JPEG quality"/>
+                                AutomationProperties.Name="{l:T 'JPEG quality'}"/>
                     </StackPanel>
-                    <!-- Size and Save to: the same for every frame -->
+                    <!-- Size and folder -->
                     <local:CardExportSection DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel" Margin="0,-8,0,-20"/>
-                    <TextBlock Text="The original file is never changed." Classes="hint" TextWrapping="Wrap"/>
+                    <TextBlock Text="{l:T 'The original file is never changed.'}" Classes="hint" TextWrapping="Wrap"/>
                     <TextBlock Text="{Binding ExportStatus}" IsVisible="{Binding HasExportStatus}" Classes="hint" TextWrapping="Wrap"/>
                     <Button x:Name="ExportButton" Classes="cta" Height="44" HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center" IsEnabled="{Binding CanExport}"
@@ -608,10 +631,10 @@
                             IsVisible="{Binding CanExportAll}" Content="{Binding ExportAllText}"/>
                     </StackPanel>
 
-                    <!-- Write recipes into a Fujifilm camera over USB: only offered while one is connected -->
+                    <!-- Only while a camera is connected -->
                     <local:ActionButton Classes="secondary" Height="40" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                             IsVisible="{Binding Settings.Camera.IsTabConnected}" Command="{Binding Settings.OpenCameraCommand}"
-                            AutomationProperties.Name="Connect camera" Icon="CameraOutline" IconSize="16" Text="Write recipes to camera…"/>
+                            AutomationProperties.Name="{l:T 'Connect camera'}" Icon="CameraOutline" IconSize="16" Text="{l:T 'Write recipes to camera…'}"/>
                 </StackPanel>
             </ScrollViewer>
             <local:RecipeEditorView Grid.RowSpan="2" DataContext="{Binding Settings}" x:DataType="vm:SettingsViewModel"

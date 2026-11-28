@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Threading.Tasks;
 using Avalonia.Media.Imaging;
@@ -10,9 +11,8 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
-// "100% view" in Edit → Light, Color and Effects. The preview is a small copy of the photo, and shrinking a picture
-// hides most of its noise, so it can only be judged on real pixels: a piece of the full-size photo, processed like
-// the export.
+// The 100% view: the preview is a small copy, which hides noise, so this processes a piece of the full-size photo
+// like the export.
 public partial class ProcessViewModel
 {
     // A bigger piece would make dragging a slider slow.
@@ -23,6 +23,7 @@ public partial class ProcessViewModel
         public readonly string Path = path;
         public Image<Rgb24>? Photo;
         public NoiseReduction.NoiseProfile? Noise;
+        public SkinMask? Skin;
         public bool Released;
 
         public void Release()
@@ -47,7 +48,7 @@ public partial class ProcessViewModel
     public bool IsDetailActive => DetailView && (LookIsLight || LookIsColor || LookIsEffects)
         && _settings.EditTab == 0 && _source != null;
     public bool ShowDetail => IsDetailActive && Detail != null;
-    public string DetailHint => Detail == null ? "Loading the full photo…" : "100% · drag to move";
+    public string DetailHint => Detail == null ? Loc.T("Loading the full photo…") : Loc.T("100% · drag to move");
 
     partial void OnDetailViewChanged(bool value)
     {
@@ -64,9 +65,9 @@ public partial class ProcessViewModel
     private void RaiseDetailVisibility()
     {
         OnPropertyChanged(nameof(IsDetailActive)); OnPropertyChanged(nameof(ShowDetail)); OnPropertyChanged(nameof(ShowPhotoView));
+        RaiseHistogram();
     }
 
-    // The view was switched on or off, or the user moved to another tool.
     private void DetailStateChanged()
     {
         if (!IsDetailActive) DropDetailPixels();
@@ -74,7 +75,7 @@ public partial class ProcessViewModel
         ScheduleRender();
     }
 
-    // The photo is going away or the view is closed: free the full-size pixels.
+    // Frees the full-size pixels.
     private void ReleaseDetail()
     {
         _detailX = _detailY = 0.5;
@@ -86,11 +87,10 @@ public partial class ProcessViewModel
         var old = _detailSource;
         _detailSource = null;
         Detail = null;
-        // A render may be reading the pixels right now; wait for it off the UI thread.
+        // A render may be reading the pixels; wait off the UI thread.
         if (old != null) _ = Task.Run(old.Release);
     }
 
-    /// <summary>Size of the area the 100% view has to fill, in photo pixels.</summary>
     public void SetDetailViewport(int width, int height)
     {
         if (_detailViewport == (width, height)) return;
@@ -116,7 +116,7 @@ public partial class ProcessViewModel
         if (path == null || vw <= 0 || vh <= 0) return;
         if (_detailSource?.Path != path) _detailSource = new DetailSource(path);
         var source = _detailSource;
-        // "Original" in the compare switch shows the same piece untouched.
+        // "Original" shows the piece untouched.
         var adjust = ShowOriginal ? new PhotoAdjust() : CurrentAdjustSettings();
         var look = ShowOriginal ? new GradeStack() : BuildStack();
         int quarter = Quarter;
@@ -147,21 +147,27 @@ public partial class ProcessViewModel
             if (source.Released) return null;
             var photo = source.Photo ??= Services.FastDecode.LoadUpright(source.Path);
 
-            // The view is given as seen on screen; a quarter turn swaps its sides on the photo.
+            // A quarter turn swaps the viewport's sides on the photo.
             if (quarter % 2 == 1) (viewW, viewH) = (viewH, viewW);
             int w = Math.Min(photo.Width, Math.Min(viewW, DetailMaxWidth)), h = Math.Min(photo.Height, Math.Min(viewH, DetailMaxHeight));
             int left = Math.Clamp((int)(centerX * photo.Width) - w / 2, 0, photo.Width - w);
             int top = Math.Clamp((int)(centerY * photo.Height) - h / 2, 0, photo.Height - h);
 
-            // Cut with room to spare, starting on the noise reduction's grid, so the piece matches the export.
-            const int context = NoiseReduction.Context, align = NoiseReduction.Align;
+            // Margin around the piece, aligned to the noise reduction grid.
+            bool smoothsSkin = adjust.HasSkinSmoothing || look.SmoothsSkin;
+            int context = smoothsSkin ? SkinRetouch.Context : NoiseReduction.Context;
+            const int align = NoiseReduction.Align;
             int x0 = Math.Max(0, left - context) / align * align, y0 = Math.Max(0, top - context) / align * align;
             var rect = new Rectangle(x0, y0, Math.Min(photo.Width, left + w + context) - x0, Math.Min(photo.Height, top + h + context) - y0);
             using var piece = photo.Clone(c => c.Crop(rect));
 
             var noise = source.Noise ??= NoiseReduction.Measure(photo);
-            using var result = adjust.RenderDetail(piece, Math.Max(photo.Width, photo.Height), noise);
-            if (!look.IsEmpty) look.Apply(result, wholeFrameEffects: false);
+            // Segmented on the whole photo: a piece alone would be judged differently.
+            if (smoothsSkin) source.Skin ??= SkinRetouch.Segmenter?.Segment(photo);
+            var skin = smoothsSkin ? source.Skin?.Piece(rect, photo.Width, photo.Height) : null;
+            using var result = adjust.RenderDetail(piece, Math.Max(photo.Width, photo.Height), noise, skin);
+            if (!look.IsEmpty)
+                look.Apply(result, wholeFrameEffects: false, photoLongSide: Math.Max(photo.Width, photo.Height), noise: noise, skin: skin);
             result.Mutate(c =>
             {
                 c.Crop(new Rectangle(left - x0, top - y0, w, h));

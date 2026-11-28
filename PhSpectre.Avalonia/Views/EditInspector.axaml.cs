@@ -7,7 +7,7 @@ namespace PhSpectre.Avalonia.Views;
 public partial class EditInspector : UserControl
 {
     public static readonly StyledProperty<bool> RailProperty = AvaloniaProperty.Register<EditInspector, bool>(nameof(Rail), true);
-    /// <summary>True: the tools live in the rail beside the photo (desktop, tablet). False: one row on top (phone).</summary>
+    /// <summary>True: tools in the side rail (desktop, tablet). False: a row on top (phone).</summary>
     public bool Rail { get => GetValue(RailProperty); set => SetValue(RailProperty, value); }
 
     public EditInspector()
@@ -20,7 +20,7 @@ public partial class EditInspector : UserControl
         ExportAllButton.Click += async (_, _) =>
         {
             if (DataContext is not ProcessViewModel vm) return;
-            // One Export tab for every frame; Card / Recipe card are saved by the card renderer behind the same buttons.
+            // Card and Recipe card are saved by the card renderer.
             if (vm.Settings.FrameIsCardType) { if (vm.Settings.CardSaveAllCommand?.CanExecute(null) == true) vm.Settings.CardSaveAllCommand.Execute(null); }
             else await EditActions.ExportAllAsync(TopLevel.GetTopLevel(this), vm);
         };

@@ -66,7 +66,7 @@ public partial class EditCanvas : UserControl
 
     // ── 100% view ──────────────────────────────────────────────────────────────────────
     private double Scaling => TopLevel.GetTopLevel(this)?.RenderScaling ?? 1;
-    // Screen pixels per photo pixel: on dense screens a single one is too small to judge noise.
+    // Dense screens get two screen pixels per photo pixel.
     private double PixelZoom => Scaling >= 2 ? 2 : 1;
 
     private void HookDetail()
@@ -117,8 +117,8 @@ public partial class EditCanvas : UserControl
             Relayout();
     }
 
-    // Window = the crop's shape fitted into the stage; photo = the uncropped picture at the same scale,
-    // rotated by the quarter turns plus the straighten angle and shifted by the pan. Pure transforms: no pixels are rebuilt.
+    // The window is the crop's shape fitted into the stage; the photo is rotated and shifted under it by
+    // transforms.
     private void Relayout()
     {
         if (_vm is not { ShowCropView: true, CropBase: { } bmp } || _host == null || _window == null || _canvas == null || _image == null) return;

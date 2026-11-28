@@ -9,11 +9,7 @@ using Android.Provider;
 
 namespace PhSpectre.Android;
 
-/// <summary>
-/// Writes a PNG straight into the Photos/Pictures gallery via MediaStore — no
-/// "where do you want to save this" dialog, which is what a mobile photo app
-/// should do. Registered against <c>FileDialogService.GallerySaver</c> at startup.
-/// </summary>
+/// <summary>Saves a PNG into the gallery through MediaStore, without a file dialog.</summary>
 internal static class GallerySaver
 {
     private const string RelativeFolder = "PhSpectre";
@@ -35,8 +31,7 @@ internal static class GallerySaver
     private static string MimeTypeFor(string displayName) =>
         Path.GetExtension(displayName).ToLowerInvariant() is ".jpg" or ".jpeg" ? "image/jpeg" : "image/png";
 
-    // API 29+ (scoped storage): no storage permission needed to create our own
-    // MediaStore entries — the whole point of scoped storage.
+    // API 29+ needs no storage permission for our own MediaStore entries.
     [SupportedOSPlatform("android29.0")]
     private static async Task<bool> SaveScopedAsync(ContentResolver resolver, string sourcePath, string displayName, string mimeType)
     {
@@ -59,9 +54,7 @@ internal static class GallerySaver
         return true;
     }
 
-    // API 23-28: scoped storage doesn't exist yet, so this needs WRITE_EXTERNAL_STORAGE
-    // (declared in the manifest, maxSdkVersion 28) actually granted at runtime. If it
-    // isn't, this throws and the caller surfaces it as an error rather than crashing.
+    // API 23-28 needs WRITE_EXTERNAL_STORAGE granted; otherwise this throws and the caller reports it.
     private static bool SaveLegacy(Context context, string sourcePath, string displayName, string mimeType)
     {
         var picturesDir = global::Android.OS.Environment

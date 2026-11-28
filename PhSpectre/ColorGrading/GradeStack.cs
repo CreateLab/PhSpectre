@@ -1,11 +1,10 @@
+using PhSpectre.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.ColorGrading;
 
-// An ordered set of grading layers applied to a photo: Lightroom preset first, then LUT. Each layer
-// has its own intensity and can be switched off without losing its settings. Pure data + Apply, so it
-// can be previewed on a downscaled copy and re-run at full size for export.
+// Preset first, then LUT, each with its own strength and switch.
 public sealed class GradeStack
 {
     public LrPreset? Preset { get; set; }
@@ -16,19 +15,23 @@ public sealed class GradeStack
     public float LutStrength { get; set; } = 1f;
     public bool LutEnabled { get; set; } = true;
 
+    /// <summary>The active preset smooths skin, so a skin mask is needed.</summary>
+    public bool SmoothsSkin => Preset != null && PresetEnabled && PresetStrength > 0f && Preset.Get("SkinSmoothing") > 0f;
+
     public bool IsEmpty =>
         !((Preset != null && PresetEnabled && PresetStrength > 0f) || (Lut != null && LutEnabled && LutStrength > 0f));
 
-    // Without whole-frame effects (a preset's vignette and grain) the result of a piece cut from a photo matches
-    // the colours of that photo graded in full.
-    public void Apply(Image<Rgb24> image, bool wholeFrameEffects = true)
+    // For a piece of a photo pass wholeFrameEffects = false with the photo's long side, noise profile and skin
+    // mask. detail = false skips noise reduction, skin smoothing and sharpening.
+    public void Apply(Image<Rgb24> image, bool wholeFrameEffects = true, bool detail = true, int photoLongSide = 0,
+        NoiseReduction.NoiseProfile? noise = null, SkinMask? skin = null)
     {
         ArgumentNullException.ThrowIfNull(image);
-        if (Preset != null && PresetEnabled) LrPresetApplier.Apply(image, Preset, PresetStrength, wholeFrameEffects);
+        if (Preset != null && PresetEnabled) LrPresetApplier.Apply(image, Preset, PresetStrength, wholeFrameEffects, detail, photoLongSide, noise, skin);
         if (Lut != null && LutEnabled) LutApplier.Apply(image, Lut, LutStrength);
     }
 
-    // Returns a graded copy; the source is untouched (non-destructive).
+    // Returns a graded copy.
     public Image<Rgb24> Render(Image<Rgb24> source)
     {
         var copy = source.Clone();

@@ -4,8 +4,8 @@ using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 
 namespace PhSpectre.Recipes;
 
-// Parses Fujifilm's MakerNote mini-IFD (tag 0x927C) into a FilmRecipe. Layout and tag map were checked against real Fuji JPEGs and exiftool's FujiFilm tag list.
-// Values over 4 bytes are addressed relative to the MakerNote start, not the TIFF header.
+// Parses the Fujifilm MakerNote IFD (0x927C). Checked against real JPEGs and ExifTool. Long values are addressed
+// from the MakerNote start.
 public sealed class FujiRecipeExtractor : IRecipeExtractor
 {
     public bool CanHandle(ExifProfile exif) =>
@@ -56,11 +56,9 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         }
     }
 
-    // ── Binary IFD parsing ──
-    // Internal so tests can drive it with hand-built byte[] fixtures.
+    // Binary IFD parsing (internal for tests)
 
-    // Resolves each IFD entry to its raw bytes (tag -> bytes). Offsets and lengths are bounds-checked;
-    // a malformed entry is skipped (that field comes back null) without aborting the rest.
+    // Bounds-checked; a malformed entry only loses its own field.
     internal static Dictionary<ushort, byte[]>? ParseFujiIfd(byte[] mn)
     {
         if (mn.Length < 12 || !mn.AsSpan(0, 8).SequenceEqual("FUJIFILM"u8))
@@ -105,7 +103,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return result;
     }
 
-    // TIFF type ID -> element size in bytes. Unknown IDs default to 1 so an unrecognized entry stays bounded.
+    // TIFF type to element size; unknown types count as 1.
     private static int TypeSize(ushort type) => type switch
     {
         3 or 8 => 2,
@@ -130,8 +128,6 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return true;
     }
 
-    // ── Field decoders ──────────────────────────────────────────────────────
-
     private static int? ReadRawNumber(Dictionary<ushort, byte[]> entries, ushort tag)
     {
         if (!entries.TryGetValue(tag, out var b) || b.Length == 0) return null;
@@ -147,7 +143,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return map.TryGetValue(r, out var name) ? name : $"Unknown (0x{r:X})";
     }
 
-    // Tone/level fields typed int?: map the raw value to the dial position via the lookup; an unrecognized raw value passes through unchanged.
+    // An unrecognised raw value passes through unchanged.
     private static int? DecodeColorLevel(Dictionary<ushort, byte[]> entries) =>
         DecodeLevel(entries, 0x1003, SaturationLevelMap) is >= -4 and <= 4 and var c ? c : null;
 
@@ -158,9 +154,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return map.TryGetValue(r, out var v) ? v : r;
     }
 
-    // ShadowTone/HighlightTone raw = -dial * 16, per ExifTool's FujiFilm.pm (same for every Fuji model).
-    // Reala ACE firmware also reports half steps (raw 24 -> dial -1.5, confirmed on an X-T5 file), so the field is decimal, not int.
-    // Truncating, or not recognizing 24 as a tone value, gave "+24" instead of "-1.5".
+    // Tone raw = -dial * 16 (ExifTool). Reala ACE firmware reports half steps (24 = -1.5), hence decimal.
     private const int ToneScale = 16;
     private const int ToneGranularity = 8; // finest step width confirmed in real MakerNote data
     private const decimal ToneMin = -10m; // generous bound around the documented -2..+4 dial range
@@ -189,8 +183,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return dial;
     }
 
-    // WhiteBalanceShift raw = on-screen shift x 20 (as in exiftool). A raw value not divisible by 20, or outside the +-9 range, is logged and shown as-is
-    // rather than rounded or clamped, so an unseen firmware quirk stays visible.
+    // Shift raw = dial x 20. Odd or out-of-range values are logged and shown as they are.
     private const int WhiteBalanceShiftScale = 20;
     private const int WhiteBalanceShiftMin = -9;
     private const int WhiteBalanceShiftMax = 9;
@@ -235,9 +228,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return unchecked((sbyte)b[0]);
     }
 
-    // DynamicRange (0x1402) takes priority; falls back to the coarser Standard/Wide tag (0x1400) when absent.
-    // 0x1402 == "Manual" only means a fixed percentage was chosen; the number is in 0x1403 (DevelopmentDynamicRange: 100/200/400, confirmed on a real X-T5 file).
-    // Without it every manual body reports the bare word "Manual".
+    // 0x1402 wins over 0x1400. Under "Manual" the percentage is in 0x1403.
     private static string? DecodeDynamicRange(Dictionary<ushort, byte[]> entries)
     {
         var fine = DecodeEnumOrNull(entries, 0x1402, DynamicRangeSettingMap);
@@ -249,8 +240,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return fine ?? DecodeEnumOrNull(entries, 0x1400, DynamicRangeMap);
     }
 
-    // Monochrome-family simulations (Acros/Monochrome/Sepia and filter variants) aren't reported via FilmMode (0x1401);
-    // they appear as special Saturation (0x1003) values, so those take priority over FilmMode, matching the camera UI.
+    // Monochrome simulations are reported through Saturation (0x1003), which wins over FilmMode (0x1401).
     private static string? DecodeFilmSimulation(Dictionary<ushort, byte[]> entries)
     {
         var satRaw = ReadRawNumber(entries, 0x1003);
@@ -259,7 +249,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         return DecodeEnumOrNull(entries, 0x1401, FilmSimulationMap);
     }
 
-    // ── Tag value tables (exiftool.org/TagNames/FujiFilm.html, verified against real files) ──
+    // Tag values from exiftool.org, verified against real files
 
     private static readonly IReadOnlyDictionary<int, string> WhiteBalanceMap = new Dictionary<int, string>
     {
@@ -271,8 +261,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         [0xff0] = "Kelvin",
     };
 
-    // Color simulations only — the monochrome family (Acros/Monochrome/Sepia + filters) is
-    // reported via Saturation (0x1003) instead; see MonochromeFamilyMap/DecodeFilmSimulation.
+    // Colour simulations only.
     private static readonly IReadOnlyDictionary<int, string> FilmSimulationMap = new Dictionary<int, string>
     {
         [0x0] = "Provia/Standard",
@@ -284,8 +273,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         [0x900] = "Eterna Bleach Bypass", [0xa00] = "Nostalgic Neg", [0xb00] = "Reala ACE",
     };
 
-    // Saturation (0x1003) special values that mean "monochrome-family simulation", not a
-    // numeric saturation level — see DecodeFilmSimulation.
+    // Saturation values that mean a monochrome simulation.
     private static readonly IReadOnlyDictionary<int, string> MonochromeFamilyMap = new Dictionary<int, string>
     {
         [0x300] = "Monochrome", [0x301] = "Monochrome + R Filter",
@@ -295,7 +283,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         [0x502] = "Acros + Ye Filter", [0x503] = "Acros + G Filter",
     };
 
-    // Numeric part of Saturation (0x1003), the -4..+4 "Color" level. Mono-family codes are handled separately; unrecognized raw values pass through.
+    // The -4..+4 Color level.
     private static readonly IReadOnlyDictionary<int, int> SaturationLevelMap = new Dictionary<int, int>
     {
         [0x0] = 0, [0x80] = 1, [0x100] = 2, [0xc0] = 3, [0xe0] = 4,
@@ -314,8 +302,7 @@ public sealed class FujiRecipeExtractor : IRecipeExtractor
         [0x8000] = "Film Simulation",
     };
 
-    // Shared by GrainEffect(Roughness), ColorChromeEffect, ColorChromeFxBlue — all use the
-    // same Off/Weak/Strong 3-level scale.
+    // The Off / Weak / Strong scale.
     private static readonly IReadOnlyDictionary<int, string> ThreeLevelMap = new Dictionary<int, string>
     {
         [0] = "Off", [32] = "Weak", [64] = "Strong",

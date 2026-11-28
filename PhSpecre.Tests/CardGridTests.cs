@@ -10,9 +10,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// The card layout is derived from the card width, so the same photo at two resolutions must
-// produce the same proportions (the old fixed pixel clamps made small photos' labels tiny
-// and large photos' labels huge).
+// Same proportions at any resolution: the layout derives from the card width.
 public class CardGridTests
 {
     private static ColorPalette Palette(int n) => new(Enumerable.Range(0, n)

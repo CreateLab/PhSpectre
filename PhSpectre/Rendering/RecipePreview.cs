@@ -6,16 +6,15 @@ using SixLabors.ImageSharp.Processing;
 namespace PhSpectre.Rendering;
 
 /// <summary>
-/// An approximate preview of a film recipe. The bundled sample is stored "flat" (log-like, desaturated), the way
-/// a camera shoots for grading; <see cref="Flatten"/> makes such a frame from a normal photo, <see cref="Render"/>
-/// develops it and applies the recipe. It is a hand-tuned look-alike, not Fujifilm's real processing.
+/// An approximate preview of a film recipe on a sample stored flat (log-like). Hand-tuned, not Fujifilm's
+/// processing.
 /// </summary>
 public static class RecipePreview
 {
     private const double LogK = 12.0;      // strength of the log curve
     private const double FlatSaturation = 0.6;
 
-    // ── Flat (log-like) <-> neutral ─────────────────────────────────────────────────────────
+    // Flat and neutral
     public static void Flatten(Image<Rgb24> img)
     {
         img.Mutate(c => c.ProcessPixelRowsAsVector4((row, _) =>
@@ -37,7 +36,7 @@ public static class RecipePreview
     private static double ToLinear(double s) => s <= 0.04045 ? s / 12.92 : Math.Pow((s + 0.055) / 1.055, 2.4);
     private static double ToSrgb(double l) { l = Math.Clamp(l, 0, 1); return l <= 0.0031308 ? l * 12.92 : 1.055 * Math.Pow(l, 1 / 2.4) - 0.055; }
 
-    // ── Recipe look ─────────────────────────────────────────────────────────────────────────
+    // Recipe look
     private readonly record struct Sim(double Contrast, double Saturation, (double R, double G, double B) Shadow,
         (double R, double G, double B) Highlight, bool Mono = false, (double R, double G, double B)? Tone = null);
 
@@ -117,7 +116,7 @@ public static class RecipePreview
         return res;
     }
 
-    // Deterministic, roughly gaussian noise in about [-1, 1] (two hashed uniforms, so the grain never "swims").
+    // Deterministic, roughly gaussian noise.
     private static double Noise(int x, int y)
     {
         static double H(uint v) { v ^= v >> 16; v *= 0x7feb352d; v ^= v >> 15; v *= 0x846ca68b; v ^= v >> 16; return v / (double)uint.MaxValue; }
@@ -127,7 +126,7 @@ public static class RecipePreview
 
     private static double Smooth(double v) { v = Math.Clamp(v, 0, 1); return v * v * (3 - 2 * v); }
 
-    // Named white balances and Kelvin (relative to daylight, 5500 K) as red/blue gains.
+    // Named white balances and Kelvin (relative to 5500 K) as red and blue gains.
     private static (double R, double B) WhiteBalanceGain(FilmRecipe r)
     {
         if (r.ColorTemperature is { } k and > 1500) return KelvinGain(k);

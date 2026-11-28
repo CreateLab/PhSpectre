@@ -10,20 +10,17 @@ public partial class FileEntry : ObservableObject
 
     [ObservableProperty] private Bitmap? _thumbnailBitmap;
 
-    // Collage mode's multi-select checkbox — MainWindowViewModel listens for this changing
-    // to keep CollageItems (the tray) in sync, so IsChecked stays the single source of truth
-    // for tray membership instead of two places that could drift apart.
+    // IsChecked is the single source of truth for collage tray membership; MainWindowViewModel keeps CollageItems
+    // in sync.
     [ObservableProperty] private bool _isChecked;
 
-    // Set by MainWindowViewModel whenever the tray changes — true only for CollageItems[0],
-    // whose order doubles as the collage's EXIF source. Kept as a plain property (updated
-    // imperatively) rather than computed in XAML so the tray badge binding stays trivial.
+    // True only for CollageItems[0], which is also the collage's EXIF source.
     [ObservableProperty] private bool _isCollageExifSource;
 
-    // Filmstrip badge: set once this photo has been saved (single save or Save all).
+    // Set once this photo has been saved.
     [ObservableProperty] private bool _isExported;
 
-    // Mobile filmstrip: the photo currently on screen gets the accent ring.
+    // The photo currently on screen (mobile filmstrip).
     [ObservableProperty] private bool _isCurrent;
 
     public FileEntry(string fileName, string fullPath)

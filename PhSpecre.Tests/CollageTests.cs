@@ -17,9 +17,7 @@ public class CollageTests
     [Fact]
     public void PlanRows_ThreeEqualSquares_SplitsIntoOnePlusTwoRows()
     {
-        // Hand-derived: for 3 equal-aspect squares against a square target, splitting one
-        // photo alone (2/3 of the height) from a paired row (1/3) beats both the single-row
-        // and three-row alternatives — see CollageComposer.PlanRows for the scoring formula.
+        // For 3 squares on a square target, one photo alone (2/3 of the height) above a pair scores best.
         var rows = CollageComposer.PlanRows([1.0, 1.0, 1.0], targetAspect: 1.0);
 
         Assert.Equal(2, rows.Count);
@@ -39,7 +37,6 @@ public class CollageTests
     {
         var rows = CollageComposer.PlanRows(aspects, targetAspect);
 
-        // Structural sanity: rows are contiguous, cover every photo exactly once, in order.
         int expectedStart = 0;
         foreach (var row in rows)
         {
@@ -68,8 +65,7 @@ public class CollageTests
         return Math.Abs(Math.Log(overallAspect / targetAspect));
     }
 
-    // Independent re-implementation of the same exhaustive contiguous-partition search, used
-    // only to verify PlanRows actually finds the best-scoring partition, not just a valid one.
+    // Brute-force partition search, to check that PlanRows finds the best-scoring one.
     private static double BruteForceBestScore(double[] aspects, double targetAspect)
     {
         int n = aspects.Length;
@@ -146,8 +142,6 @@ public class CollageTests
         var result = CollageComposer.Compose([a, b, c], options);
         result.Image.Dispose();
 
-        // Matches the hand-derived PlanRows layout for 3 equal squares at a square target:
-        // photo[0] alone in a row spanning 2/3 of the height, photos[1..2] paired in the rest.
         Assert.Equal(2.0 / 3.0, result.AreaWeights[0], 2);
         Assert.Equal(1.0 / 6.0, result.AreaWeights[1], 2);
         Assert.Equal(1.0 / 6.0, result.AreaWeights[2], 2);

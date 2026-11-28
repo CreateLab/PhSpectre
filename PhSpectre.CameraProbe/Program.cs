@@ -4,10 +4,8 @@ using PhSpectre.Models;
 using PhSpectre.Usb;
 using PhSpectre.Wpd;
 
-// Read-only probe: dumps DeviceInfo, every readable device property and the custom-setting banks of a
-// Fujifilm body in USB RAW CONV./BACKUP RESTORE mode, so the dump can become a test fixture and a
-// CameraCapabilities profile. The only write is the bank selector (0xD18C), which is restored afterwards;
-// it changes which bank the property block addresses, not which bank the camera shoots with.
+// Read-only probe: dumps DeviceInfo, device properties and custom-setting banks of a Fujifilm body in USB RAW
+// CONV./BACKUP RESTORE mode. The only write is the bank selector (0xD18C), restored afterwards.
 
 const ushort ModeProperty = 0xD16E;
 const ushort BankSelector = 0xD18C;
@@ -15,11 +13,10 @@ const ushort FirstBankProperty = 0xD18D;
 const ushort LastBankProperty = 0xD1A4;
 const int MaxBanksToTry = 16;
 
-// Usage: CameraProbe [--usb] [output.json]. Default transport is WPD (works with the stock Windows
-// driver); --usb uses libusb, which needs WinUSB bound to the camera (e.g. via Zadig).
+// Usage: CameraProbe [--usb] [output.json]. WPD by default; --usb needs WinUSB bound to the camera (Zadig).
 var useLibUsb = args.Contains("--usb");
-// Write mode: CameraProbe write <slot> <recipe.json> [--apply] [--overwrite]. Without --apply it is a dry run
-// that only plans the write and saves a backup of the slot next to the recipe file.
+// Write mode: CameraProbe write <slot> <recipe.json> [--apply] [--overwrite]. Without --apply: dry run with a
+// backup.
 var writeMode = args.Length > 0 && args[0] == "write";
 var outputPath = writeMode
     ? string.Empty
@@ -148,7 +145,7 @@ static async Task<int> WriteCommand(PtpSession session, string[] args)
 
     try
     {
-        // Always plan first: it reads the slot, so the backup file exists before anything is sent.
+        // Plan first, so the backup exists before anything is sent.
         var plan = await FujiRecipeWriter.WriteAsync(session, slot, recipe,
             new FujiWriteOptions { DryRun = true });
         var backupPath = Path.ChangeExtension(recipePath, $".slot{slot}-backup-{DateTime.Now:yyyyMMdd-HHmmss}.json");

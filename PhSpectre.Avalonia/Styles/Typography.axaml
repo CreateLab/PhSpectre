@@ -1,10 +1,7 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Inter (the app default font) is the UI font. JetBrains Mono is
-         opted into per-control via the mono-data classes below wherever text is data
-         (file names, sizes) rather than UI chrome — keeps the "data vs UI" split from
-         the design spec instead of one blanket font for everything. -->
+    <!-- Inter for the UI; JetBrains Mono (mono-data classes) for data such as file names and sizes. -->
 
 
     <Style Selector="TextBlock.mono-data">

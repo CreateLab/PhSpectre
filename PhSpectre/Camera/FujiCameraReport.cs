@@ -2,11 +2,7 @@ using System.Text;
 
 namespace PhSpectre.Camera;
 
-/// <summary>
-/// A text dump of what a body reports (model, firmware, raw slot properties) that a user can send along so an
-/// unverified model can be checked and enabled. Slot names are replaced by their length and the serial number is
-/// never read, so it carries nothing personal.
-/// </summary>
+/// <summary>A text dump for adding an unverified model. No serial number, slot names reduced to their length.</summary>
 public static class FujiCameraReport
 {
     public static string Build(FujiCameraSnapshot snapshot, string appVersion)

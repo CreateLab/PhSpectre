@@ -1,12 +1,8 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!--
-        V2 tokens. Both palettes live in ThemeDictionaries so the app theme (System / Light /
-        Dark, see App.ApplyAppearance) can change at runtime — every consumer must therefore
-        use DynamicResource, a StaticResource would resolve once and never follow the switch.
-        AccentBrush is the default accent; App.SetAccent can replace it at runtime.
-    -->
+    <!-- Theme colours. The theme can change at runtime, so consumers use DynamicResource. App.SetAccent can replace
+         AccentBrush. -->
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Dark">
             <SolidColorBrush x:Key="BackgroundBrush"        Color="#0E0E10"/>   

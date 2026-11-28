@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Automation;
@@ -45,8 +46,8 @@ public partial class LayerRow : UserControl
         KindText.Text = Kind;
         NameText.Text = LayerName;
         Clear.Command = ClearCommand;
-        AutomationProperties.SetName(Toggle, $"{Kind} on or off");
-        AutomationProperties.SetName(Clear, $"Remove {Kind}");
-        ToolTip.SetTip(Clear, $"Remove {Kind}");
+        AutomationProperties.SetName(Toggle, Loc.F("{0} on or off", Kind));
+        AutomationProperties.SetName(Clear, Loc.F("Remove {0}", Kind));
+        ToolTip.SetTip(Clear, Loc.F("Remove {0}", Kind));
     }
 }

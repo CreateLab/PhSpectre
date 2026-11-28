@@ -1,31 +1,52 @@
 using System.Numerics;
+using PhSpectre.Rendering;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.ColorGrading;
 
-// Approximates a Lightroom preset on an sRGB image. Adobe's real pipeline is proprietary, so this is
-// "same direction and similar strength", not a pixel match. The colour/tone part is baked into a 33^3
-// CubeLut (and reused via LutApplier); vignette and grain are position-dependent so run afterwards.
+// Approximates a Lightroom preset (not a pixel match). Colour and tone are baked into a 33^3 LUT; noise reduction
+// and skin run before it, sharpening, vignette and grain after.
 public static class LrPresetApplier
 {
     private const int BakeSize = 33;
     private static readonly string[] BandNames = ["Red", "Orange", "Yellow", "Green", "Aqua", "Blue", "Purple", "Magenta"];
     private static readonly float[] BandHue = [0f, 30f, 60f, 120f, 180f, 240f, 270f, 300f];
 
-    public static void Apply(Image<Rgb24> image, LrPreset preset, float strength = 1f, bool vignetteAndGrain = true)
+    // `strength` scales everything. For a piece of a photo pass vignetteAndGrain = false with the long side, noise
+    // profile and skin mask. detail = false skips what a thumbnail cannot show.
+    public static void Apply(Image<Rgb24> image, LrPreset preset, float strength = 1f, bool vignetteAndGrain = true,
+        bool detail = true, int photoLongSide = 0, NoiseReduction.NoiseProfile? noise = null, SkinMask? skin = null)
     {
         ArgumentNullException.ThrowIfNull(image);
         ArgumentNullException.ThrowIfNull(preset);
         strength = Math.Clamp(strength, 0f, 1f);
         if (strength == 0f) return;
 
+        if (photoLongSide <= 0) photoLongSide = Math.Max(image.Width, image.Height);
+        if (detail) ReduceNoise(image, preset, strength, noise);
+        // PhSpectre's own setting; other programs ignore it.
+        if (detail) SkinRetouch.Apply(image, preset.Get("SkinSmoothing") / 100f * strength, skin);
         LutApplier.Apply(image, Bake(preset), strength);
-        if (vignetteAndGrain) ApplyVignetteAndGrain(image, preset, strength);
+        // Lightroom's sharpening amount goes to 150.
+        float sharpen = Math.Clamp(preset.Get("Sharpness") / 150f, 0f, 1f) * strength;
+        if (detail && sharpen > 0f) PhotoAdjust.Sharpen(image, sharpen, photoLongSide);
+        if (vignetteAndGrain) ApplyVignetteAndGrain(image, preset, strength, photoLongSide);
     }
 
-    // The colour/tone part of the preset as a reusable LUT (also exportable as .cube).
+    private static void ReduceNoise(Image<Rgb24> image, LrPreset p, float strength, NoiseReduction.NoiseProfile? noise)
+    {
+        float luma = Math.Clamp(p.Get("LuminanceSmoothing"), 0f, 100f) * strength;
+        float colour = Math.Clamp(p.Get("ColorNoiseReduction"), 0f, 100f) * strength;
+        if (luma <= 0f && colour <= 0f) return;
+        using var cleaned = NoiseReduction.Apply(image, luma, colour, profile: noise);
+        for (int y = 0; y < image.Height; y++)
+            cleaned.Frames.RootFrame.DangerousGetPixelRowMemory(y).Span
+                .CopyTo(image.Frames.RootFrame.DangerousGetPixelRowMemory(y).Span);
+    }
+
+    // The colour and tone part as a LUT.
     public static CubeLut Bake(LrPreset p)
     {
         var f = new Grader(p);
@@ -41,12 +62,13 @@ public static class LrPresetApplier
         return new CubeLut(p.Name, true, BakeSize, Vector3.Zero, Vector3.One, data);
     }
 
-    private static void ApplyVignetteAndGrain(Image<Rgb24> image, LrPreset p, float strength)
+    private static void ApplyVignetteAndGrain(Image<Rgb24> image, LrPreset p, float strength, int photoLongSide)
     {
         float vig = p.Get("PostCropVignetteAmount") / 100f * strength;
         float mid = p.Values.TryGetValue("PostCropVignetteMidpoint", out var m) ? m / 100f : 0.5f;
         float grain = p.Get("GrainAmount") / 100f * strength;
         if (vig == 0f && grain == 0f) return;
+        float cell = FilmGrain.CellSize(photoLongSide, p.Values.TryGetValue("GrainSize", out var size) ? size : FilmGrain.DefaultSize);
 
         int w = image.Width, h = image.Height;
         float cx = (w - 1) / 2f, cy = (h - 1) / 2f;
@@ -70,21 +92,12 @@ public static class LrPresetApplier
                 if (grain != 0f)
                 {
                     float luma = Luma(c);
-                    float n = (Hash(x, y) - 0.5f) * 2f;
+                    float n = FilmGrain.Sample(x, y, cell);
                     c += new Vector3(n * grain * 0.15f * 4f * luma * (1f - luma));
                 }
                 px.R = ToByte(c.X); px.G = ToByte(c.Y); px.B = ToByte(c.Z);
             }
         });
-    }
-
-    // Cheap deterministic per-pixel noise in 0..1 (same output every run).
-    private static float Hash(int x, int y)
-    {
-        uint h = (uint)x * 374761393u + (uint)y * 668265263u;
-        h = (h ^ (h >> 13)) * 1274126177u;
-        h ^= h >> 16;
-        return (h & 0xFFFFFF) / (float)0x1000000;
     }
 
     private static byte ToByte(float v) => v <= 0f ? (byte)0 : v >= 1f ? (byte)255 : (byte)(v * 255f + 0.5f);
@@ -159,9 +172,8 @@ public static class LrPresetApplier
             return Vector3.Clamp(c, Vector3.Zero, Vector3.One);
         }
 
-        // JPEGs carry no as-shot WB, so Temperature is interpreted relative to a neutral reference:
-        // values in -100..100 are Lightroom's relative slider, larger values are Kelvin vs 5500 K.
-        // Higher Kelvin / positive slider = warmer (more red, less blue); positive Tint = magenta.
+        // JPEGs carry no as-shot white balance: -100..100 is the relative slider, larger values are Kelvin against
+        // 5500. Positive tint is magenta.
         private static Vector3 WhiteBalanceGain(LrPreset p)
         {
             float warmth = 0f;
@@ -170,11 +182,11 @@ public static class LrPresetApplier
             float tint = p.Get("Tint") / 100f * 0.3f;
             const float k = 0.5f;
             var g = new Vector3(MathF.Pow(2f, warmth * k), MathF.Pow(2f, -tint), MathF.Pow(2f, -warmth * k));
-            // Keep overall brightness: normalise so luma of white is unchanged.
+            // Normalised so white keeps its luma.
             return g / Luma(g);
         }
 
-        // Highlights/shadows/whites/blacks/contrast act on luma; colour follows by scaling.
+        // Tone sliders act on luma; colour follows by scaling.
         private Vector3 Tone(Vector3 c)
         {
             if (_contrast == 0 && _highlights == 0 && _shadows == 0 && _whites == 0 && _blacks == 0) return c;
@@ -216,7 +228,7 @@ public static class LrPresetApplier
             RgbToHsv(c, out float h, out float s, out float v);
             if (s < 1e-4f) return c;
 
-            // Linear interpolation of the two neighbouring band centres around the hue circle.
+            // Interpolate between the two neighbouring hue bands.
             int i1 = 0;
             for (int i = 0; i < 8; i++) if (BandHue[i] <= h) i1 = i;
             int i2 = (i1 + 1) % 8;

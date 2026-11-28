@@ -19,10 +19,7 @@ public enum AddOutcome { Added, Duplicate }
 
 public sealed record AddResult(AddOutcome Outcome, RecipeLibraryEntry Entry);
 
-/// <summary>
-/// The user's saved recipes. Pure in-memory logic plus a JSON file; the host picks the path (app data on every platform).
-/// A recipe that matches an existing one setting for setting is not stored twice, whatever it is called.
-/// </summary>
+/// <summary>Saved recipes in a JSON file. A recipe with identical settings is not stored twice.</summary>
 public sealed class RecipeLibrary
 {
     private const int FormatVersion = 1;
@@ -40,7 +37,7 @@ public sealed class RecipeLibrary
 
     public IReadOnlyList<RecipeLibraryEntry> Entries => _entries;
 
-    /// <summary>Loads from disk; a missing or unreadable file gives an empty library (never throws).</summary>
+    /// <summary>A missing or unreadable file gives an empty library.</summary>
     public static RecipeLibrary Load(string path)
     {
         var library = new RecipeLibrary(path);
@@ -52,12 +49,12 @@ public sealed class RecipeLibrary
         }
         catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
         {
-            // A damaged library file must not stop the app; the next save replaces it.
+            // A damaged file must not stop the app.
         }
         return library;
     }
 
-    /// <summary>Parses a bundled recipe list (a JSON array of entries); a damaged list gives an empty one.</summary>
+    /// <summary>Parses a bundled recipe list; a damaged one gives an empty list.</summary>
     public static IReadOnlyList<RecipeLibraryEntry> ParseEntries(string json)
     {
         try
@@ -70,7 +67,7 @@ public sealed class RecipeLibrary
         }
     }
 
-    /// <summary>The settings of a recipe without its labels, so equal looks compare equal.</summary>
+    /// <summary>The settings without labels, for comparison.</summary>
     public static FilmRecipe ContentKey(FilmRecipe recipe) =>
         recipe with { Source = RecipeSource.Manual, RecipeName = null, CameraMake = "", CameraModel = "" };
 
@@ -125,14 +122,14 @@ public sealed class RecipeLibrary
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-            // Write to a temp file first so a crash mid-save cannot leave a half-written library.
+            // Temp file first, so a crash cannot leave half a file.
             var temp = _path + ".tmp";
             File.WriteAllText(temp, JsonSerializer.Serialize(new FileDto(FormatVersion, _entries), Json));
             File.Move(temp, _path, overwrite: true);
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
         {
-            // Keep working in memory; the caller's UI is not the place for a disk-full error.
+            // Keep working in memory.
         }
     }
 }

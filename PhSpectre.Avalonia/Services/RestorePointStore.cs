@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,20 +9,17 @@ namespace PhSpectre.Avalonia.Services;
 
 internal sealed record RestorePointEntry(string Path, FujiSlotBackup Backup);
 
-/// <summary>
-/// Restore points: the raw contents of a camera slot saved to disk before anything is written to it,
-/// so a failed or unwanted write can be put back, even after the app was closed.
-/// </summary>
+/// <summary>Restore points: a camera slot's raw contents, saved to disk before anything is written to it.</summary>
 internal static class RestorePointStore
 {
-    // Pictures/PhSpectre/restore where the app can reach Pictures; Android keeps them private to the app.
+    // Pictures/PhSpectre/restore where reachable; private to the app on Android.
     public static string Folder => Path.Combine(
         OperatingSystem.IsAndroid()
             ? Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData)
             : Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
         "PhSpectre", "restore");
 
-    public static string DisplayFolder => OperatingSystem.IsAndroid() ? "App storage/restore" : "Pictures/PhSpectre/restore";
+    public static string DisplayFolder => OperatingSystem.IsAndroid() ? Loc.T("App storage/restore") : "Pictures/PhSpectre/restore";
 
     /// <summary>Saves a restore point and trims the oldest ones beyond <paramref name="keepLast"/> (0 keeps all).</summary>
     public static string Save(FujiSlotBackup backup, int keepLast)

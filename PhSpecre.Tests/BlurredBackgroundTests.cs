@@ -10,9 +10,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// Structural smoke tests for the useBlurredBackground option added to both card renderers —
-// this suite has no pixel-diffing tests anywhere else, so these only assert "doesn't throw,
-// produces a decodable image of the expected size" rather than checking exact pixels.
+// The tests only check that rendering with a blurred background produces an image of the expected size.
 public class BlurredBackgroundTests
 {
     private static Image<Rgb24> SolidImage(int w, int h, Color color)

@@ -8,7 +8,7 @@ using Material.Icons.Avalonia;
 
 namespace PhSpectre.Avalonia.Views;
 
-/// <summary>Square toolbar button with one icon (style class <c>icon-toolbar</c>). Set Width/Height for the hit area.</summary>
+/// <summary>Square toolbar button with one icon (class <c>icon-toolbar</c>).</summary>
 public class IconButton : Button
 {
     public static readonly StyledProperty<MaterialIconKind> IconProperty =
@@ -36,7 +36,7 @@ public class IconButton : Button
     private void Rebuild() => Content = new MaterialIcon { Kind = Icon, Width = IconSize, Height = IconSize };
 }
 
-/// <summary>Button with an optional leading icon and a caption. Pick the look with Classes (primary, cta, secondary, ghost).</summary>
+/// <summary>Button with an optional icon and a caption.</summary>
 public class ActionButton : Button
 {
     public static readonly StyledProperty<MaterialIconKind?> IconProperty =

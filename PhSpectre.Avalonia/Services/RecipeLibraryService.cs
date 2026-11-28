@@ -6,7 +6,7 @@ using global::Avalonia.Platform;
 
 namespace PhSpectre.Avalonia.Services;
 
-/// <summary>The saved-recipes file and the recipes that ship with the app.</summary>
+/// <summary>Saved recipes and the bundled ones.</summary>
 internal static class RecipeLibraryService
 {
     private static readonly Lazy<RecipeLibrary> UserLibrary = new(() => RecipeLibrary.Load(FilePath));

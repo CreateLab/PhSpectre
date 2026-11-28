@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.31.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\PhSpectre\PhSpectre.csproj" />
+    </ItemGroup>
+
+    <!-- MediaPipe Selfie Multiclass (Apache-2.0), converted to ONNX with float16 weights: see README.md here. -->
+    <ItemGroup>
+        <EmbeddedResource Include="Models\selfie_multiclass.fp16.onnx" LogicalName="selfie_multiclass.onnx" />
+    </ItemGroup>
+
+</Project>

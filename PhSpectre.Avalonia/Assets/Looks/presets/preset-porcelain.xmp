@@ -1,0 +1,8 @@
+<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:RDF>
+ <!-- Porcelain, made for PhSpectre (original work). SkinSmoothing is PhSpectre's own setting. -->
+ <rdf:Description rdf:about="" crs:Name="Porcelain" crs:Treatment="Color" crs:SkinSmoothing="70" crs:Sharpness="20" crs:Exposure2012="+0.2" crs:Contrast2012="-10" crs:Saturation="-12" crs:HueAdjustmentOrange="-6" crs:SaturationAdjustmentOrange="-18" crs:LuminanceAdjustmentOrange="16" crs:HueAdjustmentYellow="0" crs:SaturationAdjustmentYellow="-30" crs:LuminanceAdjustmentYellow="8" crs:ColorGradeShadowHue="228" crs:ColorGradeShadowSat="10" crs:ColorGradeHighlightHue="240" crs:ColorGradeHighlightSat="7">
+  <crs:ToneCurvePV2012><rdf:Seq><rdf:li>0, 11</rdf:li><rdf:li>64, 78</rdf:li><rdf:li>128, 146</rdf:li><rdf:li>192, 208</rdf:li><rdf:li>255, 255</rdf:li></rdf:Seq></crs:ToneCurvePV2012>
+ </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>

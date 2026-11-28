@@ -8,8 +8,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// Render-ready QR settings for one export, built by PaletteExportSettings.BuildQrRenderOptions once PhotoMetadata/FilmRecipe are known.
-// Caption is independent of Placement and of the encoded content; CaptionCamera/CaptionLens are the resolved strings, gated by Caption.
+// QR settings of one export, resolved from the metadata and recipe.
 public sealed record QrRenderOptions(
     QrPlacement Placement, string TargetUrl,
     QrCaption Caption = QrCaption.None,
@@ -21,15 +20,13 @@ public static class QrCodeRenderer
 {
     private const int QuietZoneModules = 4;
 
-    // Legibility floor at the final file resolution: below it, modules blur together under JPEG or resizing and the code stops scanning.
+    // Smallest module size at the final resolution that still scans after JPEG or resizing.
     private const int MinPxPerModule = 4;
 
-    // Suggested module-box size for a reference width. RenderModules may grow past it to meet MinPxPerModule;
-    // ComputeBelowBlockHeight predicts that size so the canvas is sized before drawing.
+    // Module size for a reference width; RenderModules may enlarge it to meet MinPxPerModule.
     public static int SuggestBoxSize(int referenceWidth) => Math.Clamp(referenceWidth / 6, 96, 320);
 
-    // Extra canvas height the Below block needs, computed up front. The caption is drawn beside the QR and adds no height.
-    // downscaleFactor: a later canvas-wide downscale (e.g. Half export = 2); the legibility floor is inflated by it so the final file stays scannable.
+    // Extra height of the Below block. downscaleFactor accounts for a later downscale of the whole canvas.
     public static int ComputeBelowBlockHeight(QrRenderOptions? qr, int qrBoxSize, int margin, int downscaleFactor = 1)
     {
         if (qr == null) return 0;
@@ -41,7 +38,7 @@ public static class QrCodeRenderer
     public static int PredictImageSize(QrRenderOptions qr, int qrBoxSize, int downscaleFactor = 1) =>
         PredictModuleImageSize(qr.TargetUrl, qrBoxSize, Ecc, downscaleFactor);
 
-    // Recommended error-correction level; Below has dedicated space, so no partial occlusion.
+    // Error correction level; the code has its own space.
     private const QrCode.Ecc Ecc = QrCode.Ecc.Low;
 
     // The module/pixel math RenderModules uses, without allocating, so layouts can be sized before drawing.
@@ -53,8 +50,7 @@ public static class QrCodeRenderer
         return px * modules;
     }
 
-    // Raw QR module image: black modules on a white quiet zone regardless of theme, since scanning needs real contrast.
-    // The background is a rounded rect with transparent corners, so the card shows through instead of a white corner.
+    // Black on white in any theme, with transparent rounded corners.
     private static Image<Rgba32> RenderModules(string url, int boxSize, QrCode.Ecc ecc, int downscaleFactor)
     {
         var qr = QrCode.EncodeText(url, ecc);
@@ -75,7 +71,7 @@ public static class QrCodeRenderer
         return img;
     }
 
-    // Truncate to one line with an ellipsis instead of wrapping mid-word; captions are short camera/lens names.
+    // Ellipsized to one line.
     private static string EllipsizeToWidth(string text, Font font, float maxWidth)
     {
         if (string.IsNullOrEmpty(text) || TextMeasurer.MeasureSize(text, new TextOptions(font)).Width <= maxWidth)
@@ -91,10 +87,8 @@ public static class QrCodeRenderer
         return ellipsis;
     }
 
-    // Dedicated card space below the photo: the opaque QR block at standard margin, optionally with a caption beside it.
-    // The code sits bottom-right with "SCAN FOR THE RECIPE" to its left, in a row shared with the camera plate.
-    // rowHeight is that row's height (default: QR plus margins), the code centered in it.
-    // Without a plate in the row (plateInRow = false) the Caption fills the left side.
+    // The QR bottom right with its label to the left, sharing the row with the camera plate; without a plate the
+    // caption fills the left.
     public static void DrawBelowBlock(
         IImageProcessingContext ctx, string url, int boxSize, int margin,
         int blockY, int blockWidth, QrCaption caption, string? captionCamera, string? captionLens,
@@ -142,8 +136,7 @@ public static class QrCodeRenderer
             return;
         }
 
-        // Two lines (camera bold/larger, lens lighter/smaller) so a long lens name never merges with the camera name;
-        // the block is centered on the QR chip's vertical midpoint.
+        // Two lines, centred on the QR.
         string lensLine = captionLens!; // twoLines already proved this non-null/non-empty
         var cameraFont = PaletteImageRenderer.ResolveSansFont(qrImg.Height * 0.22f, FontStyle.Bold);
         var lensFont = PaletteImageRenderer.ResolveSansFont(qrImg.Height * 0.15f);

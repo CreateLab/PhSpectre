@@ -11,8 +11,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// Renders a standalone film-recipe card: the photo (downscaled, rounded corners) on top, a grid of parameter plates below.
-// Reuses PaletteImageRenderer's enums and drawing helpers.
+// A recipe card: the photo above a grid of parameter plates.
 public static class RecipeCardRenderer
 {
     private const int CardWidth = 1200;
@@ -36,7 +35,8 @@ public static class RecipeCardRenderer
     {
         using var original = Image.Load<Rgb24>(sourceImagePath);
         original.Mutate(ctx => ctx.AutoOrient());
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride,
+            labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
         Save(canvas, outputPath, format);
     }
 
@@ -59,14 +59,15 @@ public static class RecipeCardRenderer
         MetaStyle metaStyle = MetaStyle.FilmStrip)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
+        using var canvas = BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride,
+            labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
         RenderPerfLog.OnStage?.Invoke("BuildCanvas total", sw.ElapsedMilliseconds);
         sw.Restart();
         Save(canvas, outputPath, format);
         RenderPerfLog.OnStage?.Invoke("Save/encode", sw.ElapsedMilliseconds);
     }
 
-    // In-memory variant: the live preview is the same composite Save recipe card exports. Caller owns disposal of the result.
+    // The same composite as Save recipe card; the caller disposes it.
     public static Image<Rgb24> RenderToImage(
         Image<Rgb24> original,
         FilmRecipe recipe,
@@ -81,7 +82,8 @@ public static class RecipeCardRenderer
         CompositionGuide compositionGuide = CompositionGuide.None,
         string? hiddenRecipeFields = null,
         MetaStyle metaStyle = MetaStyle.FilmStrip)
-        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale, useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
+        => BuildCanvas(original, recipe, theme, customBackground, metaVerbosity, metadataOverride, labelScale,
+            useBlurredBackground, qr, showRecipeCard, compositionGuide, hiddenRecipeFields, metaStyle);
 
     private static void Save(Image<Rgb24> canvas, string outputPath, OutputFormat format)
     {
@@ -109,8 +111,7 @@ public static class RecipeCardRenderer
         MetaStyle metaStyle = MetaStyle.FilmStrip)
     {
         var prepSw = System.Diagnostics.Stopwatch.StartNew();
-        // Independent of QR: unchecking "Show recipe card" drops the title and plate grid, leaving just the photo and QR block.
-        // The camera-info strip (metaVerbosity) is a separate toggle.
+        // showRecipeCard = false leaves only the photo and QR.
         var rows = showRecipeCard ? BuildRows(recipe, RecipeFields.ParseKeys(hiddenRecipeFields)) : [];
 
         // The camera plate is drawn only when metaVerbosity isn't Off; callers pass PaletteExportSettings.MetaVerbosity, already Off when the toggle is unchecked.
@@ -119,7 +120,7 @@ public static class RecipeCardRenderer
             : (metadataOverride ?? PaletteImageRenderer.ReadMetadata(original));
         int margin = PaletteImageRenderer.CardPadding(CardWidth);
 
-        // QR first: the camera plate shares the bottom row with the code, so it is fitted to the width the code leaves.
+        // QR first: the camera plate takes the remaining width.
         int qrBoxSize = QrCodeRenderer.SuggestBoxSize(CardWidth);
         int qrBelowH  = QrCodeRenderer.ComputeBelowBlockHeight(qr, qrBoxSize, margin);
         int qrImgSize = qr != null ? QrCodeRenderer.PredictImageSize(qr, qrBoxSize) : 0;
@@ -134,8 +135,7 @@ public static class RecipeCardRenderer
         bool plateInRow = plateBesideQr && metaLines.Length > 0;
         var text = PaletteImageRenderer.GetTextColor(theme, customBackground);
         var plateFill = theme == Theme.Light ? Color.ParseHex("EAEAEA") : Color.ParseHex("222222");
-        // Over a blurred backdrop a fully opaque plate reads as a harsh cutout, so it is blended in frosted-glass style.
-        // The color stays opaque here; the opacity is applied via DrawImage (ctx.Fill with a translucent color replaces pixels in this ImageSharp version).
+        // Frosted-glass plate over a blurred backdrop, blended with DrawImage (Fill would replace pixels).
         const float platesOpacityOnBlur = 0.4f;
 
         int photoH = Math.Max(1, (int)Math.Round(CardWidth * (double)original.Height / original.Width));
@@ -147,16 +147,13 @@ public static class RecipeCardRenderer
         var titleFont = PaletteImageRenderer.ResolveMetaFont(titleFs);
         int titleH = showRecipeCard ? (int)(titleFs * 1.8f) : 0;
 
-        // Grid geometry: as many columns as fit a comfortable plate width, wrapped into rows (a recipe has up to ~11 parameters).
-        const int targetPlateW = 260;
+        // As many columns as fit, wrapped into rows.
         int gap = margin / 2;
-        // Always 4 columns: the plate width comes from the full grid, so with fewer visible fields
-        // (or an incomplete last row) the plates keep their size instead of stretching across the card.
+        // Always 4 columns, so plates keep their size with fewer fields.
         const int cols = 4;
         int plateW = (CardWidth - 2 * margin - gap * (cols - 1)) / cols;
 
-        // A value can still be too wide for one line after RecipeValueAbbreviations.Shorten; when any value needs it,
-        // every plate gets height for a second line so the grid stays even.
+        // If any value needs two lines, every plate gets the height.
         var valueFontProbe = PaletteImageRenderer.ResolveMetaFont(titleFs * 0.5f);
         float wrapWidth = plateW * 0.88f;
         bool anyValueWraps = rows.Any(r =>
@@ -211,8 +208,7 @@ public static class RecipeCardRenderer
 
                     if (useBlurredBackground)
                     {
-                        // Paint the plate opaque on its own transparent canvas, then composite with DrawImage's opacity,
-                        // the blending path that alpha-composites correctly in this ImageSharp version (see ApplyRoundedCorners).
+                        // Painted opaque, then composited with DrawImage opacity, which blends correctly here.
                         using var plateImg = new Image<Rgba32>(plateW, plateH);
                         plateImg.Mutate(pc => pc.Fill(plateFill, PaletteImageRenderer.RoundedRectPath(0, 0, plateW, plateH, plateH * 0.12f)));
                         ctx.DrawImage(plateImg, new Point(x, y), platesOpacityOnBlur);
@@ -266,12 +262,11 @@ public static class RecipeCardRenderer
         return canvas;
     }
 
-    // Downscales the photo to cover (w, h) (crop-to-fill) and clips it to a rounded rect: paint through an ImageBrush onto a transparent canvas,
-    // restricted to the rounded path, so the card background shows through outside it.
+    // Cover-crop clipped to a rounded rectangle.
     private static Image<Rgba32> ApplyRoundedCorners(Image<Rgb24> source, int w, int h, float radius)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        // The default sampler (Bicubic) took ~2s on-device for this ~1.67x downscale; Box (as in ImageLoader.LoadWorkingCopy) looks the same and is far cheaper.
+        // Box: Bicubic took about 2 s on a phone and looks the same here.
         using var resized = source.Clone(ctx => ctx.Resize(new ResizeOptions
         {
             Size    = new Size(w, h),

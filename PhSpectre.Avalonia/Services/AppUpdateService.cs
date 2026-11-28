@@ -5,15 +5,13 @@ using PhSpectre.Services;
 
 namespace PhSpectre.Avalonia.Services;
 
-// Single source of truth for "is a newer release available", shared by the Desktop
-// toolbar banner and the Android Settings row so the check only runs once per launch.
-// App.axaml.cs kicks off CheckAsync() in the background right after the root view is
-// constructed; both platforms' ViewModels just read this singleton's properties.
+// Whether a newer release is available; shared by the desktop banner and the Android settings row, checked once per
+// launch.
 public sealed partial class AppUpdateService : ObservableObject
 {
     public static AppUpdateService Instance { get; } = new();
 
-    /// <summary>False in Google Play builds (set by the Android head); GitHub/desktop builds keep the check.</summary>
+    /// <summary>False in Google Play builds.</summary>
     public static bool Enabled { get; set; } = true;
 
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
@@ -28,11 +26,10 @@ public sealed partial class AppUpdateService : ObservableObject
 
     public async Task CheckAsync()
     {
-        // Store builds update through the store; no GitHub lookup (and no network use at all).
+        // Store builds update through the store and use no network.
         if (!Enabled) return;
 
-        // Dev builds have no meaningful version to compare against — skip silently
-        // rather than reporting every dev build as perpetually out of date.
+        // Dev builds have no version to compare.
         if (AppVersionInfo.Version is not { } currentVersion) return;
 
         var state = UpdateCheckStorage.Load();
@@ -51,13 +48,11 @@ public sealed partial class AppUpdateService : ObservableObject
             }
             else if (result.Status == UpdateStatus.UpToDate)
             {
-                // No update anymore (e.g. user upgraded some other way) — clear any
-                // stale "known newer version" so a dismissed-then-re-released version
-                // doesn't linger forever.
+                // Up to date: drop the remembered newer version.
                 state.LastKnownVersion = null;
                 state.LastKnownUrl = null;
             }
-            // Unknown (network/API failure) leaves the previous LastKnownVersion as-is.
+            // On failure keep the last known version.
 
             UpdateCheckStorage.Save(state);
         }

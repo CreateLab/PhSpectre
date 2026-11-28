@@ -1,8 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="PhSpectre.Avalonia.Views.NumberStepper">
-    <!-- Themed numeric field: big − / + buttons around a plain input; out-of-range or unparsable
-         input is highlighted with the range instead of being clamped silently. -->
+    <!-- Numeric field with − and + buttons; invalid input is highlighted, not clamped. -->
     <StackPanel Spacing="4">
         <Grid ColumnDefinitions="Auto,*,Auto" x:Name="Row">
             <Button Grid.Column="0" x:Name="MinusButton" Classes="ghost" Padding="0" CornerRadius="6"

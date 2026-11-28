@@ -2,9 +2,7 @@ using SixLabors.ImageSharp;
 
 namespace PhSpectre.Rendering;
 
-// Strict parser for the user-typed custom background color. Accepts only #RRGGBB / RRGGBB
-// (Color.TryParseHex alone also takes #RGB and #AARRGGBB, and anything else silently became
-// "no custom background" — the card quietly fell back to the theme with no feedback).
+// Accepts only #RRGGBB or RRGGBB: Color.TryParseHex takes other forms, and failures fell back silently.
 public static class HexColorInput
 {
     public static bool TryParse(string? text, out Color color)

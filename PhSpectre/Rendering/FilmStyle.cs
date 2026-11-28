@@ -3,8 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace PhSpectre.Rendering;
 
-// Where on the film edge a piece of data is printed. Each zone is a short single line, so the edge
-// never turns into a block of text. HoleGaps prints its tokens one by one in the gaps between sprocket holes.
+// Where data is printed; each zone is one short line.
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FilmZone { TopCenter, BottomLeft, BottomCenter, BottomRight, SideLeft, SideRight, HoleGaps, TopLeft, TopRight }
 
@@ -15,31 +14,27 @@ public enum FilmToken { FilmSim, Shutter, Aperture, Iso, Focal, ExposureBias, Co
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FilmPerforation { None, Sides, Rows }
 
-// Real stock the edge imitates. Free keeps the hand-set proportions; the others use true geometry and keep the
-// strip along the photo's long side (a landscape frame of a vertical strip is rotated, as on a real contact sheet).
+// Real stock to imitate; all but Free use true geometry.
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FilmGauge { Free, Mm135, Roll120, Mm135Half }
 
-// A film-edge frame: the canvas grows around the photo, the edge gets optional sprocket holes, and shot data is
-// printed per zone. All sizes are percent of the photo's short side, so a preview and an export look the same.
-// The photo is composited as-is; only its four corners are trimmed when CornerPercent > 0.
+// A film-edge frame. Sizes are percent of the photo's short side.
 public sealed record FilmStyle
 {
     public const float MaxMarginPercent = 35f;
     public const float MaxCornerPercent = 4f;
 
-    // 135 (35 mm, KS perforations, ISO 491 / SMPTE ST 139), in mm. The frame is 36 x 24, so the strip is 11 mm
-    // wider than the picture: 5.5 mm each side, with the holes ~0.35 mm off the picture (long side across the strip). Frames sit 2 mm apart.
+    // 135 in mm: 36 x 24 frame, 5.5 mm rebate each side, 2 mm between frames (ISO 491, SMPTE ST 139).
     public const float Mm135Across = 5.5f, Mm135HoleEdge = 2.36f, Mm135HoleAcross = 2.794f, Mm135HoleAlong = 1.981f,
         Mm135Pitch = 4.75f, Mm135Frame = 24f, Mm135Gap = 2f, HalfFrameShort = 18f;
-    // 120 roll: ~61 mm film, 56 mm picture (6x6 / 6x9), no holes; about 2.5 mm of rebate each side and ~5 mm between frames.
+    // 120: 56 mm picture, about 2.5 mm rebate, 5 mm between frames, no holes.
     public const float Roll120Across = 2.5f, Roll120Frame = 56f, Roll120Gap = 5f;
 
     /// <summary>Margin (percent of the picture's short side) across the strip and between frames for a gauge.</summary>
     public static (float Across, float Along) GaugeMargins(FilmGauge g) => g switch
     {
         FilmGauge.Mm135 => (Mm135Across / Mm135Frame * 100f, Mm135Gap / 2 / Mm135Frame * 100f),
-        // Half-frame: 18 x 24 mm picture, the 24 mm side across the film, so percent of the short (18 mm) side.
+        // Half-frame: 18 x 24 mm, the 24 mm side across the film.
         FilmGauge.Mm135Half => (Mm135Across / HalfFrameShort * 100f, Mm135Gap / 2 / 2 / HalfFrameShort * 100f),
         FilmGauge.Roll120 => (Roll120Across / Roll120Frame * 100f, Roll120Gap / 2 / Roll120Frame * 100f),
         _ => (0f, 0f)
@@ -69,7 +64,7 @@ public sealed record FilmStyle
     public string CustomText { get; init; } = "";
     // Film feel, 0..100: grain, uneven light, vignette, soft/irregular sprocket holes, slightly inked text.
     public float Realism { get; init; }
-    // Dust specks and hair-line scratches on the edge, 0..100.
+    // Dust and scratches, 0..100.
     public float Dust { get; init; }
     // Radius of the photo's corners, percent of the short side (0..4).
     public float CornerPercent { get; init; }
@@ -85,8 +80,8 @@ public sealed record FilmStyle
         Realism = realism, Dust = dust, CornerPercent = corner, Zones = zones, Gauge = gauge
     };
 
-    // Presets are looks of the edge only. The name printed on it is never made up: FilmSim prints the applied
-    // Look (LUT / preset) or, without one, the film simulation read from the photo, and nothing when neither exists.
+    // Presets only style the edge. FilmSim prints the applied Look or the photo's film simulation, never an
+    // invented name.
     private const FilmToken Look = FilmToken.FilmSim, Sh = FilmToken.Shutter, Ap = FilmToken.Aperture, Iso = FilmToken.Iso,
         Ev = FilmToken.ExposureBias, Fn = FilmToken.FrameNumber;
 
@@ -103,7 +98,7 @@ public sealed record FilmStyle
         // Cine edge: orange backlit marks, name and frame number up the sides, sprockets on both.
         Edge("film-cine", "Cine amber", "#16100C", "#000000", "#FFB020", 22.92f, 4.17f, 4.17f, FilmPerforation.Sides, true, 60, 35, 1.2f,
             new() { [FilmZone.SideLeft] = [Look, Iso], [FilmZone.SideRight] = [Fn], [FilmZone.TopCenter] = [Sh, Ap], [FilmZone.BottomCenter] = [Sh, Ap] }, FilmGauge.Mm135),
-        // Slide / reversal strip: thick black edge, big white sprockets, name top-left, frame numbers right and a short code.
+        // Slide strip: thick black edge, large white sprockets.
         Edge("film-slide", "Slide strip", "#0B0B0B", "#FFFFFF", "#F2A93B", 4.17f, 22.92f, 22.92f, FilmPerforation.Rows, false, 55, 35, 0,
             new() { [FilmZone.TopLeft] = [Look], [FilmZone.TopRight] = [Fn], [FilmZone.BottomLeft] = [FilmToken.FrameNumberA], [FilmZone.BottomRight] = [Fn] }, FilmGauge.Mm135),
         // Half-frame (18 x 24): the film runs along the short side, so the 24 mm side lies across the strip.
@@ -122,7 +117,7 @@ public sealed record FilmStyle
             new() { [FilmZone.SideLeft] = [Look], [FilmZone.SideRight] = [Fn], [FilmZone.BottomCenter] = [Iso, Sh] }, FilmGauge.Roll120),
     ];
 
-    // Out-of-range values are clamped rather than rejected, so a hand-edited or old saved style still renders.
+    // Clamped, so old or hand-edited styles still render.
     public FilmStyle Normalized() => this with
     {
         SidePercent = Clamp(SidePercent, MaxMarginPercent), TopPercent = Clamp(TopPercent, MaxMarginPercent),
@@ -135,7 +130,7 @@ public sealed record FilmStyle
     private static float Clamp(float v, float max) => Math.Clamp(float.IsFinite(v) ? v : 0f, 0f, max);
 }
 
-// Saved custom film styles: one JSON file, kept apart from the built-ins (which live in code).
+// Saved custom film styles, one JSON file.
 public sealed class FilmStyleStore
 {
     private readonly string _path;

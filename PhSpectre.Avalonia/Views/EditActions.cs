@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -16,14 +17,14 @@ public static class EditActions
         if (top == null) return;
         var files = await top.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import LUTs and presets",
+            Title = Loc.T("Import LUTs and presets"),
             AllowMultiple = true,
-            FileTypeFilter = [new FilePickerFileType("LUTs, presets, archives") { Patterns = ["*.cube", "*.xmp", "*.zip"] }]
+            FileTypeFilter = [new FilePickerFileType(Loc.T("LUTs, presets, archives")) { Patterns = ["*.cube", "*.xmp", "*.zip"] }]
         });
         // Mobile pickers hand back content URIs without a filesystem path; those are skipped here.
         var paths = files.Select(f => f.TryGetLocalPath()).Where(p => p != null).Cast<string>().ToList();
         if (paths.Count > 0) vm.Import(paths);
-        else if (files.Count > 0) vm.ImportStatus = "This platform can't import from that location yet.";
+        else if (files.Count > 0) vm.ImportStatus = Loc.T("This platform can't import from that location yet.");
     }
 
     public static async Task ExportAllAsync(TopLevel? top, ProcessViewModel vm)

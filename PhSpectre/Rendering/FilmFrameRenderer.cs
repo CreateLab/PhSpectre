@@ -8,19 +8,14 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Rendering;
 
-// Draws a FilmStyle around a photo. The edge, the sprocket holes, the per-zone data and the "film feel"
-// (grain, uneven light, dust) are all drawn BEFORE the photo, so the photo's pixels are composited as-is;
-// only its four corners are trimmed when the style asks for rounded corners.
-//
-// Everything random is seeded by the frame number and positioned relative to the canvas, so the live
-// preview and the full-size export of the same frame look the same.
+// Draws a FilmStyle around a photo. Everything is drawn before the photo, which stays untouched except for rounded
+// corners. Randomness is seeded by the frame number, so preview and export match.
 public static class FilmFrameRenderer
 {
-    // Sprocket holes take this share of a margin (the part next to the photo); text uses the rest.
+    // Share of a margin taken by sprocket holes.
     private const float HoleLane = 0.66f;
 
-    // A real strip runs along the long side of the picture, so a vertical-strip style is turned a quarter for a landscape photo (and vice versa):
-    // the photo is turned, framed, and turned back. Half-frame is the exception: its strip runs along the short side (18 mm).
+    // A strip runs along the long side: turn the photo, frame it, turn back. Half-frame runs along the short side.
     private static bool NeedsTurn(FilmStyle s, int w, int h) =>
         s.Gauge != FilmGauge.Free && w != h && s.VerticalStrip == (s.Gauge == FilmGauge.Mm135Half ? h > w : w > h);
 
@@ -29,7 +24,6 @@ public static class FilmFrameRenderer
         var s = style.Normalized();
         if (NeedsTurn(s, photoW, photoH))
         {
-            // Framed as (photoH x photoW), then the whole canvas turned 90 degrees clockwise.
             var (cw, ch, x, y) = LayoutCore(s, photoH, photoW);
             return (ch, cw, ch - y - photoW, x);
         }
@@ -45,8 +39,7 @@ public static class FilmFrameRenderer
         return (photoW + 2 * side, photoH + top + bottom, side, top);
     }
 
-    // The text printed for a token, or "" when there is nothing real to print. FilmSim is the applied Look's name or else the film simulation from the photo, never an invented name.
-    // frameLabel: text for the frame number; when null the plain frameNumber is used (0 prints nothing).
+    // Text for a token, or "" when there is nothing real to print.
     public static string TokenText(FilmToken token, PaletteImageRenderer.PhotoMetadata? m, int frameNumber, string custom,
         string? lookName = null, string? frameLabel = null) => token switch
     {
@@ -80,8 +73,7 @@ public static class FilmFrameRenderer
         string? lookName = null, string? frameLabel = null) =>
         string.Join("  ", ZoneTokens(style, zone, m, frameNumber, lookName, frameLabel));
 
-    // lookName: the applied Look, printed by the FilmSim token ahead of the photo's own film simulation.
-    // frameNumber also seeds dust/grain; frameLabel (when not null) is what the frame-number tokens print.
+    // frameNumber also seeds dust and grain; frameLabel, when set, is what gets printed.
     public static Image<Rgb24> Render(Image<Rgb24> photo, FilmStyle style, PaletteImageRenderer.PhotoMetadata? meta, int frameNumber = 1,
         string? lookName = null, string? frameLabel = null)
     {
@@ -111,7 +103,6 @@ public static class FilmFrameRenderer
         var canvas = new Image<Rgb24>(w, h, edge.ToPixel<Rgb24>());
         var gapTokens = ZoneTokens(s, FilmZone.HoleGaps, meta, frameNumber, lookName, frameLabel);
 
-        // Sprocket holes (and the lane left for text next to them).
         bool sideHoles = s.Perforation == FilmPerforation.Sides && side > 0;
         bool rowHoles = s.Perforation == FilmPerforation.Rows;
         bool hasGaps = gapTokens.Count > 0;
@@ -142,11 +133,11 @@ public static class FilmFrameRenderer
         Draw(FilmZone.BottomLeft, inset, bottomCy, bottomLane, zoneW, 0);
         Draw(FilmZone.BottomCenter, w / 2f, bottomCy, bottomLane, zoneW, 0);
         Draw(FilmZone.BottomRight, w - inset, bottomCy, bottomLane, zoneW, 0);
-        // Sides read bottom-to-top on the left and top-to-bottom on the right, like printed edge marks.
+        // Side text reads like printed edge marks.
         Draw(FilmZone.SideLeft, sideLane / 2, h / 2f, sideLane, h * 0.7f, 270);
         Draw(FilmZone.SideRight, w - sideLane / 2, h / 2f, sideLane, h * 0.7f, 90);
 
-        // Data between the sprocket holes: one value per gap, spread along the strip.
+        // One value per gap between holes.
         if (hasGaps && gapRun is { Count: > 1 } run)
         {
             int gaps = run.Count - 1, n = gapTokens.Count;
@@ -164,7 +155,6 @@ public static class FilmFrameRenderer
         if (real > 0) Texture(canvas, photoRect, real, frameNumber);
         if (s.Dust > 0) Dust(canvas, shortSide, s.Dust / 100f, edge, rng);
 
-        // The photo goes on last (untouched); rounded corners restore the edge underneath the trimmed pixels.
         int r = Math.Clamp((int)Math.Round(shortSide * s.CornerPercent / 100f), 0, Math.Min(photo.Width, photo.Height) / 4);
         var saved = r > 1 ? SaveCorners(canvas, photoRect, r) : null;
         canvas.Mutate(m => m.DrawImage(photo, new Point(px, py), 1f));
@@ -175,11 +165,10 @@ public static class FilmFrameRenderer
         {
             var t = ZoneText(s, zone, meta, frameNumber, lookName, frameLabel);
             if (t.Length == 0 || lane < 4f) return;
-            // A name (Look / film simulation) is the one bold, large line on the strip beyond the sprockets;
-            // everything else stays small, like the short codes printed on real stock.
+            // The Look or film simulation name is large and bold; the rest stays small.
             bool name = s.Zones.TryGetValue(zone, out var toks) && toks.Count > 0
                 && toks[0] is FilmToken.FilmSim or FilmToken.FrameNumber or FilmToken.FrameNumberA;
-            // Corner zones hug the edge (left-aligned on the left, right-aligned on the right); the rest is centred.
+            // Corner zones hug the edge, others are centred.
             int align = zone is FilmZone.TopLeft or FilmZone.BottomLeft ? -1 : zone is FilmZone.TopRight or FilmZone.BottomRight ? 1 : 0;
             DrawText(canvas, t, text, s.Glow, real, cx, cy, lane * (name ? 0.78f : 0.55f), maxLen, rotation, bold: name, align: align);
         }
@@ -213,7 +202,7 @@ public static class FilmFrameRenderer
         if (rotation == 90) layer.Mutate(c => c.Rotate(RotateMode.Rotate90));
         else if (rotation == 270) layer.Mutate(c => c.Rotate(RotateMode.Rotate270));
 
-        // align -1/+1 anchors the text's left/right end at cx instead of centring it (the layer has `pad` of air around the text).
+        // align -1 or +1 anchors that end of the text at cx.
         float left = align < 0 ? cx - pad : align > 0 ? cx - layer.Width + pad : cx - layer.Width / 2f;
         var at = new Point((int)Math.Round(left), (int)Math.Round(cy - layer.Height / 2f));
         if (glow)
@@ -225,11 +214,10 @@ public static class FilmFrameRenderer
         canvas.Mutate(c => c.DrawImage(layer, at, 1f));
     }
 
-    // Where a run of sprocket holes sits: positions along the strip, so data can be printed in the gaps.
+    // Hole positions, so data can go in the gaps.
     private sealed record HoleRun(bool Vertical, float Start, float Pitch, int Count, float Center, float Lane, float HoleLength);
 
-    // A row/column of rounded-rectangle holes along a margin, next to the photo. `mirror` puts the lane on the
-    // far side (right column / bottom row). With data in the gaps the holes are spread further apart.
+    // Rounded holes along a margin; mirror puts the lane on the far side.
     private static HoleRun DrawHoleRun(Image<Rgb24> canvas, Color hole, bool vertical, int margin, int origin, int length,
         bool hasGaps, float real, Random rng, bool mirror, bool real135)
     {
@@ -238,20 +226,18 @@ public static class FilmFrameRenderer
         // Hole across the margin (thickness) and along it (len).
         float thick = lane * 0.86f, along = thick * 0.72f;
         float pitch = thick * 1.2f * (hasGaps ? 3.4f : 1.5f);
-        // The lane hugs the photo: inner edge of a left/top margin, near edge of a right/bottom one.
+        // The lane hugs the photo.
         float center = mirror ? origin + lane / 2f : origin + margin - lane / 2f;
         if (real135)
         {
-            // True KS perforation: the margin is 5.5 mm, so one mm is margin / 5.5 pixels. Holes sit 2.01 mm in from
-            // the film edge (the outer edge is the origin of a left/top margin and the far end of a right/bottom one).
+            // KS perforation: the 5.5 mm margin gives the mm scale; holes start 2.01 mm from the film edge.
             float mm = margin / FilmStyle.Mm135Across;
             thick = FilmStyle.Mm135HoleAcross * mm; along = FilmStyle.Mm135HoleAlong * mm; pitch = FilmStyle.Mm135Pitch * mm;
             lane = thick * 1.3f;
             float fromEdge = (FilmStyle.Mm135HoleEdge + FilmStyle.Mm135HoleAcross / 2) * mm;
             center = mirror ? origin + margin - fromEdge : origin + fromEdge;
         }
-        // The row is centred, then carried on to both ends of the strip: the outermost holes are cut by the edge of
-        // the canvas, as on a real strip, instead of leaving bare corners.
+        // Holes continue past both ends, cut by the canvas like on a real strip.
         int whole = Math.Max(0, (int)((length - along) / pitch));
         float centred = whole > 0 ? (length - (whole - 1) * pitch) / 2f : length / 2f;
         int first = (int)Math.Floor(-(centred + along / 2) / pitch) + 1;
@@ -263,7 +249,7 @@ public static class FilmFrameRenderer
         {
             for (int i = 0; i < n; i++)
             {
-                // Real stock isn't perfectly regular: a little wobble in size and position.
+                // Slight irregularity.
                 float jw = 1 + (float)(rng.NextDouble() - 0.5) * 0.10f * real, jh = 1 + (float)(rng.NextDouble() - 0.5) * 0.10f * real;
                 float jp = (float)(rng.NextDouble() - 0.5) * 0.06f * real * pitch, jc = (float)(rng.NextDouble() - 0.5) * 0.08f * thick * real;
                 float a = along * jw, t = thick * jh, pos = start + i * pitch + jp, cen = center + jc;
@@ -271,7 +257,7 @@ public static class FilmFrameRenderer
                     ? RoundedRect(cen - t / 2, pos - a / 2, t, a, t * 0.26f)
                     : RoundedRect(pos - a / 2, cen - t / 2, a, t, t * 0.26f);
                 c.Fill(hole, path);
-                // Light leaking round a punched hole leaves a faint rim.
+                // Faint light leak around a hole.
                 if (real > 0) c.Draw(rim, Math.Max(0.8f, t * 0.04f), path);
             }
         });
@@ -289,8 +275,7 @@ public static class FilmFrameRenderer
         return new HoleRun(vertical, start, pitch, n, center, lane, along);
     }
 
-    // Film feel over the edge only (the photo area is skipped): grain, slow uneven light and a vignette.
-    // One pass over the pixels with a coarse random grid sampled bilinearly for the uneven light.
+    // Grain, uneven light and vignette on the edge only.
     private static void Texture(Image<Rgb24> img, Rectangle skip, float real, int seed)
     {
         int w = img.Width, h = img.Height;
@@ -337,7 +322,7 @@ public static class FilmFrameRenderer
 
     private static byte ToByte(float v) => v <= 0 ? (byte)0 : v >= 255 ? (byte)255 : (byte)v;
 
-    // Dust specks and hair-line scratches, in the colour that shows against the edge.
+    // Dust and scratches.
     private static void Dust(Image<Rgb24> canvas, int shortSide, float amount, Color edge, Random rng)
     {
         int w = canvas.Width, h = canvas.Height;
@@ -385,7 +370,7 @@ public static class FilmFrameRenderer
     private static Point[] CornerOrigins(Rectangle p, int r) =>
         [new(p.Left, p.Top), new(p.Right - r, p.Top), new(p.Left, p.Bottom - r), new(p.Right - r, p.Bottom - r)];
 
-    // Blends the saved edge back in outside each corner arc (anti-aliased), leaving the rest of the photo as it was.
+    // Restores the edge outside each corner arc.
     private static void RestoreCorners(Image<Rgb24> img, Rectangle p, int r, Rgb24[][] saved)
     {
         var origins = CornerOrigins(p, r);

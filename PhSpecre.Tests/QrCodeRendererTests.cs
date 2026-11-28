@@ -11,9 +11,7 @@ using Xunit;
 
 namespace PhSpecre.Tests;
 
-// Structural smoke tests for QrCodeRenderer's integration into both card renderers — same
-// "doesn't throw, produces a decodable image of the expected size" style as
-// BlurredBackgroundTests, plus a check that the Below block actually grows the canvas.
+// Smoke tests for the QR code inside both card renderers.
 public class QrCodeRendererTests
 {
 
@@ -97,12 +95,8 @@ public class QrCodeRendererTests
         }
     }
 
-    // Regression for the v2 bugfix pass §1/§3: "Below" must land immediately after the
-    // photo/swatches, before any text plate (metadata strip / recipe plates) — not at the very
-    // bottom of the whole composition, which is where it used to end up. Dark theme is used
-    // deliberately: the QR's own pixels always render white-on-black-modules regardless of
-    // theme, so a near-white pixel right after the photo/swatch band is unambiguous evidence
-    // the QR (not a dark strip/plate) occupies that band.
+    // "Below" goes right after the photo and swatches, before any text plate. The dark theme makes the white QR
+    // chip unambiguous.
     [Fact]
     public void PaletteImageRenderer_Qr_BelowPlacement_SitsRightAfterSwatchesNotAfterFilmStrip()
     {
@@ -124,12 +118,7 @@ public class QrCodeRendererTests
             int margin = Math.Max(10, photo.Width / 80);
             int qrBlockY = photo.Height + panelH;
 
-            // Offset 27px into the quiet zone rather than 3 — the QR chip's white background is
-            // now a rounded rect (v-final spec §3), which clips a few px right at the corner;
-            // 27px clears the largest possible corner radius (24px, see QrCodeRenderer's
-            // chipRadius) while still landing well inside the >=32px-wide quiet zone.
-            // Cards board: the code sits bottom-right in the row below the swatches, sharing it with
-            // the camera plate on the left.
+            // 27 px into the quiet zone clears the chip's rounded corner (up to 24 px).
             Assert.True(HasNearWhiteInColumn(result, result.Width - margin - 27, qrBlockY, result.Height),
                 "expected the QR quiet zone at the bottom-right, below the photo/swatches");
         }
@@ -169,7 +158,6 @@ public class QrCodeRendererTests
             int photoH = (int)Math.Round(cardWidth * (double)photo.Height / photo.Width);
             int margin = Math.Max(12, (int)Math.Round(cardWidth * 0.025)); // mirrors PaletteImageRenderer.CardPadding
 
-            // See the sibling PaletteImageRenderer test above for why this is 27px, not 3.
             Assert.True(HasNearWhiteInColumn(result, result.Width - margin - 27, photoH, result.Height),
                 "expected the QR quiet zone at the bottom-right of the card");
         }
@@ -179,11 +167,7 @@ public class QrCodeRendererTests
         }
     }
 
-    // Regression for the v2 bugfix pass §4: a long payload + high error correction used to
-    // produce enough modules that, at a merely proportional box size, each module rounded down
-    // to 2-3px — invisible/unscannable after any JPEG compression or resize. The below-block
-    // sizing (and, by construction, RenderModules itself, since ComputeBelowBlockHeight predicts
-    // exactly what it draws) must never let a module go below the legibility floor.
+    // A long payload with high error correction must not shrink modules below the legible size.
     [Fact]
     public void ComputeBelowBlockHeight_LongUrl_KeepsModulesAtLeastMinPixelFloor()
     {
@@ -202,9 +186,7 @@ public class QrCodeRendererTests
         Assert.True(pxPerModule >= 4, $"expected >=4px/module, got {pxPerModule}");
     }
 
-    // A later canvas-wide downscale (Settings' "Export size: Half") must inflate the reserved
-    // block so the module size survives that downscale — otherwise a QR that was legible in
-    // the pre-downscale canvas becomes unscannable in the actually-saved file.
+    // An export downscale must not shrink the QR below the legible size.
     [Fact]
     public void ComputeBelowBlockHeight_WithDownscaleFactor_InflatesReservedHeight()
     {

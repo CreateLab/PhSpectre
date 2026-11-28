@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -17,7 +18,7 @@ namespace PhSpectre.Avalonia.ViewModels;
 
 public enum RecipeSourceKind { Photo, Saved, Popular, Custom }
 
-/// <summary>One line in the recipe list: a photo (with the recipe read from it), a saved recipe or a popular one.</summary>
+/// <summary>A row of the recipe list: from a photo, saved or popular.</summary>
 public sealed partial class RecipeRow(
     RecipeSourceKind kind, string title, string subtitle, FilmRecipe? recipe, RecipeLibraryViewModel owner,
     string? author = null, string? sourceUrl = null, RecipeOrigin origin = RecipeOrigin.Bundled, string? entryId = null,
@@ -73,11 +74,7 @@ public sealed record ParamTile(string Label, string Value, bool IsMuted)
     public double Opacity => IsMuted ? 0.45 : 1.0;
 }
 
-/// <summary>
-/// The left and middle columns of the Camera mode: where the recipe comes from (this photo, saved, popular), the list
-/// with search, chips and groups, and the selected recipe shown in full. Selecting a row is the only step to choose a
-/// recipe; the star keeps it in Saved.
-/// </summary>
+/// <summary>The left and middle columns of the Camera mode: recipe source, list with search and chips, selected recipe.</summary>
 public sealed partial class RecipeLibraryViewModel : ObservableObject
 {
 
@@ -88,7 +85,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         _settings = settings;
     }
 
-    // ── Approximate preview of the selected recipe on the bundled flat (log-like) sample photo ──
+    // Approximate preview of the recipe on the bundled flat sample photo
     [ObservableProperty] private global::Avalonia.Media.Imaging.Bitmap? _previewImage;
     public bool HasPreview => PreviewImage != null;
     partial void OnPreviewImageChanged(global::Avalonia.Media.Imaging.Bitmap? value) => OnPropertyChanged(nameof(HasPreview));
@@ -152,17 +149,16 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
     public bool ShowPhotoFilter => IsPhotoSource && HasPhotos;
     public bool ShowChips => !IsPhotoSource;
     public string NoSelectionText => IsPhotoSource && Selected is { Kind: RecipeSourceKind.Photo, HasRecipe: false }
-        ? "This photo has no recipe. Pick one from Saved or Popular, or enter it by hand."
-        : "Pick a recipe on the left";
+        ? Loc.T("This photo has no recipe. Pick one from Saved or Popular, or enter it by hand.")
+        : Loc.T("Pick a recipe on the left");
     public bool SelectedIsPhoto => Selected is { Kind: RecipeSourceKind.Photo, HasRecipe: true };
     public FileEntry? SelectedPhoto => Selected?.Photo;
     public string SelectedFileName => Selected?.Photo?.FileName ?? "";
-    public string SavedTabText => $"Saved · {RecipeLibraryService.User.Entries.Count}";
+    public string SavedTabText => Loc.F("saved-tab::Saved · {0}", RecipeLibraryService.User.Entries.Count);
     public bool ShowSavedHelp => IsSavedSource && RecipeLibraryService.User.Entries.Count == 0;
     public bool ShowNoMatches => !IsPhotoSource && !ShowSavedHelp && Groups.Count == 0;
     public bool ShowCredit => IsPopularSource;
 
-    // ── selection ────────────────────────────────────────────────────────────────────────
     public bool HasSelection => Selected?.Recipe != null;
     public bool NoSelection => !HasSelection;
     public FilmRecipe? SelectedRecipe => Selected?.Recipe;
@@ -173,12 +169,12 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         {
             if (Selected is not { } row) return "";
             var film = row.Recipe?.FilmSimulation ?? "";
-            return row.Author is { Length: > 0 } a ? $"{film} · by {a}" : film;
+            return row.Author is { Length: > 0 } a ? Loc.F("{0} · by {1}", film, a) : film;
         }
     }
     public bool HasSource => !string.IsNullOrEmpty(Selected?.SourceUrl);
     public bool SelectedStarred => Selected?.IsStarred ?? false;
-    public string SaveButtonText => SelectedStarred ? "Saved" : "Save";
+    public string SaveButtonText => SelectedStarred ? Loc.T("Saved") : Loc.T("Save");
     public bool HasMutedTiles => Tiles.Any(t => t.IsMuted);
     public string MutedText
     {
@@ -188,14 +184,14 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
             return names.Count switch
             {
                 0 => "",
-                1 => $"{names[0]} is not stored in slots on this camera. It will be skipped.",
-                _ => $"{string.Join(", ", names)} are not stored in slots on this camera. They will be skipped.",
+                1 => Loc.F("{0} is not stored in slots on this camera. It will be skipped.", names[0]),
+                _ => Loc.F("{0} are not stored in slots on this camera. They will be skipped.", string.Join(", ", names)),
             };
         }
     }
-    public string ChooseButtonText => HasSelection ? "Use this recipe" : "Choose a recipe";
+    public string ChooseButtonText => HasSelection ? Loc.T("Use this recipe") : Loc.T("Choose a recipe");
     public bool ShowRecipeStep => !IsNarrow || PhoneStep == 0;
-    // ── what the screen shows: connecting, browsing without a camera, or everything ──────
+    // Screen state: connecting, browsing without a camera, or everything
     [ObservableProperty] private bool _browsing;
 
     private bool Connected => _settings.Camera.IsTabConnected;
@@ -293,7 +289,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
             foreach (var f in RecipeFields.BuildAll(recipe))
             {
                 var muted = profile != null && FujiSlotEncoder.Encode(Without(recipe, f.Key), profile).Skipped.Count < baseline;
-                Tiles.Add(new ParamTile(f.FullLabel, f.Value, muted));
+                Tiles.Add(new ParamTile(Loc.T(f.FullLabel), f.Value, muted));
             }
         }
         OnPropertyChanged(nameof(HasMutedTiles));
@@ -318,7 +314,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         _ => r,
     };
 
-    // ── photos: the same current photo as in Card / Recipe / Collage ─────────────────────
+    // Photos: the current photo is shared with the other modes
     private static readonly Dictionary<string, FilmRecipe?> RecipeCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, RecipeRow> _photoRowsByPath = new(StringComparer.OrdinalIgnoreCase);
     private System.Collections.Specialized.INotifyCollectionChanged? _watchedPhotos;
@@ -358,8 +354,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
     [RelayCommand]
     private void ToggleOnlyWithRecipe() => OnlyWithRecipe = !OnlyWithRecipe;
 
-    // ── entering the mode / the photo changed ────────────────────────────────────────────
-    /// <summary>Called when the Camera mode opens: the current photo's recipe is chosen without any click.</summary>
+    /// <summary>Called when the Camera mode opens: picks the current photo's recipe.</summary>
     public void Enter()
     {
         Browsing = false;
@@ -389,7 +384,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         if (current != null && _photoRowsByPath.TryGetValue(current.FullPath, out var row))
         {
             row.Recipe = _settings.DetectedRecipe;
-            row.Subtitle = row.Recipe == null ? "No recipe" : Brief(row.Recipe);
+            row.Subtitle = row.Recipe == null ? Loc.T("No recipe") : Brief(row.Recipe);
         }
         if (IsPhotoSource || Selected?.Kind == RecipeSourceKind.Photo) SyncCurrentPhotoRow();
         RaiseSelection();
@@ -434,13 +429,13 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
             if (!_photoRowsByPath.TryGetValue(photo.FullPath, out var row))
             {
                 var known = RecipeCache.TryGetValue(photo.FullPath, out var cached);
-                row = new RecipeRow(RecipeSourceKind.Photo, photo.FileName, !known ? "…" : cached == null ? "No recipe" : Brief(cached),
+                row = new RecipeRow(RecipeSourceKind.Photo, photo.FileName, !known ? "…" : cached == null ? Loc.T("No recipe") : Brief(cached),
                     known ? cached : null, this, origin: RecipeOrigin.FromImage, photo: photo);
                 _photoRowsByPath[photo.FullPath] = row;
             }
             if (q.Length > 0 && !row.Title.Contains(q, StringComparison.OrdinalIgnoreCase)) continue;
-            // A photo whose recipe is still being read stays in the list; it drops out once known to have none.
-            if (OnlyWithRecipe && row.Subtitle == "No recipe") continue;
+            // A photo stays listed until it is known to have no recipe.
+            if (OnlyWithRecipe && row.Subtitle == Loc.T("No recipe")) continue;
             PhotoRows.Add(row);
         }
         foreach (var gone in _photoRowsByPath.Keys.Where(k => !live.Contains(k)).ToList()) _photoRowsByPath.Remove(gone);
@@ -458,7 +453,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         if (_settings.IsCameraMode && IsPhotoSource) global::Avalonia.Threading.Dispatcher.UIThread.Post(RebuildPhotos);
     }
 
-    // Recipes are read lazily, a few at a time, and cached for the session.
+    // Read lazily, a few at a time, cached for the session.
     private async Task LoadRecipesAsync(int version)
     {
         var pending = _photoRowsByPath.Values.Where(r => r.Photo != null && !RecipeCache.ContainsKey(r.Photo.FullPath)).ToList();
@@ -475,13 +470,13 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
             {
                 RecipeCache[row.Photo!.FullPath] = recipe;
                 row.Recipe = recipe;
-                row.Subtitle = recipe == null ? "No recipe" : Brief(recipe);
+                row.Subtitle = recipe == null ? Loc.T("No recipe") : Brief(recipe);
             }
         }
         if (OnlyWithRecipe && pending.Count > 0) RebuildPhotos();
     }
 
-    // ── naming, editing by hand, clipboard ───────────────────────────────────────────────
+    // Naming, manual editing, clipboard
     private static readonly System.Text.Json.JsonSerializerOptions ClipboardJson = new() { WriteIndented = true };
 
     public bool IsNameEditable => Selected is { } s && s.Kind != RecipeSourceKind.Popular && s.Recipe != null;
@@ -531,7 +526,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
     public string? CopyText() =>
         Selected?.Recipe is { } r ? System.Text.Json.JsonSerializer.Serialize(r with { RecipeName = Selected.DisplayTitle }, ClipboardJson) : null;
 
-    public void CopiedNotice() => _settings.SetRecipeStatus($"Copied “{SelectedName}”");
+    public void CopiedNotice() => _settings.SetRecipeStatus(Loc.F("Copied “{0}”", SelectedName));
 
     public bool PasteText(string? text)
     {
@@ -543,17 +538,16 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
                 if (r != null && (r.FilmSimulation != null || r.WhiteBalance != null || r.RecipeName != null))
                 {
                     UseCustom(r with { CameraMake = r.CameraMake ?? "", CameraModel = r.CameraModel ?? "" });
-                    _settings.SetRecipeStatus($"Pasted “{SelectedName}”");
+                    _settings.SetRecipeStatus(Loc.F("Pasted “{0}”", SelectedName));
                     return true;
                 }
             }
             catch (System.Text.Json.JsonException) { }
         }
-        _settings.SetRecipeStatus("The clipboard has no recipe copied from PhSpectre");
+        _settings.SetRecipeStatus(Loc.T("The clipboard has no recipe copied from PhSpectre"));
         return false;
     }
 
-    // ── building the list ────────────────────────────────────────────────────────────────
     public void Refresh()
     {
         Groups.Clear();
@@ -584,7 +578,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
             var shown = candidates.Where(r => Matches(r, q) && Passes(r)).ToList();
             if (SourceIndex == 1) Groups.Add(new RecipeGroup("", shown));
             else
-                foreach (var g in shown.GroupBy(r => r.Recipe!.FilmSimulation ?? "Other").OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
+                foreach (var g in shown.GroupBy(r => r.Recipe!.FilmSimulation ?? Loc.T("Other")).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
                     Groups.Add(new RecipeGroup($"{g.Key.ToUpperInvariant()} · {g.Count()}", g.OrderBy(r => r.Title, StringComparer.OrdinalIgnoreCase).ToList()));
             if (shown.Count == 0) Groups.Clear();
         }
@@ -628,7 +622,7 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
 
     private RecipeRow FromEntry(RecipeLibraryEntry e, RecipeSourceKind kind)
     {
-        var from = e.Origin == RecipeOrigin.FromCamera ? " · from camera" : "";
+        var from = e.Origin == RecipeOrigin.FromCamera ? " · " + Loc.T("from camera") : "";
         return new RecipeRow(kind, e.Name, $"{Brief(e.Recipe)}{from}", e.Recipe, this, e.Author, e.SourceUrl, e.Origin, e.Id);
     }
 
@@ -653,18 +647,18 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         })
         && (SelectedFilm?.Name is not { } film || string.Equals(r.Recipe?.FilmSimulation, film, StringComparison.OrdinalIgnoreCase));
 
-    // Three chips always fit; the film simulation is a drop-down with counts instead of a row that overflows.
+    // A drop-down for film simulations: chips would overflow.
     private void BuildChips(List<RecipeRow> all)
     {
         Chips.Clear();
-        Chips.Add(new RecipeChip("All", "All", this));
-        Chips.Add(new RecipeChip("Color", "Color", this));
-        Chips.Add(new RecipeChip("B&W", "B&W", this));
+        Chips.Add(new RecipeChip(Loc.T("All"), "All", this));
+        Chips.Add(new RecipeChip(Loc.T("filter::Color"), "Color", this));
+        Chips.Add(new RecipeChip(Loc.T("B&W"), "B&W", this));
         if (Chips.All(c => c.Filter != Filter)) Filter = "All";
         foreach (var c in Chips) c.IsActive = c.Filter == Filter;
 
         var keep = SelectedFilm?.Name;
-        var options = new List<FilmOption> { new(null, "Film simulation · All") };
+        var options = new List<FilmOption> { new(null, Loc.T("Film simulation · All")) };
         options.AddRange(all.Select(r => r.Recipe!.FilmSimulation).Where(s => !string.IsNullOrEmpty(s))
             .GroupBy(s => s!).OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .Select(g => new FilmOption(g.Key, $"{g.Key} · {g.Count()}")));
@@ -683,7 +677,6 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         if (!_buildingFilms) Refresh();
     }
 
-    // ── commands ─────────────────────────────────────────────────────────────────────────
     [RelayCommand]
     private void SetFilter(string? filter) => Filter = filter ?? "All";
 
@@ -717,13 +710,13 @@ public sealed partial class RecipeLibraryViewModel : ObservableObject
         if (saved != null)
         {
             RecipeLibraryService.User.Remove(saved.Id);
-            _settings.SetRecipeStatus($"Removed “{saved.Name}” from Saved");
+            _settings.SetRecipeStatus(Loc.F("Removed “{0}” from Saved", saved.Name));
         }
         else
         {
             var origin = row.Kind == RecipeSourceKind.Photo ? RecipeOrigin.FromImage : row.Origin;
             var result = RecipeLibraryService.User.Add(row.Recipe, row.DisplayTitle, origin, row.Author, row.SourceUrl);
-            _settings.SetRecipeStatus($"Saved “{result.Entry.Name}”");
+            _settings.SetRecipeStatus(Loc.F("Saved “{0}”", result.Entry.Name));
         }
         Refresh();
         RaiseSelection();

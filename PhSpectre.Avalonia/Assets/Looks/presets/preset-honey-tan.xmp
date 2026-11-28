@@ -1,0 +1,8 @@
+<x:xmpmeta xmlns:x="adobe:ns:meta/" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+ <rdf:RDF>
+ <!-- Honey Tan, made for PhSpectre (original work). SkinSmoothing is PhSpectre's own setting. -->
+ <rdf:Description rdf:about="" crs:Name="Honey Tan" crs:Treatment="Color" crs:SkinSmoothing="40" crs:Sharpness="35" crs:Contrast2012="18" crs:Exposure2012="-0.1" crs:PostCropVignetteAmount="-12" crs:PostCropVignetteMidpoint="45" crs:HueAdjustmentRed="10" crs:SaturationAdjustmentRed="0" crs:LuminanceAdjustmentRed="0" crs:HueAdjustmentOrange="0" crs:SaturationAdjustmentOrange="18" crs:LuminanceAdjustmentOrange="-5" crs:HueAdjustmentBlue="-18" crs:SaturationAdjustmentBlue="-15" crs:LuminanceAdjustmentBlue="0" crs:ColorGradeMidtoneHue="36" crs:ColorGradeMidtoneSat="12" crs:ColorGradeHighlightHue="44" crs:ColorGradeHighlightSat="14">
+  <crs:ToneCurvePV2012><rdf:Seq><rdf:li>0, 0</rdf:li><rdf:li>64, 56</rdf:li><rdf:li>128, 124</rdf:li><rdf:li>192, 192</rdf:li><rdf:li>255, 255</rdf:li></rdf:Seq></crs:ToneCurvePV2012>
+ </rdf:Description>
+ </rdf:RDF>
+</x:xmpmeta>

@@ -8,10 +8,7 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Android;
 
-/// <summary>
-/// Decodes via Android's BitmapFactory with <c>InSampleSize</c> (hardware-backed codec) instead of ImageSharp's managed JPEG decoder
-/// plus a later downscale; see <see cref="ImageLoader.FastWorkingCopyDecoder"/>. Registered against that hook at startup, like <see cref="GallerySaver"/>.
-/// </summary>
+/// <summary>Decodes with BitmapFactory and <c>InSampleSize</c>, much faster than ImageSharp plus a downscale.</summary>
 internal static class NativeImageDecoder
 {
     public static Image<Rgb24>? TryDecodeWorkingCopy(string path, int maxDimension)
@@ -24,8 +21,8 @@ internal static class NativeImageDecoder
             int srcH = bounds.OutHeight;
             if (srcW <= 0 || srcH <= 0) return null;
 
-            // InSampleSize must be a power of two and the decoder returns floor(dimension / sampleSize), so pick the largest power of two
-            // that leaves both dimensions >= maxDimension (LoadWorkingCopy does the exact trim later).
+            // InSampleSize is a power of two: take the largest that keeps both sides >= maxDimension; the exact
+            // trim comes later.
             int sampleSize = 1;
             while (srcW / (sampleSize * 2) >= maxDimension && srcH / (sampleSize * 2) >= maxDimension)
                 sampleSize *= 2;
@@ -38,18 +35,15 @@ internal static class NativeImageDecoder
             using var bitmap = BitmapFactory.DecodeFile(path, decodeOptions);
             if (bitmap == null) return null;
 
-            // GetPixels(int[]) rather than CopyPixelsToBuffer(ByteBuffer): ByteBuffer.Wrap(managedArray) crosses JNI as a copy, so the native write never reached
-            // the managed byte[] (silently, an all-zero black image). GetPixels is marshaled as an [Out] array.
+            // GetPixels, not CopyPixelsToBuffer: a wrapped managed array is copied across JNI and stays black.
             int w = bitmap.Width, h = bitmap.Height;
             var argb = new int[w * h];
             bitmap.GetPixels(argb, 0, w, 0, 0, w, h);
 
-            // Each int is 0xAARRGGBB, which on little-endian (every Android device) is bytes B,G,R,A, ImageSharp's Bgra32 layout.
-            // The zero-copy reinterpret lets LoadPixelData do one bulk copy instead of a per-pixel loop (a real cost at ~10M pixels).
+            // 0xAARRGGBB ints are B,G,R,A bytes on little-endian, which is ImageSharp's Bgra32.
             using var bgra = Image.LoadPixelData<Bgra32>(MemoryMarshal.AsBytes<int>(argb), w, h);
 
-            // InSampleSize steps are powers of two, so the decode usually lands above maxDimension. Trimming here on the Bgra32 image, before CloneAs<Rgb24>
-            // and the caller's AutoOrient, means they only touch the small image (~2.7MP instead of ~10MP for a 40MP source).
+            // Trim before converting and rotating, so those work on the small image.
             if (Math.Max(w, h) > maxDimension)
                 bgra.Mutate(ctx => ctx.Resize(new ResizeOptions
                 {
@@ -62,7 +56,7 @@ internal static class NativeImageDecoder
         }
         catch
         {
-            return null; // best-effort — ImageLoader.LoadWorkingCopy falls back to its managed decode
+            return null; // Best effort: LoadWorkingCopy falls back to the managed decode.
         }
     }
 }

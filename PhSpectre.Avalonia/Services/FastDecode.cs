@@ -12,9 +12,8 @@ using SixLabors.ImageSharp.Processing;
 
 namespace PhSpectre.Avalonia.Services;
 
-// Full-size decode for export. ImageSharp's JPEG decoder is very slow on phones (10 s for a 13 MP photo),
-// while Avalonia's native Skia codec does the same in a fraction of that. Falls back to ImageSharp on any problem,
-// so the result is always an upright (EXIF-applied) Rgb24 image.
+// Full-size decode for export. ImageSharp's JPEG decoder is very slow on phones, so Skia is tried first. The result
+// is an upright Rgb24 image.
 internal static class FastDecode
 {
     public static Image<Rgb24> LoadUpright(string path)
@@ -44,7 +43,7 @@ internal static class FastDecode
         int w = bmp.PixelSize.Width, h = bmp.PixelSize.Height;
         if (w <= 0 || h <= 0) return null;
 
-        // Copy the native pixels as they are; the channel order depends on the platform's Skia colour type.
+        // Channel order depends on the platform's Skia colour type.
         bool bgra = bmp.Format is { } f && f == PixelFormat.Bgra8888;
         if (!bgra && !(bmp.Format is { } f2 && f2 == PixelFormat.Rgba8888)) return null;
         int stride = w * 4;
@@ -66,7 +65,7 @@ internal static class FastDecode
         }
         finally { handle.Free(); }
         {
-            // Skia may or may not apply the EXIF turn itself; when the sides were swapped relative to the file, it did.
+            // Swapped sides mean Skia already applied the EXIF rotation.
             bool swapped = (w != info.Width || h != info.Height) && w == info.Height && h == info.Width;
             if (!swapped && orientation > 1) ApplyOrientation(img, orientation);
             return img;

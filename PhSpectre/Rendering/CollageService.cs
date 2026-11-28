@@ -5,8 +5,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.Rendering;
 
-// The palette/render knobs of the single-photo export (PaletteExportSettings) plus the collage gutter settings.
-// Separate from PaletteExportSettings because that type lives in the Avalonia project, which depends on this one.
+// Separate from PaletteExportSettings, which lives in the UI project.
 public sealed record CollageRenderSettings(
     int? Colors,
     SamplingMode SamplingMode,
@@ -34,8 +33,7 @@ public sealed record CollageRenderSettings(
     public string FileExtension => Format == OutputFormat.Jpeg ? ".jpg" : ".png";
 }
 
-// The collage twin of the single-photo export: composes several photos into one image, extracts a palette pooled across them
-// (weighted by displayed area, so the gutter never contributes), and renders it through PaletteImageRenderer.
+// Composes the photos, extracts a palette weighted by displayed area and renders it.
 public static class CollageService
 {
     public static async Task RenderCollageAsync(
@@ -49,8 +47,7 @@ public static class CollageService
         if (sourcePaths.Count == 0)
             throw new ArgumentException("At least one photo is required.", nameof(sourcePaths));
 
-        // sourcePaths order is both the packing order and the EXIF source (the first photo represents the collage).
-        // metadataOverride substitutes user-edited fields for a photo with no EXIF, as in the single-photo export.
+        // sourcePaths order is the packing order; the first photo supplies the EXIF.
         var metadata = metadataOverride ?? PaletteImageRenderer.ReadMetadata(sourcePaths[0]);
 
         var photos = await LoadSourcePhotosAsync(sourcePaths, settings.SourceMaxDimension, cancellationToken);
@@ -74,7 +71,7 @@ public static class CollageService
                 }
                 else
                 {
-                    // CollageInfoOnly: no k-means over the pooled photos. showSwatches:false below means this placeholder is never drawn.
+                    // This placeholder is never drawn.
                     palette = new Models.ColorPalette([new Models.ColorSwatch("#000000", (0, 0, 0), 1f)]);
                 }
 
@@ -111,8 +108,7 @@ public static class CollageService
         }
     }
 
-    // Cheap live preview: decode and lay out the photos with a gutter, skipping palette extraction and card rendering.
-    // Caller owns the returned image and must dispose it.
+    // Layout-only preview. The caller disposes the result.
     public static async Task<Image<Rgb24>> ComposePreviewAsync(
         IReadOnlyList<string> sourcePaths,
         Color gutterColor,
@@ -138,9 +134,7 @@ public static class CollageService
         }
     }
 
-    // Loads every source already downscaled to about what the canvas can show (sourceMaxDimension ~ CollageOptions.MaxLongEdge), decoded in parallel.
-    // Decoding 12-50MP photos serially at native size just to shrink them is what made an 8-photo collage take forever.
-    // The cap is the caller's choice (CollageRenderSettings.SourceMaxDimension), so mobile's Working size also controls collage speed.
+    // Sources are decoded in parallel and downscaled: full-size serial decoding made large collages very slow.
     private static async Task<Image<Rgb24>[]> LoadSourcePhotosAsync(IReadOnlyList<string> sourcePaths, int sourceMaxDimension, CancellationToken cancellationToken)
     {
         var loads = sourcePaths
@@ -158,8 +152,7 @@ public static class CollageService
         }
     }
 
-    // Mirrors the ExportPreset -> pixel mapping in PaletteImageRenderer.RenderCore, reduced to the target aspect ratio.
-    // Original has no native aspect for a collage, so it falls back to a square.
+    // Same preset sizes as PaletteImageRenderer; Original becomes a square.
     private static double ExportAspect(ExportPreset preset) => preset switch
     {
         ExportPreset.Square            => 1080.0 / 1080.0,

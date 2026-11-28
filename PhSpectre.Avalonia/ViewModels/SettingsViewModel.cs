@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,20 +14,19 @@ using PhotoMetadata = PhSpectre.Rendering.PaletteImageRenderer.PhotoMetadata;
 
 namespace PhSpectre.Avalonia.ViewModels;
 
-// Mobile only: size of the working copy a picked photo is processed at. No effect on desktop.
+// Mobile only: size of the working copy.
 public enum WorkingQuality { Fast, Balanced, Best }
 
 
-// Card background: a flat color (theme or custom hex) or a blurred backdrop from the photo.
-// Collage exports never use BlurredPhoto (see PaletteExportSettings.UseBlurredBackground).
+// Card background: flat colour or the blurred photo (not for collages).
 public enum BackgroundMode { Theme, Custom, BlurredPhoto }
 
-// One tile in the Content → Recipe grid: a recipe parameter plus whether the card shows it.
+// A recipe parameter and whether the card shows it.
 public sealed class RecipeFieldItem(RecipeField f, bool isShown, bool isMobile, System.Windows.Input.ICommand toggle)
 {
     public string Key => f.Key;
-    public string Label => f.Label;
-    public string FullLabel => f.FullLabel;
+    public string Label => Loc.T(f.Label);
+    public string FullLabel => Loc.T(f.FullLabel);
     public string Value => f.Value;
     public bool IsShown => isShown;
     public bool IsHidden => !isShown;
@@ -36,7 +36,7 @@ public sealed class RecipeFieldItem(RecipeField f, bool isShown, bool isMobile, 
     public System.Windows.Input.ICommand ToggleCommand => toggle;
 }
 
-// Export mode chip item; a named type because {Binding} in the DataTemplate needs real CLR properties.
+// A named type: bindings need real properties.
 
 public partial class SettingsViewModel : ViewModelBase
 {
@@ -47,7 +47,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private MetaVerbosity  _metaVerbosity  = MetaVerbosity.Default;
     [ObservableProperty] private MetaStyle      _metaStyle      = MetaStyle.FilmStrip;
     [ObservableProperty] private SamplingMode   _samplingMode   = SamplingMode.Vivid;
-    // Default true for fresh installs only; an existing settings.json keeps its saved value.
+    // Fresh installs only.
     [ObservableProperty] private bool           _halfSize       = true;
     [ObservableProperty] private ExportMode     _exportMode     = ExportMode.Card;
     [ObservableProperty] private bool           _showCameraInfo = false;
@@ -55,8 +55,7 @@ public partial class SettingsViewModel : ViewModelBase
     // Whether k-means extraction runs for the current mode; InfoOnly/Recipe/CollageInfoOnly skip it.
     public bool ComputeColors => ExportMode is ExportMode.Card or ExportMode.Collage;
 
-    // The camera plate is an independent switch: with the palette off it is simply the only thing
-    // on the card (turned on automatically when switching to "no palette"), but it can be turned off too.
+    // The camera plate is independent; switching to "no palette" turns it on.
     public bool EffectiveShowCameraInfo => ShowCameraInfo;
     public bool IsCameraInfoToggleEnabled => true;
 
@@ -75,7 +74,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowPhotoMetadataSection));
         OnPropertyChanged(nameof(SaveButtonLabel));
 
-        // Re-point the QR content preset at this mode's recommendation, unless the user picked one themselves.
+        // Follow the mode's recommended preset unless the user chose one.
         if (_qrPresetIsAutoRecommended)
         {
             _settingQrPresetAutomatically = true;
@@ -87,21 +86,10 @@ public partial class SettingsViewModel : ViewModelBase
         RaiseSectionVisibilityChanged();
     }
 
-    // Mobile chip row: the same modes as desktop's ExportModeOptions, minus inapplicable ones.
-    // With no photo selected every mode is shown.
-    private static readonly (ExportMode Mode, string Label)[] ExportModeLabels =
-    [
-        (ExportMode.Card,            "Card"),
-        (ExportMode.InfoOnly,        "Info only"),
-        (ExportMode.Recipe,          "Recipe"),
-        (ExportMode.Collage,         "Collage"),
-        (ExportMode.CollageInfoOnly, "Collage (fast)"),
-    ];
-
     [RelayCommand]
     private void SelectExportMode(ExportMode mode) => ExportMode = mode;
 
-    // Film Recipe only matters in Recipe mode. Photo Metadata matters in Recipe mode or whenever the camera-info plate is drawn.
+    // Recipe fields matter in Recipe mode, metadata also with the camera plate.
     public bool IsRecipeMode => ExportMode == ExportMode.Recipe;
     public bool ShowPhotoMetadataSection => IsRecipeMode || EffectiveShowCameraInfo;
 
@@ -112,7 +100,6 @@ public partial class SettingsViewModel : ViewModelBase
         RaiseSectionVisibilityChanged();
     }
 
-    // Section visibility for the panel: each flag is just the underlying condition.
     public bool ShowCollageSectionUI       => ShowCollageOptions;
     public bool ShowSwatchesSectionUI      => ComputeColors;
     public bool ShowMetaVerbositySectionUI => EffectiveShowCameraInfo;
@@ -128,7 +115,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowFilmRecipeSectionUI));
     }
 
-    // Number of selected photos (1 = single, 2+ = collage), set by the owning VM so the mode selector can grey out invalid modes.
+    // Set by the owner so unavailable modes can be greyed out.
     [ObservableProperty] private int _selectedPhotoCount = 1;
 
     public bool IsSingleModeAvailable  => SelectedPhotoCount <= 1;
@@ -149,12 +136,11 @@ public partial class SettingsViewModel : ViewModelBase
         WorkingQuality.Best     => 4800,
         _                       => 3400
     };
-    // JPEG by default: these cards are for sharing, and PNG's lossless encode dominates render time at native resolution.
-    // Quality 92 matches RecipeCardRenderer's own encoder.
+    // JPEG by default, quality 92 as in RecipeCardRenderer.
     [ObservableProperty] private OutputFormat   _outputFormat   = OutputFormat.Jpeg;
     [ObservableProperty] private ExportPreset   _exportPreset   = ExportPreset.Original;
 
-    // Stops the Plate size / Label size sliders snap to (S/M/L/XL/XXL). The underlying float stays clamped to [0.5, 2.0] by PaletteImageRenderer.
+    // Snap stops; the renderer clamps to [0.5, 2.0].
     public static readonly float[]  SizeSteps      = { 0.6f, 0.8f, 1.0f, 1.4f, 1.8f };
     public static readonly string[] SizeStepLabels = { "60%", "80%", "100%", "140%", "180%" };
 
@@ -190,7 +176,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string         _customBackgroundHex = "#FFFFFF";
     [ObservableProperty] private CompositionGuide _compositionGuide  = CompositionGuide.None;
 
-    // Collage-only settings. The value persists across mode toggles. Gutter color is always the card background.
+    // The gutter colour is always the card background.
     [ObservableProperty] private bool _showCollageOptions = false;
     [ObservableProperty] private int  _gutterThickness    = 8;
 
@@ -202,10 +188,9 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowBlurredIgnoredForCollageHint));
     }
 
-    // ── QR code (see PaletteExportSettings.BuildQrRenderOptions) ──
     [ObservableProperty] private bool             _showQrCode      = false;
     [ObservableProperty] private QrPlacement       _qrPlacement     = QrPlacement.Below;
-    // What is drawn beside the QR block, independent of Placement; what is encoded is QrContentPreset.
+    // Independent of Placement.
     [ObservableProperty] private QrCaption         _qrCaption       = QrCaption.None;
     [ObservableProperty] private QrContentSource   _qrContentSource = QrContentSource.GeneratedLink;
     // Matches QrModeGuidance.RecommendedPreset(ExportMode.Card), so a fresh VM starts as auto-recommended.
@@ -214,7 +199,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool              _qrIncludeNote   = false;
     [ObservableProperty] private string            _qrNoteText      = "";
 
-    // True while QrContentPreset still follows the mode's recommendation; flips to false on the first change this class didn't make.
+    // False once the user changes the preset.
     private bool _qrPresetIsAutoRecommended = true;
     private bool _settingQrPresetAutomatically;
 
@@ -223,7 +208,7 @@ public partial class SettingsViewModel : ViewModelBase
     // Generated-link presets only: advisory hint that the preset repeats data the mode already prints.
     public bool ShowQrDuplicateHint => !IsQrCustomUrlMode && QrModeGuidance.DuplicatesCardText(ExportMode, QrContentPreset);
 
-    // Hidden entirely (not greyed) when "Include note" is off; a disabled field read as a bug.
+    // Hidden, not disabled: a disabled field reads as a bug.
     public bool ShowQrNoteTextBox => QrIncludeNote && !IsQrCustomUrlMode;
 
     public int QrPlacementIndex
@@ -274,11 +259,9 @@ public partial class SettingsViewModel : ViewModelBase
     public string QrNoteCounter => $"{QrNoteText?.Length ?? 0} / {QrNoteMaxLength}";
     partial void OnQrNoteTextChanged(string value) => OnPropertyChanged(nameof(QrNoteCounter));
 
-    // ── Show recipe card ──
-    // Whether Recipe mode draws its title and parameter plates. Off with Show QR on gives a compact photo + QR card.
     [ObservableProperty] private bool _showRecipeCard = true;
 
-    // Editable subset of the metadata strip; the other fields are always taken from the detected EXIF.
+    // The editable subset of the metadata; the rest always comes from EXIF.
     [ObservableProperty] private bool   _isMetadataEditorExpanded;
     [ObservableProperty] private string _metaCameraText   = "";
     [ObservableProperty] private string _metaLensText     = "";
@@ -288,8 +271,7 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private string _metaIsoText      = "";
     [ObservableProperty] private string _metaDateText     = "";
 
-    // ── Structured metadata input ──
-    // Focal/ISO use numeric steppers; Aperture/Shutter use validated text. All still store into the plain-string Meta*Text fields.
+    // Focal length and ISO are steppers, aperture and shutter validated text; all stored as strings.
     public decimal? FocalMm
     {
         get => ParseLeadingNumber(MetaFocalText);
@@ -313,8 +295,7 @@ public partial class SettingsViewModel : ViewModelBase
             System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : null;
     }
 
-    // Aperture ("f/2.8") / Shutter ("1/200s", "2s"): reject-and-revert applies to typing only, never to a bulk EXIF load,
-    // since cameras don't always report these in this format.
+    // Invalid typing is reverted; values loaded from EXIF are left as they are.
     private string _lastValidAperture = "";
     private string _lastValidShutter  = "";
     private bool   _revertingAperture;
@@ -353,7 +334,7 @@ public partial class SettingsViewModel : ViewModelBase
     private PhotoMetadata? _detectedMetadata;
     private FilmRecipe?    _detectedRecipe;
 
-    // True while LoadMetadataFields bulk-populates the text fields, so the Settings watcher can tell a load from a user edit.
+    // Tells a bulk load from a user edit.
     public bool IsBulkLoading { get; private set; }
 
     private static readonly PhotoMetadata EmptyMetadata = new("", "", "", "", "", "", "", "", "", "", "", "");
@@ -380,7 +361,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    // Detected Fuji film recipe (read-only, from EXIF). Not an [ObservableProperty]: that would pull it into SettingsStorage and the Regenerate pipeline.
+    // Read from EXIF. Not an [ObservableProperty], which would persist it and trigger Regenerate.
     public FilmRecipe? DetectedRecipe
     {
         get => _detectedRecipe;
@@ -413,13 +394,11 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     public string RecipeTitleText =>
-        string.IsNullOrEmpty(DetectedRecipe?.FilmSimulation) ? "Custom Recipe" : DetectedRecipe!.FilmSimulation!;
+        string.IsNullOrEmpty(DetectedRecipe?.FilmSimulation) ? Loc.T("Custom Recipe") : DetectedRecipe!.FilmSimulation!;
 
-    // Non-null (Label, Value) rows in display order; a small copy of RecipeCardRenderer.BuildRows, which is internal to another assembly.
-    // ── Recipe field visibility ──
-    // Keyed per recipe parameter; the hidden set is persisted and shared by preview, export and Save all.
+    // A small copy of RecipeCardRenderer.BuildRows, which is internal.
     [ObservableProperty] private string _hiddenRecipeFields = "";
-    // Once the user picks visibility, the automatic B&W preset stops touching it.
+    // A user's choice disables the automatic B&W preset.
     [ObservableProperty] private bool _recipeVisibilityUserSet;
 
     partial void OnHiddenRecipeFieldsChanged(string value) => RaiseRecipeFieldsChanged();
@@ -448,7 +427,7 @@ public partial class SettingsViewModel : ViewModelBase
         get
         {
             var items = RecipeFieldItems;
-            return $"Showing {items.Count(i => i.IsShown)} of {items.Count}";
+            return Loc.F("Showing {0} of {1}", items.Count(i => i.IsShown), items.Count);
         }
     }
 
@@ -463,7 +442,7 @@ public partial class SettingsViewModel : ViewModelBase
         HiddenRecipeFields = RecipeFields.JoinKeys(set);
     }
 
-    // Presets are a quick way to set the visibility, not a separate mode.
+    // Presets only set the visibility.
     [RelayCommand]
     private void ApplyRecipePreset(string preset)
     {
@@ -477,16 +456,13 @@ public partial class SettingsViewModel : ViewModelBase
         HiddenRecipeFields = RecipeFields.JoinKeys(hidden);
     }
 
-    // First open of an uncustomised recipe: B&W simulations hide the color fields, color ones show everything.
+    // First time a recipe is opened: B&W hides the colour fields.
     private void ApplyAutoRecipeVisibility(FilmRecipe? recipe)
     {
         if (RecipeVisibilityUserSet || recipe == null) return;
         HiddenRecipeFields = RecipeFields.IsMonochrome(recipe.FilmSimulation)
             ? RecipeFields.JoinKeys(RecipeFields.BlackAndWhiteHidden) : "";
     }
-
-    // ── Manual recipe entry ──
-    // Scratch state for the "Set recipe manually"/"Edit" form; not persisted.
 
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(CardTabsVisible))] private bool    _isRecipeEditorOpen;
     [ObservableProperty] private string  _editRecipeName          = "";
@@ -506,14 +482,13 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private int     _editWhiteBalanceShiftRed;
     [ObservableProperty] private int     _editWhiteBalanceShiftBlue;
 
-    // Dropdown option lists for the manual-entry form, forwarded from RecipeFieldOptions so XAML can bind to an instance property.
+    // Forwarded so XAML can bind to them.
     public IReadOnlyList<string> FilmSimulationOptions => PhSpectre.Camera.FujiSlotCodec.FilmSimulationNames;
     public IReadOnlyList<string> WhiteBalanceOptions  => RecipeFieldOptions.WhiteBalance;
     public IReadOnlyList<string> DynamicRangeOptions  => RecipeFieldOptions.DynamicRange;
     public IReadOnlyList<string> ThreeLevelOptions    => RecipeFieldOptions.ThreeLevel;
 
-    // Properties that only drive the inspector UI (tabs, editor state, hints) — they never change
-    // the rendered card, so they must not trigger a preview rebuild.
+    // Inspector-only state: no preview rebuild.
     public static bool IsUiOnlyProperty(string? name) =>
         name is null
         || name.StartsWith("Edit", StringComparison.Ordinal)
@@ -523,7 +498,7 @@ public partial class SettingsViewModel : ViewModelBase
             or nameof(HasPhoto) or nameof(ShowNoRecipeHint) or nameof(IsMetadataEditorExpanded)
             or nameof(CameraExperimental) or nameof(IsCameraMode) or nameof(RestoreKeepLast) or nameof(RestoreKeepIndex)
             or nameof(RecipeStatusText) or nameof(HasRecipeStatus)
-        // Navigation/layout state; none of it changes the rendered output, so it must not surface Regenerate.
+        // Navigation state: no Regenerate.
         || name is "CardTopIndex" or "CardTabIndex" or "FrameTypeIndex" or "CardShowsOptions"
             or "CardTabsVisible" or "ShowLegacyInspector" or "ShowLegacyExport"
             or "ShowRecipeCardReasonInFrame" or "TopModeIndex" or "TopModeSelection"
@@ -531,7 +506,7 @@ public partial class SettingsViewModel : ViewModelBase
             or "IsCollageLike" or "IsCollageMode"
             or "RecipeCardAvailable" or "RecipeCardReason" or "ShowRecipeCardReason";
 
-    public string RecipeSourceBadgeText => DetectedRecipe?.Source == RecipeSource.Manual ? "Custom" : "Auto · Fuji";
+    public string RecipeSourceBadgeText => DetectedRecipe?.Source == RecipeSource.Manual ? Loc.T("recipe::Custom") : "Auto · Fuji";
 
     [RelayCommand]
     private void OpenRecipeEditor() => OpenRecipeEditorFor(DetectedRecipe, false);
@@ -562,7 +537,7 @@ public partial class SettingsViewModel : ViewModelBase
         IsRecipeEditorOpen = true;
     }
 
-    // Unsaved-changes guard: the first Cancel/Esc/Back with edits only raises the confirm row.
+    // With unsaved edits the first Cancel only asks to confirm.
     [ObservableProperty] private bool _showDiscardConfirm;
     private string _editSnapshot = "";
     public double FieldHeight => IsMobile ? 44 : 40;
@@ -610,7 +585,7 @@ public partial class SettingsViewModel : ViewModelBase
             ColorChromeEffect: EditColorChromeEffect,
             ColorChromeFxBlue: EditColorChromeFxBlue,
             BwAdjustment: EditBwAdjustment,
-            // The editor has no fields for these slot-only settings; keep what the recipe already had.
+            // Keep settings the editor has no fields for.
             GrainSize: prev?.GrainSize,
             SmoothSkinEffect: prev?.SmoothSkinEffect,
             ColorTemperature: prev?.ColorTemperature);
@@ -641,12 +616,21 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleMetadataEditor() => IsMetadataEditorExpanded = !IsMetadataEditorExpanded;
 
-    public string MetadataEditorToggleLabel => IsMetadataEditorExpanded ? "Hide" : "Edit";
+    public string MetadataEditorToggleLabel => IsMetadataEditorExpanded ? Loc.T("Hide") : Loc.T("Edit");
 
     partial void OnIsMetadataEditorExpandedChanged(bool value) => OnPropertyChanged(nameof(MetadataEditorToggleLabel));
 
-    // ── V2 shell state: app appearance, inspector tabs, top-bar mode, card chips ──────────────
-    // App theme (chrome only — the exported card keeps its own Dark/Light/Custom choice).
+    // Shell state: appearance, inspector tabs, mode switch, card chips
+    // Applied at the next start: XAML text is resolved once.
+    [ObservableProperty] private AppLanguage _language = AppLanguage.System;
+    public IReadOnlyList<string> LanguageLabels { get; } = [Loc.T("System"), "English", "Русский", "Español"];
+    public int LanguageIndex
+    {
+        get => (int)Language;
+        set { if (value >= 0) Language = (AppLanguage)value; }
+    }
+    partial void OnLanguageChanged(AppLanguage value) => OnPropertyChanged(nameof(LanguageIndex));
+
     [ObservableProperty] private AppAppearance _appearance = AppAppearance.System;
 
     public bool IsAppearanceSystem => Appearance == AppAppearance.System;
@@ -664,7 +648,7 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void SetAppearance(AppAppearance value) => Appearance = value;
 
-    // Inspector tabs: Style / Content / Export. Session-only, never persisted.
+    // Session only.
     [ObservableProperty] private InspectorTab _activeTab = InspectorTab.Style;
     public int ActiveTabIndex
     {
@@ -678,7 +662,9 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnActiveTabChanged(InspectorTab value)
     {
         OnPropertyChanged(nameof(ActiveTabIndex));
-        OnPropertyChanged(nameof(CardTopIndex)); OnPropertyChanged(nameof(CardShowsOptions)); OnPropertyChanged(nameof(CardTabsVisible)); OnPropertyChanged(nameof(ShowRecipeCardReasonInFrame)); OnPropertyChanged(nameof(ShowLegacyExport));
+        OnPropertyChanged(nameof(CardTopIndex)); OnPropertyChanged(nameof(CardShowsOptions));
+            OnPropertyChanged(nameof(CardTabsVisible)); OnPropertyChanged(nameof(ShowRecipeCardReasonInFrame));
+            OnPropertyChanged(nameof(ShowLegacyExport));
         OnPropertyChanged(nameof(IsStyleTab));
         OnPropertyChanged(nameof(IsContentTab));
         OnPropertyChanged(nameof(IsExportTab));
@@ -687,9 +673,7 @@ public partial class SettingsViewModel : ViewModelBase
     [RelayCommand]
     private void ShowExportTab() => ActiveTab = InspectorTab.Export;
 
-    // The five ExportModes collapse into three top-bar modes plus a "Show palette" switch:
-    // Card = Card / Info only, Collage = Collage / Collage (fast), Recipe stays. Underlying
-    // ExportMode is unchanged, so rendering, persistence and ExportModeRules are untouched.
+    // The top bar shows three modes plus "Show palette"; ExportMode itself is unchanged.
     private bool _paletteMemory = true; // what "Show palette" reads while Recipe (no palette) is active
 
     public bool ShowPalette
@@ -709,9 +693,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
     public bool IsPaletteSwitchVisible => ExportMode != ExportMode.Recipe;
 
-    // Top bar: 0 = Edit, 1 = Collage, 2 = Camera. ShowCollageOptions is the desktop's "collage tray is
-    // open" flag, so the segment stays on Collage while the tray exists even with one photo.
-    // Camera is a screen of its own, not an ExportMode: switching to it never touches the card preview.
+    // 0 Edit, 1 Collage, 2 Camera. Collage stays selected while the tray is open; Camera is not an ExportMode.
     [ObservableProperty] private bool _isCameraMode;
 
     partial void OnIsCameraModeChanged(bool value)
@@ -734,7 +716,7 @@ public partial class SettingsViewModel : ViewModelBase
         }
     }
 
-    // Shells hook this to switch between the single-photo and tray workflows; without a handler the mode is simply set.
+    // Without a handler the mode is simply set.
     public Action<int>? TopModeHandler { get; set; }
 
     [RelayCommand]
@@ -751,7 +733,7 @@ public partial class SettingsViewModel : ViewModelBase
             return;
         }
         IsCameraMode = false;
-        // The shells speak a legacy index: 0 Card, 1 Recipe, 2 Collage.
+        // Legacy index: 0 Card, 1 Recipe, 2 Collage.
         int legacy = index == 1 ? 2 : FrameType == FrameType.RecipeCard ? 1 : 0;
         if (TopModeHandler != null) TopModeHandler(legacy); else ApplyTopMode(legacy);
         RaiseLayoutChanged();
@@ -765,8 +747,7 @@ public partial class SettingsViewModel : ViewModelBase
         _ => ShowPalette ? ExportMode.Card : ExportMode.InfoOnly,
     };
 
-    // Style → Card: Dark / Light / Custom as one row. "Blurred photo" stays a separate switch
-    // (it replaces the flat fill but still follows the Dark/Light choice).
+    // "Blurred photo" is a separate switch.
     public int CardChoiceIndex
     {
         get => BackgroundMode == BackgroundMode.Custom ? 2 : IsDarkTheme ? 0 : 1;
@@ -791,7 +772,7 @@ public partial class SettingsViewModel : ViewModelBase
     }
     public bool IsBlurredBackdropEnabled => !IsCustomBackgroundMode;
 
-    // Colors: Auto / 3 / 4 / 5 / 6 / 8 as a segmented row.
+    // Auto, 3, 4, 5, 6 or 8 colours
     private static readonly int[] ColorCountStops = { 0, 3, 4, 5, 6, 8 };
     public int ColorCountSegment
     {
@@ -799,8 +780,7 @@ public partial class SettingsViewModel : ViewModelBase
         set => ColorCount = ColorCountStops[Math.Clamp(value, 0, ColorCountStops.Length - 1)];
     }
 
-    // Export tab ───────────────────────────────────────────────────────────────────────────
-    // Pixel size of the currently loaded photo, so the size options can show real numbers.
+    // Export tab. The loaded photo's pixel size, for the size labels.
     [ObservableProperty] private int _sourceWidth;
     [ObservableProperty] private bool _hasPhoto;
     partial void OnHasPhotoChanged(bool value) => OnPropertyChanged(nameof(ShowNoRecipeHint));
@@ -811,12 +791,12 @@ public partial class SettingsViewModel : ViewModelBase
         get
         {
             string Px(double f) => SourceWidth > 0 ? $"{(int)(SourceWidth * f)} × {(int)(SourceHeight * f)}" : "—";
-            var list = new List<ExportSizeOption> { new("Original", Px(1)) };
-            if (!IsMobile) list.Add(new("Half · 2× downscale", Px(0.5)));
-            list.Add(new("Square", "1080 × 1080"));
-            list.Add(new("IG post", "1080 × 1350"));
-            list.Add(new("Story", "1080 × 1920"));
-            list.Add(new("TG landscape", "1920 × 1080"));
+            var list = new List<ExportSizeOption> { new(Loc.T("Original"), Px(1)) };
+            if (!IsMobile) list.Add(new(Loc.T("Half · 2× downscale"), Px(0.5)));
+            list.Add(new(Loc.T("Square"), "1080 × 1080"));
+            list.Add(new(Loc.T("IG post"), "1080 × 1350"));
+            list.Add(new(Loc.T("Story"), "1080 × 1920"));
+            list.Add(new(Loc.T("TG landscape"), "1920 × 1080"));
             return list;
         }
     }
@@ -828,10 +808,10 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty] private bool   _showInFolderAfterSave = false;
     public bool CanChooseSaveFolder => !IsMobile;
 
-    // Recipe plates: equal-width columns, 2 on the narrow mobile sheet.
+    // Two columns on the narrow mobile sheet.
     public int RecipeColumns => IsMobile ? 2 : 3;
     public string SaveFolderDisplay => IsMobile
-        ? "Photos · PhSpectre"
+        ? Loc.T("Photos · PhSpectre")
         : string.IsNullOrEmpty(SaveFolder) ? "Pictures/PhSpectre" : ShortenFolder(SaveFolder);
 
     partial void OnSaveFolderChanged(string value) => OnPropertyChanged(nameof(SaveFolderDisplay));
@@ -856,10 +836,10 @@ public partial class SettingsViewModel : ViewModelBase
     public Theme Theme    => IsDarkTheme ? Theme.Dark : Theme.Light;
     public int?  Colors   => ColorCount == 0 ? null : ColorCount;
 
-    // Android shows this row in Settings (no toolbar); desktop uses a toolbar banner instead.
+    // Android shows this in Settings; desktop uses a banner.
     public string AppVersionText      => $"PhSpectre {AppUpdateService.Instance.CurrentVersionText}";
     public bool   IsUpdateAvailable   => AppUpdateService.Instance.IsAvailable;
-    public string UpdateAvailableText => $"Update available: {AppUpdateService.Instance.LatestVersionText}";
+    public string UpdateAvailableText => Loc.F("Update available: {0}", AppUpdateService.Instance.LatestVersionText);
     public bool   ShowUpdateRow       => IsMobile && IsUpdateAvailable;
 
     public Func<string, Task>? OpenUrlAsync { get; set; }
@@ -886,10 +866,10 @@ public partial class SettingsViewModel : ViewModelBase
 
     public string FileExtension    => OutputFormat == OutputFormat.Jpeg ? ".jpg" : ".png";
 
-    // One save button; the label says what a click produces ("Save recipe card" in Recipe mode).
+    // The label says what the click produces.
     public string SaveButtonLabel  => ShowCollageOptions || ExportMode is ExportMode.Collage or ExportMode.CollageInfoOnly
-        ? "Save collage"
-        : IsRecipeMode ? "Save recipe card" : "Save palette card";
+        ? Loc.T("Save collage")
+        : IsRecipeMode ? Loc.T("Save recipe card") : Loc.T("Save palette card");
 
     public int WorkingQualityIndex
     {
@@ -909,9 +889,7 @@ public partial class SettingsViewModel : ViewModelBase
         set => ExportPreset = (ExportPreset)value;
     }
 
-    // Merged Export size dropdown; "Half size" is its own item on desktop only (mobile has Working size).
-    //   Desktop: 0=Original 1=Half 2=Square 3=IG post 4=Story 5=TG landscape
-    //   Mobile:  0=Original 1=Square 2=IG post 3=Story 4=TG landscape
+    // Size list. Desktop: Original, Half, Square, IG post, Story, TG landscape. Mobile has no Half.
     public int ExportSizeIndex
     {
         get
@@ -955,14 +933,16 @@ public partial class SettingsViewModel : ViewModelBase
 
     public bool IsCustomBackgroundMode => BackgroundMode == BackgroundMode.Custom;
 
-    // Custom background hex validation. The render keeps using the last valid color while the
-    // field holds something unparseable, so a typo never silently turns the card grey/themed.
+    // While the text is invalid the last valid colour is used.
     private string _lastValidCustomHex = "#FFFFFF";
     public string LastValidCustomHex => _lastValidCustomHex;
     public bool IsCustomHexValid => HexColorInput.TryParse(CustomBackgroundHex, out _);
     public global::Avalonia.Media.IBrush CustomSwatchBrush =>
         HexColorInput.TryParse(LastValidCustomHex, out var c)
-            ? new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.FromRgb(c.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgb24>().R, c.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgb24>().G, c.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgb24>().B))
+            ? new global::Avalonia.Media.SolidColorBrush(global::Avalonia.Media.Color.FromRgb(
+                c.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgb24>().R,
+                c.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgb24>().G,
+                c.ToPixel<SixLabors.ImageSharp.PixelFormats.Rgb24>().B))
             : global::Avalonia.Media.Brushes.Transparent;
     public bool ShowCustomHexError => IsCustomBackgroundMode && !IsCustomHexValid;
     public bool IsThemeSelectable => !IsCustomBackgroundMode;
@@ -976,7 +956,7 @@ public partial class SettingsViewModel : ViewModelBase
         OnPropertyChanged(nameof(ShowCustomHexError));
     }
 
-    // Shows the "Blurred photo is ignored for Collage" caveat inline; touch users have no hover tooltip.
+    // Touch screens have no tooltips.
     public bool ShowBlurredIgnoredForCollageHint => ShowCollageOptions && BackgroundMode == BackgroundMode.BlurredPhoto;
 
     public int SwatchShapeIndex
@@ -997,7 +977,6 @@ public partial class SettingsViewModel : ViewModelBase
         set => CompositionGuide = (CompositionGuide)value;
     }
 
-    // ComboBox index shims
     public int ColorCountIndex
     {
         get => ColorCount == 0 ? 0 : ColorCount - 2;
@@ -1028,7 +1007,12 @@ public partial class SettingsViewModel : ViewModelBase
     partial void OnMetaStyleChanged(MetaStyle value)          => OnPropertyChanged(nameof(MetaStyleIndex));
     partial void OnSamplingModeChanged(SamplingMode value)    => OnPropertyChanged(nameof(SamplingModeIndex));
     partial void OnWorkingQualityChanged(WorkingQuality value) => OnPropertyChanged(nameof(WorkingQualityIndex));
-    partial void OnOutputFormatChanged(OutputFormat value)     { if (_process != null) _process.ExportFormatIndex = value == OutputFormat.Png ? 1 : 0; OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension)); OnPropertyChanged(nameof(SaveButtonLabel)); }
+    partial void OnOutputFormatChanged(OutputFormat value)    
+    {
+        if (_process != null) _process.ExportFormatIndex = value == OutputFormat.Png ? 1 : 0;
+        OnPropertyChanged(nameof(OutputFormatIndex)); OnPropertyChanged(nameof(FileExtension));
+        OnPropertyChanged(nameof(SaveButtonLabel));
+    }
     partial void OnExportPresetChanged(ExportPreset value)     { OnPropertyChanged(nameof(ExportPresetIndex)); OnPropertyChanged(nameof(ExportSizeIndex)); }
     partial void OnHalfSizeChanged(bool value)                 => OnPropertyChanged(nameof(ExportSizeIndex));
     partial void OnBackgroundModeChanged(BackgroundMode value)

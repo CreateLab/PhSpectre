@@ -1,16 +1,13 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:PhSpectre.Avalonia.Localization"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
              xmlns:local="using:PhSpectre.Avalonia.Views"
              x:Class="PhSpectre.Avalonia.Views.SettingsPanel"
              x:DataType="vm:SettingsViewModel">
 
-    <!--
-        Inspector (HANDOFF §2.3): three tabs — Style / Content / Export — shared by the desktop
-        sidebar and the mobile sheet. Rows follow the V2 kit in Styles/Controls.axaml. Every
-        setting is either usable or states why it isn't (hint line under it).
-    -->
+    <!-- Inspector tabs Style, Content, Export, shared by the desktop sidebar and the mobile sheet. -->
     <UserControl.Styles>
         <Style Selector="Grid.row">
             <Setter Property="MinHeight" Value="40"/>
@@ -50,19 +47,19 @@
 
     <Grid RowDefinitions="Auto,Auto,*">
 
-        <!-- Edit header: Look · Frame, then the frame type (Card / Recipe card stay in this layout) -->
+        <!-- Edit header and frame type -->
         <StackPanel Grid.Row="0" Spacing="8" Margin="0,0,12,8" IsVisible="{Binding IsEditMode}">
             <ListBox Classes="seg" SelectedIndex="{Binding CardTopIndex}">
-                <ListBoxItem Content="Look"/>
-                <ListBoxItem Content="Frame"/>
-                <ListBoxItem Content="Export" IsVisible="{Binding IsEditMode}"/>
+                <ListBoxItem Content="{l:T 'Look'}"/>
+                <ListBoxItem Content="{l:T 'Frame'}"/>
+                <ListBoxItem Content="{l:T 'Export'}" IsVisible="{Binding IsEditMode}"/>
             </ListBox>
             <ListBox Classes="seg" x:Name="FrameLayoutBox" SelectedIndex="{Binding FrameTypeIndex}" IsVisible="{Binding CardShowsOptions}">
-                <ListBoxItem Content="None"/>
-                <ListBoxItem Content="Border"/>
-                <ListBoxItem Content="Card"/>
-                <ListBoxItem Content="Recipe" IsEnabled="{Binding RecipeCardAvailable}"/>
-                <ListBoxItem Content="Film"/>
+                <ListBoxItem Content="{l:T 'None'}"/>
+                <ListBoxItem Content="{l:T 'Border'}"/>
+                <ListBoxItem Content="{l:T 'frame::Card'}"/>
+                <ListBoxItem Content="{l:T 'Recipe'}" IsEnabled="{Binding RecipeCardAvailable}"/>
+                <ListBoxItem Content="{l:T 'frame::Film'}"/>
             </ListBox>
             <TextBlock Text="{Binding RecipeCardReason}" Classes="hint" TextWrapping="Wrap"
                        IsVisible="{Binding ShowRecipeCardReasonInFrame}"/>
@@ -75,19 +72,19 @@
             <ListBoxItem>
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="TuneVariant" Width="16" Height="16"/>
-                    <TextBlock Text="Style"/>
+                    <TextBlock Text="{l:T 'Style'}"/>
                 </StackPanel>
             </ListBoxItem>
             <ListBoxItem>
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="TextBoxOutline" Width="16" Height="16"/>
-                    <TextBlock Text="Content"/>
+                    <TextBlock Text="{l:T 'Content'}"/>
                 </StackPanel>
             </ListBoxItem>
             <ListBoxItem IsVisible="{Binding !IsEditMode}">
                 <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
                     <materialIcons:MaterialIcon Kind="TrayArrowDown" Width="16" Height="16"/>
-                    <TextBlock Text="Export"/>
+                    <TextBlock Text="{l:T 'Export'}"/>
                 </StackPanel>
             </ListBoxItem>
         </ListBox>
@@ -95,17 +92,17 @@
         <ScrollViewer Grid.Row="2" IsVisible="{Binding !IsRecipeEditorOpen}" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,12,0">
         <Panel>
 
-        <!-- ═════════════════════════ STYLE ═════════════════════════ -->
+        <!-- STYLE -->
         <local:CardStyleSection IsVisible="{Binding IsStyleTab}"/>
 
-        <!-- ═════════════════════════ CONTENT ═════════════════════════ -->
+        <!-- CONTENT -->
         <local:CardContentSection IsVisible="{Binding IsContentTab}"/>
 
-        <!-- ═════════════════════════ EXPORT ═════════════════════════ -->
+        <!-- EXPORT -->
         <StackPanel IsVisible="{Binding IsExportTab}" Margin="0,0,0,28">
             <local:CardExportSection/>
             <!-- ABOUT -->
-            <TextBlock Text="ABOUT" Classes="section-title"/>
+            <TextBlock Text="{l:T 'ABOUT'}" Classes="section-title"/>
             <TextBlock Text="{Binding AppVersionText}" Classes="hint"/>
             <Button Classes="link" IsVisible="{Binding ShowUpdateRow}" HorizontalAlignment="Left" Margin="0,6,0,0"
                     Content="{Binding UpdateAvailableText}" Command="{Binding OpenUpdateUrlCommand}"/>
@@ -115,11 +112,11 @@
         </StackPanel>
 
 
-        <!-- ═════════════════════════ CAMERA ═════════════════════════ -->
+        <!-- CAMERA -->
         </Panel>
         </ScrollViewer>
 
-        <!-- Recipe editor: replaces the whole inspector while open (header / scrolling body / sticky footer) -->
+        <!-- Recipe editor, replaces the inspector while open -->
         <local:RecipeEditorView Grid.Row="0" Grid.RowSpan="3" IsVisible="{Binding IsRecipeEditorOpen}"/>
     </Grid>
 

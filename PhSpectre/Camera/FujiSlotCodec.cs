@@ -8,11 +8,9 @@ namespace PhSpectre.Camera;
 public sealed record FujiSlotDecode(FilmRecipe Recipe, IReadOnlyList<string> Unmapped);
 
 /// <summary>
-/// Maps the per-bank PTP properties (0xD18Dâ€“0xD1A4) of a Fujifilm body to <see cref="FilmRecipe"/>.
-/// These wire values are not the MakerNote values <see cref="Recipes.FujiRecipeExtractor"/> reads: tones,
-/// Color, Sharpness and Clarity are signed Ã—10, Film Simulation and Grain use their own code lists, and
-/// High ISO NR is a non-linear lookup. Tables follow fujifilm-ptp-reference (docs/03-encodings.md) and were
-/// checked against JPEGs shot from X-T5 slots C1â€“C6 (see FujiSlotCodecTests).
+/// Maps slot properties 0xD18D-0xD1A4 to <see cref="FilmRecipe"/>. These values differ from the MakerNote ones:
+/// tones, Color, Sharpness and Clarity are signed x10, High ISO NR is a lookup. From fujifilm-ptp-reference,
+/// checked against X-T5 JPEGs.
 /// </summary>
 public static class FujiSlotCodec
 {
@@ -37,7 +35,7 @@ public static class FujiSlotCodec
     public const ushort PropNoiseReduction = 0xD1A1;
     public const ushort PropClarity = 0xD1A2;
 
-    // Names match RecipeFieldOptions / FujiRecipeExtractor so a slot and a JPEG of the same recipe compare equal.
+    // Names match FujiRecipeExtractor, so slot and JPEG compare equal.
     internal static readonly IReadOnlyDictionary<ushort, string> FilmSimulations = new Dictionary<ushort, string>
     {
         [0x01] = "Provia/Standard", [0x02] = "Velvia", [0x03] = "Astia (Soft)",
@@ -54,7 +52,7 @@ public static class FujiSlotCodec
 
     internal static readonly HashSet<ushort> MonochromeFamily = [0x06, 0x07, 0x08, 0x09, 0x0A, 0x0C, 0x0D, 0x0E, 0x0F];
 
-    // 0x8006 is Fuji's "Shade"; the extractor/exiftool name for that slot of the scale is "Cloudy".
+    // 0x8006 is Fuji's "Shade"; ExifTool calls it "Cloudy".
     internal static readonly IReadOnlyDictionary<ushort, string> WhiteBalances = new Dictionary<ushort, string>
     {
         [0x0002] = "Auto", [0x0004] = "Daylight", [0x0006] = "Incandescent", [0x0008] = "Underwater",
@@ -102,7 +100,7 @@ public static class FujiSlotCodec
             DynamicRange: DecodeDynamicRange(slot, unmapped),
             HighlightTone: Tenths(slot, PropHighlightTone),
             ShadowTone: Tenths(slot, PropShadowTone),
-            // The camera greys out Color for monochrome simulations and the extractor reports null there.
+            // Color is greyed out for monochrome simulations.
             Color: isMono ? null : WholeLevel(slot, PropColor, unmapped),
             Sharpness: WholeLevel(slot, PropSharpness, unmapped),
             NoiseReduction: Lookup(slot, PropNoiseReduction, NoiseReduction, unmapped),
@@ -110,11 +108,11 @@ public static class FujiSlotCodec
             GrainEffect: Lookup(slot, PropGrain, Grain, unmapped),
             ColorChromeEffect: Lookup(slot, PropColorChrome, ThreeLevel, unmapped),
             ColorChromeFxBlue: Lookup(slot, PropColorChromeBlue, ThreeLevel, unmapped),
-            // Warm/cool axis of monochrome toning; only the zero case has been checked against a real JPEG.
+            // Only zero has been checked against a JPEG.
             BwAdjustment: isMono && TryS16(slot, PropMonoWarmCool) is { } wc && wc % 10 == 0 ? wc / 10 : null,
             GrainSize: DecodeGrainSize(slot),
             SmoothSkinEffect: Lookup(slot, PropSmoothSkin, ThreeLevel, unmapped),
-            // The bank keeps its last Kelvin value under other WB modes, so it only means something under Kelvin.
+            // Kelvin only counts under Kelvin WB.
             ColorTemperature: TryU16(slot, PropWhiteBalance) == WbKelvin ? TryU16(slot, PropColorTemperature) : null);
 
         return new FujiSlotDecode(recipe, unmapped);
@@ -139,7 +137,7 @@ public static class FujiSlotCodec
 
     private static string? DecodeDynamicRange(IReadOnlyDictionary<ushort, byte[]> slot, List<string> unmapped)
     {
-        // An active D-Range Priority overrides the stored DR, and the model has no field for it.
+        // D-Range Priority overrides DR and has no model field.
         if (TryU16(slot, PropDRangePriority) is { } drp && drp != 0)
         {
             Note(unmapped, PropDRangePriority, slot);
@@ -168,7 +166,7 @@ public static class FujiSlotCodec
     {
         if (TryS16(slot, prop) is not { } v) return null;
         if (v % 10 == 0) return v / 10;
-        // FilmRecipe keeps this field as a whole number; a half step would be silently rounded.
+        // A half step would be rounded.
         Note(unmapped, prop, slot);
         return null;
     }

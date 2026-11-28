@@ -4,18 +4,14 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace PhSpectre.Rendering;
 
-// Classic (no model) noise reduction in YCbCr, with separate luminance and colour strengths.
-//  - Luminance: overlapping 8x8 DCT blocks, small coefficients are dropped.
-//  - Colour: a pyramid of detail layers (blotches up to ~16 px); weak detail is removed, strong colour edges stay.
-// The noise level is measured once on samples of the whole picture, so the same slider suits clean and noisy shots.
-// Works tile by tile, so memory does not grow with the picture beyond the output itself.
+// Noise reduction in YCbCr: overlapping 8x8 DCT thresholding for luminance, pyramid shrinkage for colour. Noise is
+// measured once per photo; processing is tiled.
 public static partial class NoiseReduction
 {
     public const int DefaultTile = 384;
     // Tests compare the vector code with the plain one.
     internal static bool ScalarOnly;
-    // Context around each tile. Covers the reach of the coarsest colour layer; tile and margin stay multiples of
-    // Align, so every tile sees the same pyramid and block grid as the whole picture would (no seams).
+    // Margin around each tile. Tiles are multiples of Align, so there are no seams.
     public const int Context = 80;
     public const int Align = 16;
     private const int Levels = 4;
@@ -25,10 +21,8 @@ public static partial class NoiseReduction
     // Threshold at full colour strength, in units of the measured noise.
     private const float ColorThreshold = 3.5f;
 
-    // Luminance slider (0, 10, 25, 50, 75, 100) to DCT threshold in units of the measured noise. A straight line
-    // does nothing in its lower third: grain survives until the threshold passes about 1.5. These points were
-    // measured on ISO 10000 camera JPEGs so that the grain left in flat areas falls evenly: roughly 75, 50, 30,
-    // 15 and 7 percent of the original. Past 3.4 only detail is lost.
+    // Luminance slider to DCT threshold (in noise units). A straight line does nothing at low values; these points,
+    // measured on ISO 10000 JPEGs, make grain fall evenly.
     private static readonly (float Strength, float Threshold)[] LumaCurve =
         [(0f, 0f), (0.1f, 1.1f), (0.25f, 1.55f), (0.5f, 2.05f), (0.75f, 2.55f), (1f, 3.4f)];
 
@@ -40,17 +34,15 @@ public static partial class NoiseReduction
         return a.Threshold + (b.Threshold - a.Threshold) * (strength - a.Strength) / (b.Strength - a.Strength);
     }
 
-    // Measures the noise of a whole picture. Pass the result to Apply to clean a part of that picture exactly as
-    // the whole of it would be cleaned.
+    // Noise of a whole picture, to clean a part of it exactly like the whole.
     public static NoiseProfile Measure(Image<Rgb24> src)
     {
         ArgumentNullException.ThrowIfNull(src);
         return NoiseProfile.Of(src);
     }
 
-    // Returns a new image; the source is untouched. Strengths are 0..100. Without a profile the noise is measured
-    // on `src`. A part of a picture matches the whole only if it starts at a multiple of 16 and has Context pixels
-    // to spare around the area of interest.
+    // Returns a new image, strengths 0..100. A part matches the whole if it starts on a multiple of 16 with Context
+    // pixels to spare.
     public static Image<Rgb24> Apply(Image<Rgb24> src, float luminance, float color,
         CancellationToken ct = default, int tile = DefaultTile, NoiseProfile? profile = null)
     {
@@ -90,8 +82,6 @@ public static partial class NoiseReduction
 
     private static float Strength(float v) => Math.Clamp(float.IsFinite(v) ? v : 0f, 0f, 100f) / 100f;
 
-    // ── Noise measurement ───────────────────────────────────────────────────────────────
-
     public sealed class NoiseProfile
     {
         private NoiseProfile() { }
@@ -99,7 +89,7 @@ public static partial class NoiseReduction
         private const int Bins = 8;
         private const int Patch = 128;
         private const int PatchesPerSide = 8;
-        // The quieter blocks of a picture are flat areas, where what varies is noise rather than detail.
+        // The quietest blocks are flat areas.
         private const float QuietShare = 0.3f;
 
         private readonly float[] _luma = new float[Bins];
@@ -148,7 +138,7 @@ public static partial class NoiseReduction
                     // Clipped blocks have no noise left to measure.
                     if (mean < 3f || mean > 252f) continue;
                     Dct.Forward(block);
-                    // Low and middle frequencies only: a camera JPEG keeps little noise in the finest ones.
+                    // Low and middle frequencies: camera JPEGs keep little noise in the finest.
                     int n = 0;
                     for (int v = 0; v < Block; v++)
                         for (int u = 0; u < Block; u++)
@@ -178,8 +168,6 @@ public static partial class NoiseReduction
             return values[(int)((values.Count - 1) * QuietShare)];
         }
     }
-
-    // ── One tile ────────────────────────────────────────────────────────────────────────
 
     private sealed partial class Workspace
     {
@@ -215,7 +203,7 @@ public static partial class NoiseReduction
 
         public void Store(Image<Rgb24> dst, int dx, int dy, int w, int h, int ox, int oy, bool luma, bool color)
         {
-            // After denoising, the result of the luminance step is in _sum and the colour is rebuilt in _cb[0] / _cr[0].
+            // Luminance ends up in _sum, colour in _cb[0] and _cr[0].
             var yp = luma && _w >= Block && _h >= Block ? _sum : Y;
             var cb = _cb[0]; var cr = _cr[0];
             for (int y = 0; y < h; y++)
@@ -231,8 +219,7 @@ public static partial class NoiseReduction
 
         private static byte Byte(float v) => (byte)Math.Clamp((int)(v + 0.5f), 0, 255);
 
-        // Every block (each Step pixels) is thresholded in the DCT domain; a pixel is the weighted mean of all the
-        // blocks that cover it. Blocks with few surviving coefficients (flat ones) get more weight.
+        // Each pixel is the weighted mean of the thresholded blocks covering it; flat blocks weigh more.
         public void DenoiseLuma(NoiseProfile profile, float k)
         {
             int w = _w, h = _h;
@@ -324,8 +311,7 @@ public static partial class NoiseReduction
             for (int i = 0; i < n; i += 3) sink.Add(_energy[i]);
         }
 
-        // Shrinks each detail layer according to how far its local energy rises above the noise, then rebuilds
-        // the colour from the coarsest scale up. With k = 0 the picture comes back exactly.
+        // Shrinks detail layers by how far their energy exceeds the noise, then rebuilds. k = 0 is lossless.
         public void DenoiseColor(NoiseProfile profile, float k)
         {
             Decompose();

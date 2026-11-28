@@ -4,26 +4,19 @@ using PhSpectre.Models;
 
 namespace PhSpectre.Avalonia.Services;
 
-// Pure rules for which ExportMode values make sense given how many photos are currently
-// selected, and what to fall back to when the selection count crosses the 1<->2+ boundary
-// and the current mode stops being valid. See the plan's Export Mode table: Card/InfoOnly/
-// Recipe apply to exactly 1 photo, Collage/CollageInfoOnly to 2+.
+// Which export modes fit the number of selected photos: Card, InfoOnly and Recipe take one, the collage modes two
+// or more.
 public static class ExportModeRules
 {
     public static IReadOnlyList<ExportMode> AvailableModes(int selectedCount) => selectedCount switch
     {
-        // 0 photos (nothing opened yet, or a freshly opened empty folder) still lists the
-        // single-photo modes — an empty Export mode box looked broken and de-synced from
-        // the Save button label.
+        // With no photo the single-photo modes are listed, so the box is never empty.
         <= 1 => new[] { ExportMode.Card, ExportMode.InfoOnly, ExportMode.Recipe },
         _ => new[] { ExportMode.Collage, ExportMode.CollageInfoOnly }
     };
 
-    // Card<->Collage and InfoOnly<->CollageInfoOnly preserve "computes colors or not" across
-    // the boundary; Recipe has no collage equivalent so it falls back to Collage (closest
-    // "still fast-ish, still meaningful for many photos" choice) rather than losing the
-    // colors-off intent by landing on plain Card-analog Collage... actually Recipe->Collage
-    // is the ТЗ's own explicit call, kept as specified.
+    // Crossing the 1/2+ boundary keeps "computes colours or not"; Recipe has no collage twin and falls back to
+    // Collage.
     public static ExportMode ClosestValidMode(ExportMode current, int selectedCount)
     {
         var available = AvailableModes(selectedCount);

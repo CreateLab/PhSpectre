@@ -1,7 +1,7 @@
 PhSpectre обрабатывает фото локом, оформляет его в рамку и экспортирует. Всё происходит на вашем устройстве — без аккаунта, рекламы и сети.
 
 ЛОК
-• 68 встроенных луков по категориям: Neon, Games, Cinema, Film, Portrait, B&W, Historic, Alt process, Toy camera
+• 88 встроенных луков по категориям: Two Tone, Neon, Games, Cinema, Film, Trends, Portrait, B&W, Historic, Alt process, Toy camera
 • Каждая плитка показана на вашем фото; один ползунок Amount смешивает лок с оригиналом
 • Импорт своих пресетов Lightroom (.xmp), LUT (.cube) или .zip с ними; избранное под рукой
 

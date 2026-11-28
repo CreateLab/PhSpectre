@@ -83,6 +83,23 @@ def gradient(stops, t):
     return stops[-1][1]
 
 
+def two_tone(c, duo):
+    """Draws every hue to one of two poles. duo: (warm hue, cool hue, pull 0..1, saturation factor).
+    Half way between the poles a colour belongs to neither, so there it fades toward grey instead of banding."""
+    warm, cool, pull, boost = duo
+    h, s, v = colorsys.rgb_to_hsv(*(clamp(x) for x in c))
+    if s < 1e-4:
+        return c
+    h *= 360
+    to_warm, to_cool = hue_distance(h, warm), hue_distance(h, cool)
+    t = smooth(-70, 70, abs(to_cool) - abs(to_warm))
+    seam = 4 * t * (1 - t)
+    presence = smooth(0.03, 0.2, s)
+    shift = (to_warm * t + to_cool * (1 - t)) * pull * presence
+    s = clamp(s * (1 + (boost * (1 - 0.65 * seam) - 1) * presence))
+    return colorsys.hsv_to_rgb(((h + shift) % 360) / 360, s, v)
+
+
 def split_tone(c, look):
     """Pushes shadows, mid-tones and highlights toward a colour without changing their brightness much."""
     l = clamp(luma(c))
@@ -121,6 +138,8 @@ def grade(c, look):
     out = saturate(out, look.get("saturation", 1.0))
     if "bands" in look:
         out = hue_bands(out, look["bands"])
+    if "duo" in look:
+        out = two_tone(out, look["duo"])
     if "map" in look:
         stops, amount = look["map"]
         g = luma(out)
@@ -220,22 +239,6 @@ LOOKS = [
         shadows=("102a48", 0.25), highs=("c8d8e8", 0.12))),
     ("Crimson Room", "Cinema", dict(contrast=0.3, gamma=1.1, saturation=0.9, skin=0.4,
         map=([(0.0, "080004"), (0.35, "5a0818"), (0.65, "c82830"), (1.0, "ffd8c8")], 0.5))),
-    # ── Portrait: gentle, flattering, natural skin ──────────────────────────────────
-    ("Clean Skin", "Portrait", dict(gamma=0.94, contrast=0.08, black=0.015,
-        bands=[(RED, 28, 14, 0.4, 0.9, 1.04), (ORANGE, 30, 25, 0.35, 0.95, 1.05), (YELLOW, 30, 42, 0.45, 0.82, 1.02)],
-        shadows=("30506a", 0.05))),
-    ("Peach", "Portrait", dict(gamma=0.9, contrast=0.04, black=0.03, saturation=1.04,
-        bands=[(ORANGE, 40, 20, 0.5, 1.05, 1.05), (YELLOW, 30, 38, 0.6, 0.85, 1.03), (GREEN, 60, 100, 0.3, 0.75, 1.0)],
-        mids=("ff8a70", 0.1), highs=("ffd0b8", 0.14))),
-    ("Porcelain", "Portrait", dict(gamma=0.8, contrast=-0.08, black=0.04, saturation=0.86,
-        bands=[(ORANGE, 45, 20, 0.2, 0.75, 1.07), (YELLOW, 30, 40, 0.4, 0.65, 1.04)],
-        shadows=("506090", 0.1), highs=("e8e8ff", 0.08))),
-    ("Honey Tan", "Portrait", dict(gamma=1.07, contrast=0.2, saturation=1.08,
-        bands=[(RED, 28, 18, 0.4, 1.0, 1.0), (ORANGE, 40, 28, 0.3, 1.18, 0.97), (BLUE, 60, 200, 0.3, 0.85, 1.0)],
-        mids=("c88020", 0.12), highs=("ffd070", 0.12))),
-    ("Soft Film Portrait", "Portrait", dict(contrast=-0.1, black=0.075, white=0.97, saturation=0.84,
-        bands=[(GREEN, 70, 105, 0.35, 0.7, 1.03), (BLUE, 60, 195, 0.4, 0.8, 1.02), (ORANGE, 40, 23, 0.25, 1.05, 1.03)],
-        shadows=("207060", 0.12), highs=("ffe4c4", 0.16))),
     # ── Film and trends ─────────────────────────────────────────────────────────────
     ("Tungsten Night", "Film", dict(contrast=0.2, black=0.045, saturation=1.08, skin=0.55,
         bands=[(ORANGE, 40, 16, 0.45, 1.15, 1.0), (YELLOW, 35, 75, 0.65, 0.85, 1.0), (BLUE, 60, 198, 0.6, 1.2, 1.0)],
@@ -246,6 +249,77 @@ LOOKS = [
     ("Summer Disposable", "Film", dict(contrast=0.12, gamma=0.95, black=0.09, white=0.98, saturation=1.1, skin=0.45,
         bands=[(GREEN, 65, 90, 0.5, 0.9, 1.0), (BLUE, 60, 190, 0.55, 0.95, 1.0)],
         shadows=("106a40", 0.18), mids=("e8a020", 0.12), highs=("fff090", 0.2))),
+    # ── Two tone: the whole frame pulled to a warm and a cool pole ──────────────────
+    ("Blockbuster", "Two Tone", dict(contrast=0.22, black=0.015, saturation=1.05, skin=0.55,
+        duo=(28, 190, 0.7, 1.12), shadows=("00a0b0", 0.28), highs=("ff9a40", 0.24))),
+    ("Heat Wave", "Two Tone", dict(contrast=0.42, gamma=1.05, saturation=1.2, skin=0.35,
+        duo=(24, 186, 0.88, 1.3), shadows=("008c96", 0.42), highs=("ff7a14", 0.38))),
+    ("Violet Hour", "Two Tone", dict(contrast=0.2, black=0.035, saturation=1.1, skin=0.45,
+        duo=(26, 268, 0.8, 1.2), shadows=("5a22c8", 0.42), mids=("a03a90", 0.08), highs=("ff9347", 0.38))),
+    ("Coast Sunset", "Two Tone", dict(contrast=0.16, black=0.04, saturation=1.12, skin=0.5,
+        duo=(340, 188, 0.75, 1.2), shadows=("14a0b4", 0.34), mids=("f143a2", 0.14), highs=("ffb070", 0.36))),
+    ("Midnight Gold", "Two Tone", dict(contrast=0.32, gamma=1.08, saturation=1.1, skin=0.45,
+        duo=(42, 222, 0.82, 1.18), shadows=("1c3cc0", 0.38), highs=("ffc23c", 0.36))),
+    ("Red Wire", "Two Tone", dict(contrast=0.38, gamma=1.05, saturation=1.15, skin=0.4,
+        duo=(356, 184, 0.82, 1.22), shadows=("007c86", 0.38), highs=("ff4a38", 0.28))),
+    # ── Games, second set ───────────────────────────────────────────────────────────
+    ("Coast Day", "Games", dict(contrast=-0.04, gamma=0.9, black=0.045, saturation=1.14, skin=0.55,
+        bands=[(BLUE, 60, 198, 0.65, 1.1, 1.06), (GREEN, 65, 160, 0.6, 0.9, 1.05), (RED, 35, 355, 0.5, 1.05, 1.04),
+               (ORANGE, 35, 22, 0.4, 1.1, 1.04)],
+        shadows=("7a5ac0", 0.2), highs=("ffc4a0", 0.28))),
+    ("Chrome District", "Games", dict(contrast=0.42, gamma=1.15, saturation=1.25, skin=0.45,
+        bands=[(ORANGE, 35, YELLOW, 0.7, 1.2, 1.08), (GREEN, 80, CYAN, 0.85, 1.15, 1.0), (BLUE, 60, CYAN, 0.45, 1.2, 1.05),
+               (VIOLET, 40, PINK, 0.7, 1.25, 1.05)],
+        shadows=("101a50", 0.3), mids=("0090a0", 0.1), highs=("fff23a", 0.24))),
+    ("Clean Runner", "Games", dict(contrast=0.24, gamma=0.8, black=0.02, saturation=1.0, skin=0.5,
+        bands=[(RED, 35, 4, 0.5, 1.6, 1.0), (ORANGE, 25, 14, 0.4, 0.8, 1.0), (YELLOW, 40, YELLOW, 0.0, 0.35, 1.08),
+               (GREEN, 70, 190, 0.7, 0.35, 1.1), (BLUE, 70, 205, 0.5, 1.1, 1.12)],
+        highs=("cfeeff", 0.14))),
+    ("Autumn Blade", "Games", dict(contrast=0.26, saturation=1.2, skin=0.55,
+        bands=[(GREEN, 75, 40, 0.75, 1.15, 1.04), (YELLOW, 35, 38, 0.6, 1.25, 1.06), (ORANGE, 25, 14, 0.4, 1.2, 1.0),
+               (RED, 30, 2, 0.4, 1.25, 0.96), (BLUE, 70, 208, 0.4, 0.7, 0.95)],
+        shadows=("2a2038", 0.2), highs=("ffc050", 0.26))),
+    ("Overgrown", "Games", dict(contrast=0.1, black=0.05, white=0.95, saturation=0.62, skin=0.45,
+        bands=[(YELLOW, 40, 80, 0.7, 1.0, 0.96), (GREEN, 70, 105, 0.6, 1.15, 0.9), (BLUE, 70, 190, 0.7, 0.55, 1.0),
+               (RED, 30, 12, 0.3, 0.9, 0.95)],
+        shadows=("26382a", 0.26), mids=("6a7850", 0.12), highs=("d6dcc8", 0.16))),
+    # ── Cinema, second set ──────────────────────────────────────────────────────────
+    ("Late Noodles", "Cinema", dict(contrast=0.18, gamma=1.14, black=0.055, saturation=1.1, skin=0.4,
+        bands=[(RED, 35, 4, 0.5, 1.35, 1.0), (YELLOW, 40, 70, 0.6, 0.9, 0.95), (GREEN, 70, 150, 0.6, 1.1, 0.92),
+               (BLUE, 70, 215, 0.5, 0.8, 0.9)],
+        shadows=("0c4430", 0.36), mids=("8a2018", 0.2), highs=("e8c878", 0.22))),
+    ("Blue Tide", "Cinema", dict(contrast=0.24, gamma=1.1, black=0.025, saturation=0.95, skin=0.45,
+        bands=[(GREEN, 70, 195, 0.8, 0.9, 0.95), (BLUE, 60, 220, 0.4, 1.3, 1.0), (VIOLET, 40, 245, 0.5, 1.1, 1.0),
+               (YELLOW, 30, ORANGE, 0.5, 0.7, 1.0)],
+        shadows=("0a2a90", 0.45), mids=("2860b0", 0.18), highs=("c090e0", 0.16))),
+    ("Soft Coral", "Cinema", dict(contrast=-0.1, gamma=0.9, black=0.065, saturation=0.9, skin=0.55,
+        bands=[(RED, 40, 8, 0.4, 1.15, 1.05), (ORANGE, 35, 18, 0.5, 1.0, 1.04), (GREEN, 70, 60, 0.5, 0.55, 1.0),
+               (BLUE, 80, 210, 0.3, 0.45, 1.03)],
+        shadows=("7a3838", 0.14), mids=("e06858", 0.16), highs=("ffd8c0", 0.22))),
+    ("Cobalt Evening", "Cinema", dict(contrast=0.2, saturation=1.32, skin=0.6,
+        bands=[(BLUE, 70, 228, 0.55, 1.3, 1.02), (YELLOW, 35, 50, 0.3, 1.15, 1.06), (RED, 35, 352, 0.4, 1.15, 1.0),
+               (VIOLET, 45, 265, 0.4, 1.2, 1.0)],
+        shadows=("1830a8", 0.26), highs=("ffe070", 0.16))),
+    ("Cold Case", "Cinema", dict(contrast=0.34, gamma=1.14, black=0.025, white=0.96, saturation=0.45, skin=0.35,
+        bands=[(ORANGE, 40, 34, 0.3, 1.15, 0.97), (BLUE, 70, 185, 0.6, 0.8, 0.95), (GREEN, 70, 85, 0.5, 0.8, 0.92)],
+        shadows=("143c38", 0.26), mids=("586040", 0.12), highs=("d0cca8", 0.14))),
+    ("Three Strip", "Cinema", dict(contrast=0.24, saturation=1.35, skin=0.55,
+        bands=[(RED, 40, 356, 0.4, 1.2, 0.96), (ORANGE, 30, 22, 0.3, 1.05, 1.0), (GREEN, 70, 140, 0.6, 1.15, 0.94),
+               (BLUE, 60, 218, 0.5, 1.15, 0.96)],
+        highs=("fff0d0", 0.08))),
+    ("Two Strip", "Cinema", dict(contrast=0.14, black=0.035, saturation=0.95, skin=0.4,
+        duo=(14, 172, 0.92, 1.05), shadows=("0c5a50", 0.18), highs=("ffd8b8", 0.2))),
+    # ── Trends ──────────────────────────────────────────────────────────────────────
+    ("Burgundy Fall", "Trends", dict(contrast=0.18, gamma=1.08, black=0.04, saturation=0.92, skin=0.55,
+        bands=[(GREEN, 75, 38, 0.75, 0.75, 0.92), (YELLOW, 35, 30, 0.65, 1.05, 0.96), (ORANGE, 25, 18, 0.35, 1.1, 0.97),
+               (RED, 35, 348, 0.55, 1.15, 0.85), (BLUE, 80, 205, 0.3, 0.45, 0.95)],
+        shadows=("4a0c20", 0.28), mids=("8a3a20", 0.14), highs=("f0c8a0", 0.2))),
+    ("Moss", "Trends", dict(contrast=0.12, black=0.055, saturation=0.82, skin=0.55,
+        bands=[(YELLOW, 40, 72, 0.7, 0.9, 0.94), (GREEN, 70, 88, 0.7, 0.85, 0.88), (BLUE, 80, 180, 0.6, 0.5, 0.98),
+               (RED, 30, 18, 0.4, 0.8, 0.97)],
+        shadows=("2c3a18", 0.24), mids=("6c7030", 0.12), highs=("e8e0c0", 0.18))),
+    ("Warm Mono", "Trends", dict(contrast=0.16, black=0.05, white=0.97, mono=1.0,
+        shadows=("5a3a28", 0.22), mids=("a07858", 0.14), highs=("f8e6c8", 0.2))),
 ]
 
 

@@ -4,10 +4,7 @@ namespace PhSpectre.Wpd;
 
 public static class WpdCameraFactory
 {
-    /// <summary>
-    /// Opens the first plugged-in Fujifilm body, or returns null when there is none. Runs on the thread pool
-    /// (an MTA thread), which is where the WPD calls were verified to work; a UI thread is STA.
-    /// </summary>
+    /// <summary>Opens the first Fujifilm body, or null. Runs on the thread pool: WPD calls need an MTA thread.</summary>
     public static Task<IPtpTransport?> OpenFirstFujifilmAsync(CancellationToken ct) => Task.Run(() =>
     {
         ct.ThrowIfCancellationRequested();

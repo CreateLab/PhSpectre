@@ -3,10 +3,7 @@ using PhSpectre.Rendering;
 
 namespace PhSpectre.Qr;
 
-// Maps a QrContentPreset (the 5 rows of the spec's field table) onto the shot's already-read
-// PhotoMetadata/FilmRecipe, then hands the result to an IQrLinkPayloadEncoder to build the
-// final phspectre-view URL. Custom-URL mode never goes through this class — callers use the
-// user's raw string directly.
+// Builds a phspectre-view URL for a preset. Custom URLs bypass this.
 public static class QrLinkBuilder
 {
     private const string ViewerBaseUrl = "https://createlab.github.io/phspectre-view/";

@@ -1,3 +1,4 @@
+using PhSpectre.Localization;
 using System;
 using System.IO;
 using System.Linq;
@@ -5,10 +6,8 @@ using PhSpectre.Models;
 
 namespace PhSpectre.Avalonia.Services;
 
-// Default save-dialog file name: <source stem>_<mode>.<ext>, plus the matching dialog title.
-// Picker-provided names (notably Android content-URI display names) can come back mangled —
-// only punctuation, or with characters the destination file system rejects — so the stem is
-// sanitized and falls back to "photo" when nothing readable is left.
+// Default save name <stem>_<mode>.<ext>. Picker names (Android content URIs) can be unusable, so the stem is
+// sanitized, falling back to "photo".
 public static class SuggestedFileName
 {
     public static string ModeSuffix(ExportMode mode) => mode switch
@@ -23,8 +22,7 @@ public static class SuggestedFileName
         return stem + ModeSuffix(mode) + extension;
     }
 
-    // Default destination for saved cards: Pictures/PhSpectre, not the folder the sources
-    // live in (saved cards used to land next to the originals and get re-imported by Open folder).
+    // Saved cards go to Pictures/PhSpectre, away from the sources, so Open folder does not pick them up.
     public static string DefaultOutputFolder()
     {
         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), "PhSpectre");
@@ -32,8 +30,7 @@ public static class SuggestedFileName
         return dir;
     }
 
-    // True for files this app produced (<stem>_palette / _recipe, collage_palette) so Open
-    // folder can keep them out of the photo list and out of "Save all".
+    // Files this app produced; Open folder and Save all skip them.
     public static bool IsGeneratedCard(string path)
     {
         var stem = Path.GetFileNameWithoutExtension(path);
@@ -46,9 +43,9 @@ public static class SuggestedFileName
     public static string DialogTitle(string suggestedName)
     {
         var stem = Path.GetFileNameWithoutExtension(suggestedName);
-        if (stem.StartsWith("collage", StringComparison.OrdinalIgnoreCase)) return "Save collage";
-        if (stem.EndsWith("_recipe", StringComparison.OrdinalIgnoreCase)) return "Save recipe card";
-        return "Save palette card";
+        if (stem.StartsWith("collage", StringComparison.OrdinalIgnoreCase)) return Loc.T("Save collage");
+        if (stem.EndsWith("_recipe", StringComparison.OrdinalIgnoreCase)) return Loc.T("Save recipe card");
+        return Loc.T("Save palette card");
     }
 
     internal static string Sanitize(string stem)

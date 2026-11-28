@@ -1,16 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:l="using:PhSpectre.Avalonia.Localization"
              xmlns:local="using:PhSpectre.Avalonia.Views"
              xmlns:vm="using:PhSpectre.Avalonia.ViewModels"
              xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
              x:Class="PhSpectre.Avalonia.Views.EditCanvas"
              x:DataType="vm:ProcessViewModel">
 
-    <!-- Edit canvas (DataContext = Settings.Process): the neutral stage with the graded photo. -->
+    <!-- Edit canvas; DataContext = Settings.Process. -->
     <Grid Background="{DynamicResource StageBrush}">
         <Image x:Name="Photo" Source="{Binding Shown}" Stretch="Uniform" Margin="{Binding StageMargin}" IsVisible="{Binding ShowPhotoView}"/>
 
-        <!-- 100% view: a piece of the full-size photo, one photo pixel per screen pixel (two on dense screens) -->
+        <!-- 100% view -->
         <Grid x:Name="DetailHost" Background="Transparent" ClipToBounds="True" Cursor="SizeAll" IsVisible="{Binding IsDetailActive}">
             <Image x:Name="DetailImage" Source="{Binding Detail}" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center"
                    RenderOptions.BitmapInterpolationMode="None" IsVisible="{Binding ShowDetail}"/>
@@ -20,7 +21,7 @@
             </Border>
         </Grid>
 
-        <!-- Crop: the whole photo, moved / rotated / scaled by transforms under a clipped window (no re-render per drag) -->
+        <!-- Crop: the whole photo moved by transforms under a clipping window -->
         <Grid x:Name="CropHost" Margin="{Binding StageMargin}" Background="Transparent" IsVisible="{Binding ShowCropView}">
             <Border x:Name="CropWindow" ClipToBounds="True" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Grid>
@@ -28,7 +29,7 @@
                         <Image x:Name="CropImage" Source="{Binding CropBase}" Stretch="Fill" RenderTransformOrigin="50%,50%"
                                RenderOptions.BitmapInterpolationMode="MediumQuality"/>
                     </Canvas>
-                    <!-- Rule-of-thirds grid for levelling the horizon -->
+                    <!-- Thirds grid -->
                     <Grid IsHitTestVisible="False" ColumnDefinitions="*,*,*" RowDefinitions="*,*,*">
                         <Border Grid.Row="0" Grid.Column="0" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,1"/>
                         <Border Grid.Row="0" Grid.Column="1" BorderBrush="#66FFFFFF" BorderThickness="0,0,1,1"/>
@@ -45,13 +46,13 @@
 
         <Button IsVisible="{Binding ShowEmpty}" Command="{Binding OpenPhotosCommand}" Background="Transparent"
                 BorderThickness="0" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="40,28"
-                Cursor="Hand" AutomationProperties.Name="Open photos">
+                Cursor="Hand" AutomationProperties.Name="{l:T 'Open photos'}">
             <StackPanel Spacing="10">
                 <materialIcons:MaterialIcon Kind="ImageOutline" Width="40" Height="40" HorizontalAlignment="Center"
                                             Foreground="{DynamicResource TextMutedBrush}"/>
-                <TextBlock Text="Open a photo to start" HorizontalAlignment="Center" FontSize="15"
+                <TextBlock Text="{l:T 'Open a photo to start'}" HorizontalAlignment="Center" FontSize="15"
                            Foreground="{DynamicResource TextPrimaryBrush}"/>
-                <TextBlock Text="Tap here, or use + in the strip below." HorizontalAlignment="Center" Classes="hint"/>
+                <TextBlock Text="{l:T 'Tap here, or use + in the strip below.'}" HorizontalAlignment="Center" Classes="hint"/>
             </StackPanel>
         </Button>
         <StackPanel IsVisible="{Binding HasError}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
@@ -65,7 +66,7 @@
         <Border Classes="pill" IsVisible="{Binding ShowCompare}" Padding="10,6"
                 HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="{Binding CompareMargin}">
             <local:CompareSwitch SelectedIndex="{Binding CompareIndex}"
-                     ToolTip.Tip="Compare with the original (hold \)" AutomationProperties.Name="Result or original"/>
+                     ToolTip.Tip="{l:T 'Compare with the original (hold \\)'}" AutomationProperties.Name="{l:T 'Result or original'}"/>
         </Border>
 
         <Border IsVisible="{Binding ShowPhotoName}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="12,10,0,0" MaxWidth="220"
@@ -75,7 +76,13 @@
 
         <Border IsVisible="{Binding IsRendering}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,12,0"
                 Background="{DynamicResource ScrimBrush}" CornerRadius="6" Padding="8,3">
-            <TextBlock Text="Updating…" FontSize="12" Foreground="White"/>
+            <TextBlock Text="{l:T 'Updating…'}" FontSize="12" Foreground="White"/>
+        </Border>
+
+        <Border IsVisible="{Binding ShowHistogramPanel}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,40,12,0"
+                Background="{DynamicResource ScrimBrush}" CornerRadius="6" Padding="6" IsHitTestVisible="False">
+            <local:HistogramView Data="{Binding Histogram}" Width="{Binding HistogramWidth}" Height="{Binding HistogramHeight}"
+                                 AutomationProperties.Name="{l:T 'Histogram'}"/>
         </Border>
 
         <!-- Why the frame type changed on its own -->
@@ -85,9 +92,9 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <TextBlock Text="{Binding Settings.FrameNotice}" TextWrapping="Wrap" VerticalAlignment="Center"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
-                <Button Classes="link" Content="Undo" IsVisible="{Binding Settings.CanUndoFrameSwitch}"
+                <Button Classes="link" Content="{l:T 'Undo'}" IsVisible="{Binding Settings.CanUndoFrameSwitch}"
                         Command="{Binding Settings.UndoFrameSwitchCommand}"/>
-                <local:IconButton Width="28" Height="28" AutomationProperties.Name="Dismiss"
+                <local:IconButton Width="28" Height="28" AutomationProperties.Name="{l:T 'Dismiss'}"
                         Command="{Binding Settings.DismissFrameNoticeCommand}" Icon="Close" IconSize="14"/>
                 </StackPanel>
             </Grid>

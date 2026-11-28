@@ -3,9 +3,7 @@ using SixLabors.ImageSharp.Metadata.Profiles.Exif;
 
 namespace PhSpectre.Rendering;
 
-// Where the number printed on a film edge comes from. Never made up: it is taken from the file name
-// (DSCF5206.JPG -> 5206), else from the EXIF image number, else there is none (the zone stays empty).
-// The user can always override it by hand.
+// The number on a film edge: from the file name, else the EXIF image number, else none.
 public static class FilmFrameNumber
 {
     // The last run of digits in the file name, without leading zeros: "DSCF5206" -> "5206", "IMG_0012 (2)" -> "2".

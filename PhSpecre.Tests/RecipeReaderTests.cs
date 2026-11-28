@@ -33,8 +33,7 @@ public class RecipeReaderTests
         image.Metadata.ExifProfile = new ExifProfile();
         image.Metadata.ExifProfile.SetValue(ExifTag.Make, "FUJIFILM");
 
-        // No MakerNote bytes present -> the registered Fuji extractor's CanHandle is true
-        // but Extract has nothing to parse, so this must come back null, not throw.
+        // No MakerNote: null, not an exception.
         Assert.Null(RecipeReader.Read(image));
     }
 }
